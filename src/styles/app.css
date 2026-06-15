@@ -469,6 +469,7 @@ button[disabled],
   --chat-preview-width: 390px;
   --video-preview-width: 585px;
   --preview-tilt-gutter: 18px;
+  --desktop-story-panel-top-offset: 190px;
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(380px, 520px) minmax(560px, 1fr);
   gap: 14px;
@@ -1964,7 +1965,7 @@ button[disabled],
     --video-preview-width: 585px;
     display: grid;
     grid-template-columns: 390px 390px;
-    align-items: center;
+    align-items: start;
     justify-content: center;
     gap: clamp(24px, 4vw, 58px);
     padding: 0 clamp(28px, 5vw, 78px) 24px;
@@ -1975,12 +1976,13 @@ button[disabled],
     bottom: auto;
     left: auto;
     z-index: 20;
-    align-self: center;
+    align-self: start;
     width: 390px;
     max-height: min(82dvh, 760px);
     overflow: visible;
     padding: 22px 10px;
-    transform: translateY(10px);
+    margin-top: var(--desktop-story-panel-top-offset);
+    transform: none;
   }
 
   .static-workspace .right-panel {
