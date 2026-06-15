@@ -60,7 +60,7 @@ type AppProps = {
 const tokenServiceWifiToast = "token服务连不上，请连到叫叫的 Wi-Fi";
 const defaultJojoAppUrl = "https://jojodemos.mikeywa.icu/ququ/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
-const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/chat-record-drama-simulator";
+const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
 
 const jojoGlassCardStyle: CSSProperties = {
   backdropFilter: "blur(24px) saturate(118%)",

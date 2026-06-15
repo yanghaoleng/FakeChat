@@ -183,8 +183,9 @@
 - 已从 `server/settings.ts` 与 `vite.config.ts` 移除真实 token，改为通过 `.env` 或 CI 环境变量注入。
 - 已更新 `.env.example`，新增 `COMPANY_DEEPSEEK_API_KEY`、`VITE_COMPANY_DEEPSEEK_API_KEY` 等配置占位。
 - 已加强 `.gitignore`，排除 `.env`、临时目录、渲染视频、录屏、同步冲突文件和系统文件，避免公开仓库误提交敏感或大体积文件。
-- GitHub 不保留中文仓库 slug，首次创建被规范成 `-`；已重命名为公开仓库 `yanghaoleng/chat-record-drama-simulator`，README 中文项目名仍为“聊天记录短剧模拟器”。
-- 已推送 `main` 到 `https://github.com/yanghaoleng/chat-record-drama-simulator`。
-- 标题菜单已新增 `Github` 公开仓库入口，默认指向 `https://github.com/yanghaoleng/chat-record-drama-simulator`，也可通过 `VITE_GITHUB_REPO_URL` 覆盖。
+- GitHub 不保留中文仓库 slug，首次创建被规范成 `-`；随后已重命名为公开仓库 `yanghaoleng/FakeChat`，README 中文项目名仍为“聊天记录短剧模拟器”。
+- 已推送 `main` 到 `https://github.com/yanghaoleng/FakeChat`。
+- 标题菜单已新增 `Github` 公开仓库入口，默认指向 `https://github.com/yanghaoleng/FakeChat`，也可通过 `VITE_GITHUB_REPO_URL` 覆盖。
 - 桌面端“编故事”面板已改为固定像素垂直偏移 `--desktop-story-panel-top-offset: 190px`，不再依赖百分比/视口高度居中；移动端底部半弹窗结构不变。
 - 桌面端视频版右侧预览面板已使用 `--desktop-preview-window-top-offset`，在 `--desktop-story-panel-top-offset: 190px` 上补 `12px` 视觉内边距，视频窗口顶部和可见“编故事”卡片保持同高。
+- README 已补充微信版截图：`docs/screenshots/fakechat-wechat.png`。

@@ -5,7 +5,7 @@
 | 顶栏 | 全局 | `header` | `.topbar` |
 | 产品名 | 顶栏 | `packageTitle(storyPackage)` | `.brand-block h1` |
 | 网站小 logo | 顶栏 / favicon | `/site-icon.svg` | `.brand-logo`，白底黑色蛐蛐 |
-| Github 菜单项 | 标题下拉菜单 | `VITE_GITHUB_REPO_URL`、`defaultGithubRepositoryUrl` | `.title-menu-item` |
+| Github 菜单项 | 标题下拉菜单 | `VITE_GITHUB_REPO_URL`、`defaultGithubRepositoryUrl`，默认 `https://github.com/yanghaoleng/FakeChat` | `.title-menu-item` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
@@ -69,3 +69,4 @@
 | 公司中转配置 | 后端模型 | `getDeepSeekConfig` | `server/settings.ts` |
 | 静态部署公司中转 | 构建注入 | `VITE_INCLUDE_COMPANY_TOKEN=1`、`VITE_COMPANY_DEEPSEEK_API_KEY` | `vite.config.ts` 仅从环境变量读取 token |
 | 后端公司中转 token | 后端模型 | `COMPANY_DEEPSEEK_API_KEY`、`DEEPSEEK_API_KEY` | `server/settings.ts`，不再硬编码真实 key |
+| 微信版 README 截图 | GitHub 文档 | README 图片引用 | `docs/screenshots/fakechat-wechat.png` |
