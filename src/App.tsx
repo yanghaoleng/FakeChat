@@ -60,6 +60,7 @@ type AppProps = {
 const tokenServiceWifiToast = "token服务连不上，请连到叫叫的 Wi-Fi";
 const defaultJojoAppUrl = "https://jojodemos.mikeywa.icu/ququ/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
+const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/chat-record-drama-simulator";
 
 const jojoGlassCardStyle: CSSProperties = {
   backdropFilter: "blur(24px) saturate(118%)",
@@ -838,6 +839,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   const switchLink = packageSwitchLink(storyPackage);
+  const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
 
   return (
     <div ref={rootRef} className={`app-shell dark ${storyPackage === "jojo" ? "app-shell-jojo" : ""}`} data-theme="dark" data-vibrant-palette="true">
@@ -883,6 +885,11 @@ export default function App({ storyPackage }: AppProps) {
                   <ArrowUpRight size={16} />
                   <span>{switchLink.label}</span>
                   <small>切换版本</small>
+                </a>
+                <a className="title-menu-item" role="menuitem" href={githubRepositoryUrl} target="_blank" rel="noreferrer" onClick={closeSettingsMenu}>
+                  <ArrowUpRight size={16} />
+                  <span>Github</span>
+                  <small>公开仓库</small>
                 </a>
                 <div className="title-menu-separator" />
                 <button

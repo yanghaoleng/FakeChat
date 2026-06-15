@@ -68,7 +68,7 @@ npm run preview:lan
 - 公开仓库不保存任何真实 token；本地请复制 `.env.example` 为 `.env` 后填写环境变量。
 - 后端优先读取 `DEEPSEEK_API_KEY`，也支持公司内网专用的 `COMPANY_DEEPSEEK_API_KEY`。
 - `build:ququ` 如需在纯静态页面中浏览器直连公司中转，需要在本地或 CI 环境设置 `VITE_COMPANY_DEEPSEEK_API_KEY`。
-- 如需临时覆盖，可设置 `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`VITE_COMPANY_DEEPSEEK_BASE_URL`、`VITE_COMPANY_DEEPSEEK_MODEL` 环境变量。
+- 如需临时覆盖，可设置 `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`VITE_COMPANY_DEEPSEEK_BASE_URL`、`VITE_COMPANY_DEEPSEEK_MODEL`、`VITE_GITHUB_REPO_URL` 环境变量。
 - 旧的 `data/settings.json` 保存配置默认不覆盖公司中转；只有设置 `USE_SAVED_DEEPSEEK_SETTINGS=1` 才启用。
 
 如果没有后端、未配置 token 或模型请求失败，工具会使用本地规则续写。外网访问静态部署时，如果公司中转不可达，会弹出 Toast：`token服务连不上，请连到叫叫的 Wi-Fi`。Edge TTS 在浏览器端直连微软语音服务；如果当前浏览器或网络策略拦截 WebSocket，会在页面状态和控制台里报错。
@@ -80,7 +80,7 @@ npm run preview:lan
 ## 核心功能
 
 - 输入下一段剧情，基于历史故事卡片和当前对话续写剧情。
-- JOJO版 / 网红短剧版是两套独立构建产物，页面内不互相链接。
+- JOJO版 / 网红短剧版是两套独立构建产物，标题菜单支持版本互跳，并提供 `Github` 公开仓库入口。
 - 在界面版和 Remotion 视频版之间切换，聊天播放完后可在信息流末尾点“再来一遍”重播入场；视频版空态保持和有内容时相同的画布尺寸。
 - 启动时默认内置剧情会从空信息流自动入场播放。
 - 1080px 以下编故事使用底部居中半弹窗，生成成功后自动收起，并通过连续过渡把按钮从弹窗右上角移动到底部居中；400px 以下只收窄模拟聊天手机，不改变整体交互结构。
