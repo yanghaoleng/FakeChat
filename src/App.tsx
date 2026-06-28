@@ -125,8 +125,8 @@ function createInitialPresetStorySegment(packageId: StoryPackage, prompt: string
   return { card, messages, project };
 }
 
-function packageTitle(packageId: StoryPackage) {
-  return packageId === "jojo" ? "蛐蛐模拟器" : "聊天记录生成器";
+function packageTitle(_packageId: StoryPackage) {
+  return "蛐蛐模拟器";
 }
 
 function packageReadyText(packageId: StoryPackage) {
