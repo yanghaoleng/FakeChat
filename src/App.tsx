@@ -1282,7 +1282,7 @@ export default function App({ storyPackage }: AppProps) {
             </span>
             <small>{storyCardCount ? `${storyCardCount} 张故事卡片` : "准备生成"}</small>
           </button>
-          <Card className="surface-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
+          <Card className="surface-card story-composer-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
             <CardHeader className="card-header">
               <div className="panel-title">
                 <Sparkles size={18} />

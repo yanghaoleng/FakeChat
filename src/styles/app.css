@@ -2166,10 +2166,12 @@ button[disabled],
     z-index: 20;
     align-self: start;
     width: 390px;
-    max-height: min(82dvh, 760px);
-    overflow: visible;
-    padding: 22px 10px;
-    margin-top: var(--desktop-story-panel-top-offset);
+    height: 100%;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: var(--desktop-story-panel-top-offset) 10px 24px;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     transform: none;
   }
 
@@ -2188,7 +2190,10 @@ button[disabled],
     will-change: transform;
   }
 
-  .static-workspace .left-panel > .surface-card:not(.prompt-history-card) {
+  .static-workspace .left-panel > .story-composer-card {
+    position: sticky;
+    top: 0;
+    z-index: 6;
     animation: desk-breathe-primary 6.4s ease-in-out infinite;
   }
 
