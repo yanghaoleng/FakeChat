@@ -17,21 +17,19 @@ declare const __DEEPSEEK_BROWSER_CONFIG__: {
   baseUrl?: string;
   model?: string;
   defaultProvider?: BrowserDeepSeekProviderConfig;
-  companyProvider?: BrowserDeepSeekProviderConfig;
 };
 
 type BrowserDeepSeekProviderConfig = {
   apiKey?: string;
   baseUrl?: string;
   model?: string;
-  probeUrl?: string;
 };
 
 export type DeepSeekCompletionConfig = {
   apiKey: string;
   baseUrl: string;
   model: string;
-  source?: "default" | "company" | "server";
+  source?: "default" | "server";
   label?: string;
 };
 
@@ -45,11 +43,6 @@ export type DeepSeekSegmentResult = {
     baseUrl: string;
     model: string;
   };
-};
-
-type CompanyProbeCache = {
-  checkedAt: number;
-  reachable: boolean;
 };
 
 const DEEPSEEK_V4_FLASH_MODEL = "deepseek-v4-flash";
@@ -88,19 +81,16 @@ function cleanBaseUrl(value: string) {
   return (value || "https://api.deepseek.com").replace(/\/+$/, "");
 }
 
-let companyProbeCache: CompanyProbeCache | undefined;
-
 function cleanProviderConfig(
   value: BrowserDeepSeekProviderConfig | undefined,
   fallback: BrowserDeepSeekProviderConfig,
   source: DeepSeekCompletionConfig["source"],
   label: string
-): DeepSeekCompletionConfig & { probeUrl?: string } {
+): DeepSeekCompletionConfig {
   return {
     apiKey: (value?.apiKey || fallback.apiKey || "").trim(),
     baseUrl: cleanBaseUrl(value?.baseUrl || fallback.baseUrl || "https://api.deepseek.com"),
     model: DEEPSEEK_V4_FLASH_MODEL,
-    probeUrl: value?.probeUrl || fallback.probeUrl,
     source,
     label
   };
@@ -115,67 +105,8 @@ function getDefaultBrowserDeepSeekConfig() {
       model: __DEEPSEEK_BROWSER_CONFIG__.model
     },
     "default",
-    "公网 / 网红版 Key"
+    "浏览器公开 Key"
   );
-}
-
-function getCompanyBrowserDeepSeekConfig() {
-  const provider = __DEEPSEEK_BROWSER_CONFIG__.companyProvider;
-  if (!provider) return undefined;
-  return cleanProviderConfig(
-    provider,
-    {
-      baseUrl: "https://token.xjjj.co/v1",
-      model: DEEPSEEK_V4_FLASH_MODEL,
-      probeUrl: "https://token.xjjj.co/v1/models"
-    },
-    "company",
-    "JOJO-Office / xjjj"
-  );
-}
-
-function readCompanyNetworkOverride() {
-  if (typeof window === "undefined") return undefined;
-  const normalize = (value: string | null) => value?.trim().toLowerCase();
-  let storedValue: string | null = null;
-  try {
-    storedValue = window.localStorage.getItem("jojo_network");
-  } catch {
-    storedValue = null;
-  }
-  const value = normalize(new URLSearchParams(window.location.search).get("jojo_network"))
-    || normalize(storedValue);
-  if (!value) return undefined;
-  if (["office", "company", "jojo", "xjjj", "1", "true"].includes(value)) return true;
-  if (["public", "viral", "default", "0", "false"].includes(value)) return false;
-  return undefined;
-}
-
-async function canReachCompanyProvider(provider: DeepSeekCompletionConfig & { probeUrl?: string }) {
-  const override = readCompanyNetworkOverride();
-  if (typeof override === "boolean") return override;
-
-  if (!provider.apiKey) return false;
-  if (companyProbeCache && Date.now() - companyProbeCache.checkedAt < 30_000) return companyProbeCache.reachable;
-
-  const probeUrl = provider.probeUrl || provider.baseUrl;
-  try {
-    await fetch(probeUrl, {
-      method: "GET",
-      mode: "no-cors",
-      cache: "no-store",
-      signal: AbortSignal.timeout(1800)
-    });
-    companyProbeCache = { checkedAt: Date.now(), reachable: true };
-    return true;
-  } catch (error) {
-    console.info("[deepseek-browser] company network probe failed", {
-      probeUrl,
-      error: error instanceof Error ? error.message : String(error)
-    });
-    companyProbeCache = { checkedAt: Date.now(), reachable: false };
-    return false;
-  }
 }
 
 function roleForSide(project: DramaProject, side: ChatMessage["side"]) {
@@ -478,15 +409,12 @@ export function getBrowserDeepSeekConfig() {
 }
 
 export function hasBrowserDeepSeekKey() {
-  return Boolean(getDefaultBrowserDeepSeekConfig().apiKey || getCompanyBrowserDeepSeekConfig()?.apiKey);
+  return Boolean(getDefaultBrowserDeepSeekConfig().apiKey);
 }
 
 export async function resolveBrowserDeepSeekConfig(project?: DramaProject) {
+  void project;
   const defaultProvider = getDefaultBrowserDeepSeekConfig();
-  const companyProvider = getCompanyBrowserDeepSeekConfig();
-  if (companyProvider?.apiKey && project && isJojoProject(project) && await canReachCompanyProvider(companyProvider)) {
-    return companyProvider;
-  }
   return defaultProvider;
 }
 
@@ -631,7 +559,7 @@ export async function generateDeepSeekStorySegment({
     prompt,
     promptCards,
     config,
-    logLabel: config.source === "company" ? "deepseek-browser-company" : "deepseek-browser-default",
+    logLabel: "deepseek-browser-default",
     signal
   });
 }

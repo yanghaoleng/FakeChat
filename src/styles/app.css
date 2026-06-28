@@ -516,7 +516,11 @@ button[disabled],
   width: 380px;
   max-height: calc(100dvh - 92px);
   padding-right: 0;
-  overflow-y: auto;
+  overflow: visible;
+}
+
+.static-workspace .left-panel-scroll {
+  max-height: inherit;
 }
 
 .static-workspace .right-panel {
@@ -2168,12 +2172,24 @@ button[disabled],
     width: 390px;
     height: 100%;
     max-height: 100%;
+    overflow: visible;
+    padding: 0;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+    transform: none;
+  }
+
+  .static-workspace .left-panel-scroll {
+    width: calc(100% + 40px);
+    height: 100%;
+    max-height: 100%;
+    margin-inline: -20px;
+    gap: 18px;
     overflow-y: auto;
-    padding: 24px 10px;
+    padding: 24px 20px;
     mask-image: none !important;
     -webkit-mask-image: none !important;
     overscroll-behavior: contain;
-    transform: none;
   }
 
   .static-workspace .right-panel {
@@ -2186,12 +2202,12 @@ button[disabled],
     translate: none;
   }
 
-  .static-workspace .left-panel > .surface-card {
+  .static-workspace .left-panel-scroll > .surface-card {
     width: 370px;
     will-change: transform;
   }
 
-  .static-workspace .left-panel > .story-composer-card {
+  .static-workspace .left-panel-scroll > .story-composer-card {
     position: sticky;
     top: 0;
     z-index: 6;
@@ -2199,14 +2215,14 @@ button[disabled],
     animation: desk-breathe-primary 6.4s ease-in-out infinite;
   }
 
-  .static-workspace .left-panel > .surface-card:last-child {
+  .static-workspace .left-panel-scroll > .surface-card:last-child {
     margin-bottom: auto;
   }
 
-  .static-workspace .left-panel > .prompt-history-card {
+  .static-workspace .left-panel-scroll > .prompt-history-card {
     justify-self: end;
     width: 352px;
-    margin-top: 2px;
+    margin-top: 4px;
     animation: desk-breathe-secondary 7.2s ease-in-out infinite;
   }
 
@@ -2446,6 +2462,16 @@ button[disabled],
     -webkit-mask-image: none !important;
   }
 
+  .left-panel:not(.story-panel-open) .left-panel-scroll {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+  }
+
   .left-panel:not(.story-panel-open) .story-panel-status {
     position: static;
     width: 62px;
@@ -2568,7 +2594,7 @@ button[disabled],
     transform: none !important;
   }
 
-  .static-workspace .left-panel > .surface-card {
+  .static-workspace .left-panel-scroll > .surface-card {
     animation: none !important;
     rotate: none !important;
     translate: none !important;

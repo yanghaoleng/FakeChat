@@ -22,7 +22,7 @@ import {
   Sparkles,
   Video
 } from "lucide-react";
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { exportBrowserVideo, type VideoExportResult } from "./shared/browserVideo";
 import { generateBackendStorySegment } from "./shared/deepseekBackend";
@@ -66,7 +66,7 @@ type AppProps = {
   storyPackage: StoryPackage;
 };
 
-const tokenServiceWifiToast = "token服务连不上，请连到叫叫的 Wi-Fi";
+const deepSeekServiceToast = "DeepSeek 服务暂时连不上，已改用本地续写";
 const defaultJojoAppUrl = "https://jojodemos.mikeywa.icu/ququ/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
@@ -194,6 +194,29 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.download = filename;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+}
+
+type LayoutSnapshot = Map<string, { left: number; top: number }>;
+
+function getLeftPanelLayoutKey(element: HTMLElement) {
+  if (element.classList.contains("story-composer-card")) return "composer";
+  if (element.classList.contains("prompt-history-card")) return "history";
+  return "";
+}
+
+function getLeftPanelLayoutTargets(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>(".left-panel-scroll > .story-composer-card, .left-panel-scroll > .prompt-history-card"));
+}
+
+function readLeftPanelLayoutSnapshot(root: HTMLElement): LayoutSnapshot {
+  const snapshot: LayoutSnapshot = new Map();
+  getLeftPanelLayoutTargets(root).forEach((element) => {
+    const key = getLeftPanelLayoutKey(element);
+    if (!key) return;
+    const rect = element.getBoundingClientRect();
+    snapshot.set(key, { left: rect.left, top: rect.top });
+  });
+  return snapshot;
 }
 
 function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMessage>): DramaProject {
@@ -332,6 +355,7 @@ export default function App({ storyPackage }: AppProps) {
   const [focusedPromptCardId, setFocusedPromptCardId] = useState<string | null>(null);
   const [scrollTargetMessageId, setScrollTargetMessageId] = useState<string | null>(null);
   const scrollTargetMessageIdRef = useRef<string | null>(null);
+  const leftPanelLayoutSnapshotRef = useRef<LayoutSnapshot>(new Map());
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
@@ -796,23 +820,9 @@ export default function App({ storyPackage }: AppProps) {
       setFocusedPromptCardId(null);
       updateScrollTargetMessageId(null);
     }
-    setStatusText(storyPackage === "jojo" ? "正在识别网络环境并请求 DeepSeek..." : "正在请求后端 DeepSeek 续写...");
+    setStatusText("正在请求后端 DeepSeek 续写...");
 
     try {
-      if (storyPackage === "jojo" && hasBrowserDeepSeekKey()) {
-        try {
-          const result = await generateDeepSeekStorySegment({ project, prompt, promptCards, signal });
-          if (!isCurrentGeneration(runId, signal)) return;
-          applyStorySegment(result, `${result.provider?.label || "DeepSeek 前端"}已追加 ${result.messages.length} 条消息`);
-          return;
-        } catch (browserError) {
-          if (!isCurrentGeneration(runId, signal)) return;
-          console.warn("[deepseek] browser direct unavailable", browserError);
-          showToast(tokenServiceWifiToast);
-          setStatusText("前端直连不可用，正在尝试后端代理...");
-        }
-      }
-
       let backendError: unknown;
       try {
         const result = await generateBackendStorySegment({ project, prompt, promptCards, signal });
@@ -826,7 +836,7 @@ export default function App({ storyPackage }: AppProps) {
       }
 
       if (hasBrowserDeepSeekKey()) {
-        setStatusText("后端不可用，正在浏览器直连 DeepSeek...");
+        setStatusText("后端不可用，正在尝试浏览器公开配置...");
         try {
           const result = await generateDeepSeekStorySegment({ project, prompt, promptCards, signal });
           if (!isCurrentGeneration(runId, signal)) return;
@@ -834,11 +844,11 @@ export default function App({ storyPackage }: AppProps) {
           return;
         } catch (browserError) {
           if (!isCurrentGeneration(runId, signal)) return;
-          console.warn("[deepseek] browser token service unavailable", browserError);
-          showToast(tokenServiceWifiToast);
+          console.warn("[deepseek] browser direct unavailable", browserError);
+          showToast(deepSeekServiceToast);
         }
       } else if (backendError) {
-        showToast(tokenServiceWifiToast);
+        showToast(deepSeekServiceToast);
       }
 
       setStatusText("DeepSeek 未连通，使用本地续写...");
@@ -848,7 +858,7 @@ export default function App({ storyPackage }: AppProps) {
     } catch (error) {
       if (!isCurrentGeneration(runId, signal)) return;
       console.error("[deepseek] fallback", error);
-      showToast(tokenServiceWifiToast);
+      showToast(deepSeekServiceToast);
       const result = generateStorySegment({ project, prompt, promptCards });
       applyStorySegment(result, `DeepSeek 异常，已本地续写 ${result.messages.length} 条`);
     } finally {
@@ -1124,6 +1134,41 @@ export default function App({ storyPackage }: AppProps) {
   const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
   const storyCardCount = promptCards.length + (pendingPromptCard ? 1 : 0);
 
+  useLayoutEffect(() => {
+    if (!rootRef.current) return;
+    const root = rootRef.current;
+    const targets = getLeftPanelLayoutTargets(root);
+    gsap.killTweensOf(targets);
+    targets.forEach((element) => {
+      element.style.transform = "";
+    });
+
+    const nextSnapshot = readLeftPanelLayoutSnapshot(root);
+    const previousSnapshot = leftPanelLayoutSnapshotRef.current;
+    const shouldAnimate = previousSnapshot.size > 0
+      && window.matchMedia("(min-width: 1080px)").matches
+      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (shouldAnimate) {
+      targets.forEach((element) => {
+        const key = getLeftPanelLayoutKey(element);
+        const previousRect = previousSnapshot.get(key);
+        const nextRect = nextSnapshot.get(key);
+        if (!previousRect || !nextRect) return;
+        const deltaX = previousRect.left - nextRect.left;
+        const deltaY = previousRect.top - nextRect.top;
+        if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) return;
+        gsap.fromTo(
+          element,
+          { x: deltaX, y: deltaY },
+          { x: 0, y: 0, duration: 0.46, ease: "power3.out", overwrite: "auto", clearProps: "transform" }
+        );
+      });
+    }
+
+    leftPanelLayoutSnapshotRef.current = nextSnapshot;
+  }, [storyCardCount, storyPanelOpen]);
+
   useEffect(() => {
     const isTextEditingTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false;
@@ -1276,107 +1321,109 @@ export default function App({ storyPackage }: AppProps) {
       ) : null}
 
       <main className="workspace static-workspace">
-        <ScrollShadow className={`left-panel panel-scroll ${storyPanelOpen ? "story-panel-open" : ""}`}>
-          <button
-            className="story-panel-status"
-            style={jojoMode ? jojoStoryToggleGlassStyle : undefined}
-            type="button"
-            onClick={() => setStoryPanelOpenWithContinuity((current) => !current)}
-            aria-expanded={storyPanelOpen}
-            aria-label={storyPanelOpen ? "收起编故事" : "展开编故事"}
-          >
-            <span className="story-panel-status-icon" aria-hidden="true">
-              {storyPanelOpen ? <ChevronDown size={16} /> : <PenLine size={16} />}
-            </span>
-            <small>{storyCardCount ? `${storyCardCount} 张故事卡片` : "准备生成"}</small>
-          </button>
-          <Card className="surface-card story-composer-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
-            <CardHeader className="card-header">
-              <div className="panel-title">
-                <Sparkles size={18} />
-                编故事
-              </div>
-            </CardHeader>
-            <CardContent className="card-content">
-              <div className={promptSuggestionActive ? "prompt-textarea-shell prompt-textarea-shell-animating" : "prompt-textarea-shell"}>
-                <textarea
-                  ref={promptTextareaRef}
-                  className="hero-textarea prompt-textarea"
-                  value={draftPrompt}
-                  onChange={(event) => handleDraftPromptChange(event.target.value)}
-                  onFocus={handlePromptTextareaFocus}
-                  placeholder="输入下一段要推进的剧情。它会结合此前故事卡片和现有对话继续往后写。"
-                  rows={5}
-                />
-                {promptSuggestionActive ? (
-                  <div key={promptSuggestionKey} className="prompt-suggestion-overlay" aria-hidden="true">
-                    <span className="prompt-suggestion-rise">
-                      {renderPromptRiseText(draftPrompt)}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-              <Button
-                className="story-action-button"
-                fullWidth
-                variant="primary"
-                onPress={continueStory}
-                isDisabled={status === "loading"}
-              >
-                {status === "loading" ? <Hourglass className="hourglass-spin" size={17} /> : <MessageSquarePlus size={17} />}
-                {status === "loading" ? "生成中" : "开始编"}
-              </Button>
-              <Button className="prompt-reset-button" fullWidth variant="secondary" onPress={clearLine} isDisabled={status === "loading"}>
-                <RefreshCcw size={16} />
-                重启故事
-              </Button>
-              {status === "error" ? (
-                <div className="deepseek-status deepseek-status-error" title={statusText}>
-                  {compactStatusText(statusText)}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          {storyCardCount ? (
-            <Card className="surface-card prompt-history-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
-              <CardHeader className="card-header prompt-history-header">
+        <div className={`left-panel ${storyPanelOpen ? "story-panel-open" : ""}`}>
+          <div className="left-panel-scroll panel-scroll">
+            <button
+              className="story-panel-status"
+              style={jojoMode ? jojoStoryToggleGlassStyle : undefined}
+              type="button"
+              onClick={() => setStoryPanelOpenWithContinuity((current) => !current)}
+              aria-expanded={storyPanelOpen}
+              aria-label={storyPanelOpen ? "收起编故事" : "展开编故事"}
+            >
+              <span className="story-panel-status-icon" aria-hidden="true">
+                {storyPanelOpen ? <ChevronDown size={16} /> : <PenLine size={16} />}
+              </span>
+              <small>{storyCardCount ? `${storyCardCount} 张故事卡片` : "准备生成"}</small>
+            </button>
+            <Card className="surface-card story-composer-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
+              <CardHeader className="card-header">
                 <div className="panel-title">
-                  <Save size={18} />
-                  故事卡片
+                  <Sparkles size={18} />
+                  编故事
                 </div>
               </CardHeader>
-              <CardContent className="card-content prompt-card-list">
-                {pendingPromptCard ? (
-                  <PendingPromptCardView
-                    prompt={pendingPromptCard.prompt}
-                    progress={generationProgress}
-                    onEdit={stopStoryGeneration}
-                    style={jojoMode ? jojoPromptCardGlassStyle : undefined}
+              <CardContent className="card-content">
+                <div className={promptSuggestionActive ? "prompt-textarea-shell prompt-textarea-shell-animating" : "prompt-textarea-shell"}>
+                  <textarea
+                    ref={promptTextareaRef}
+                    className="hero-textarea prompt-textarea"
+                    value={draftPrompt}
+                    onChange={(event) => handleDraftPromptChange(event.target.value)}
+                    onFocus={handlePromptTextareaFocus}
+                    placeholder="输入下一段要推进的剧情。它会结合此前故事卡片和现有对话继续往后写。"
+                    rows={5}
                   />
+                  {promptSuggestionActive ? (
+                    <div key={promptSuggestionKey} className="prompt-suggestion-overlay" aria-hidden="true">
+                      <span className="prompt-suggestion-rise">
+                        {renderPromptRiseText(draftPrompt)}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+                <Button
+                  className="story-action-button"
+                  fullWidth
+                  variant="primary"
+                  onPress={continueStory}
+                  isDisabled={status === "loading"}
+                >
+                  {status === "loading" ? <Hourglass className="hourglass-spin" size={17} /> : <MessageSquarePlus size={17} />}
+                  {status === "loading" ? "生成中" : "开始编"}
+                </Button>
+                <Button className="prompt-reset-button" fullWidth variant="secondary" onPress={clearLine} isDisabled={status === "loading"}>
+                  <RefreshCcw size={16} />
+                  重启故事
+                </Button>
+                {status === "error" ? (
+                  <div className="deepseek-status deepseek-status-error" title={statusText}>
+                    {compactStatusText(statusText)}
+                  </div>
                 ) : null}
-                {[...promptCards].reverse().map((card, index) => {
-                  const cardNumber = promptCards.length - index;
-                  return (
-                    <button
-                      key={card.id}
-                      className={focusedPromptCardId === card.id ? "prompt-card prompt-card-button prompt-card-active" : "prompt-card prompt-card-button"}
-                      style={jojoMode ? jojoPromptCardGlassStyle : undefined}
-                      type="button"
-                      data-prompt-card-id={card.id}
-                      aria-pressed={focusedPromptCardId === card.id}
-                      aria-label={`定位到第 ${cardNumber} 张故事卡片`}
-                      onClick={() => focusPromptCard(card)}
-                    >
-                      <div className="prompt-card-index">{String(cardNumber).padStart(2, "0")}</div>
-                      <p>{card.prompt}</p>
-                    </button>
-                  );
-                })}
               </CardContent>
             </Card>
-          ) : null}
-        </ScrollShadow>
+
+            {storyCardCount ? (
+              <Card className="surface-card prompt-history-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
+                <CardHeader className="card-header prompt-history-header">
+                  <div className="panel-title">
+                    <Save size={18} />
+                    故事卡片
+                  </div>
+                </CardHeader>
+                <CardContent className="card-content prompt-card-list">
+                  {pendingPromptCard ? (
+                    <PendingPromptCardView
+                      prompt={pendingPromptCard.prompt}
+                      progress={generationProgress}
+                      onEdit={stopStoryGeneration}
+                      style={jojoMode ? jojoPromptCardGlassStyle : undefined}
+                    />
+                  ) : null}
+                  {[...promptCards].reverse().map((card, index) => {
+                    const cardNumber = promptCards.length - index;
+                    return (
+                      <button
+                        key={card.id}
+                        className={focusedPromptCardId === card.id ? "prompt-card prompt-card-button prompt-card-active" : "prompt-card prompt-card-button"}
+                        style={jojoMode ? jojoPromptCardGlassStyle : undefined}
+                        type="button"
+                        data-prompt-card-id={card.id}
+                        aria-pressed={focusedPromptCardId === card.id}
+                        aria-label={`定位到第 ${cardNumber} 张故事卡片`}
+                        onClick={() => focusPromptCard(card)}
+                      >
+                        <div className="prompt-card-index">{String(cardNumber).padStart(2, "0")}</div>
+                        <p>{card.prompt}</p>
+                      </button>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        </div>
 
         <ScrollShadow className="right-panel panel-scroll">
           <Card className="surface-card preview-wrap preview-tilt-target motion-in">

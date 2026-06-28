@@ -3,7 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { DATA_DIR, SETTINGS_PATH } from "./paths";
 
-const DEFAULT_DEEPSEEK_BASE_URL = "https://token.xjjj.co/v1";
+const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 
 const storedDeepSeekSchema = z.object({
@@ -24,7 +24,7 @@ const updateDeepSeekSchema = z.object({
 
 type StoredSettings = z.infer<typeof storedSettingsSchema>;
 
-export type DeepSeekSource = "saved" | "env" | "company" | "none";
+export type DeepSeekSource = "saved" | "env" | "none";
 
 export type DeepSeekRuntimeConfig = {
   apiKey: string;
@@ -89,8 +89,7 @@ export async function getDeepSeekConfig(): Promise<DeepSeekRuntimeConfig> {
   const useSavedSettings = process.env.USE_SAVED_DEEPSEEK_SETTINGS === "1";
   const savedKey = useSavedSettings ? cleanOptional(settings.deepseek.apiKey) : undefined;
   const envKey = cleanOptional(process.env.DEEPSEEK_API_KEY);
-  const companyKey = cleanOptional(process.env.COMPANY_DEEPSEEK_API_KEY);
-  const apiKey = envKey || companyKey || savedKey || "";
+  const apiKey = envKey || savedKey || "";
   const baseUrl = normalizeBaseUrl(process.env.DEEPSEEK_BASE_URL) || DEFAULT_DEEPSEEK_BASE_URL;
   const model = cleanOptional(process.env.DEEPSEEK_MODEL) || DEFAULT_DEEPSEEK_MODEL;
 
@@ -98,7 +97,7 @@ export async function getDeepSeekConfig(): Promise<DeepSeekRuntimeConfig> {
     apiKey,
     baseUrl,
     model,
-    source: envKey ? "env" : companyKey ? "company" : savedKey ? "saved" : "none"
+    source: envKey ? "env" : savedKey ? "saved" : "none"
   };
 }
 

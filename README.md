@@ -69,15 +69,15 @@ npm run preview:lan
 
 ## 模型配置
 
-- 后端默认中转地址：`https://token.xjjj.co/v1`。
+- 后端默认地址：`https://api.deepseek.com`。
 - 后端默认模型：`deepseek-v4-flash`。
-- 公开仓库不保存任何真实 token；本地请复制 `.env.example` 为 `.env` 后填写环境变量。
-- 后端优先读取 `DEEPSEEK_API_KEY`，也支持公司内网专用的 `COMPANY_DEEPSEEK_API_KEY`。
-- `build:ququ` 如需在纯静态页面中浏览器直连公司中转，需要在本地或 CI 环境设置 `VITE_COMPANY_DEEPSEEK_API_KEY`。
-- 如需临时覆盖，可设置 `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`VITE_COMPANY_DEEPSEEK_BASE_URL`、`VITE_COMPANY_DEEPSEEK_MODEL`、`VITE_GITHUB_REPO_URL` 环境变量。
-- 旧的 `data/settings.json` 保存配置默认不覆盖公司中转；只有设置 `USE_SAVED_DEEPSEEK_SETTINGS=1` 才启用。
+- 公开仓库不保存任何真实 token；本地请复制 `.env.example` 为 `.env` 后填写 `DEEPSEEK_API_KEY`。
+- Vercel 部署应把 `DEEPSEEK_API_KEY` 放在项目 Environment Variables 中，让 `/api/story/continue` 在服务端代请求 DeepSeek。
+- `VITE_DEEPSEEK_API_KEY` 只用于纯静态、浏览器直连模式；任何 `VITE_*` 变量都会进入前端 bundle，不建议放真实私有 key。
+- 如需临时覆盖，可设置 `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`VITE_GITHUB_REPO_URL` 环境变量。
+- 旧的 `data/settings.json` 保存配置默认不覆盖环境变量；只有设置 `USE_SAVED_DEEPSEEK_SETTINGS=1` 才启用。
 
-如果没有后端、未配置 token 或模型请求失败，工具会使用本地规则续写。外网访问静态部署时，如果公司中转不可达，会弹出 Toast：`token服务连不上，请连到叫叫的 Wi-Fi`。Edge TTS 在浏览器端直连微软语音服务；如果当前浏览器或网络策略拦截 WebSocket，会在页面状态和控制台里报错。
+如果没有后端、未配置 token 或模型请求失败，工具会使用本地规则续写。Edge TTS 在浏览器端直连微软语音服务；如果当前浏览器或网络策略拦截 WebSocket，会在页面状态和控制台里报错。
 
 ## 线性存档
 
