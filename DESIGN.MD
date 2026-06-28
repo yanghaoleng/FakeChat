@@ -17,7 +17,7 @@
 
 - 顶部固定工具栏 `.topbar`，无底部分割线、无额外背景，和页面背景拉通；左侧品牌带 `site-icon.svg` 小 logo，右侧为存档、读档。
 - 顶栏不显示 JOJO版 / 网红短剧版标签；标题旁下拉菜单承载版本互跳、`Github` 公开仓库、存档和读档。
-- README 使用 `docs/screenshots/fakechat-wechat.png` 作为微信版产品截图，截图保持真实运行界面，不额外加展示框。
+- README 使用 `docs/screenshots/fakechat-wechat.webp` 作为微信版产品截图，截图保持真实运行界面，不额外加展示框。
 - 主工作区 `.workspace.static-workspace` 以预览内容为中心，右侧预览负极容器固定按视频宽度占位，避免界面版/视频版切换时横向跳动。
 - 桌面端界面版手机壳采用接近 iPhone 的窄长比例；1080px 以下把编故事面板改为底部居中半弹窗，400px 以下仅让模拟聊天手机轻微等比缩小，不再切成 16:9 或改变整体结构。
 - 桌面端左侧“编故事”用固定像素偏移定位：1080px 以上 `--desktop-story-panel-top-offset: 190px`，不要用百分比或视口高度居中；视频版右侧面板使用 `--desktop-preview-window-top-offset`，在故事面板固定偏移上补 `12px` 视觉内边距，让视频窗口顶部和可见编故事卡片齐平。
@@ -25,7 +25,7 @@
 - 卡片统一 `.surface-card`；JOJO 版左侧卡片使用深蓝毛玻璃、轻微角落光感和白色高光描边。
 - 右侧预览容器 `.preview-wrap` 是透明无边承载区，不使用整块填充背景；预览切换按钮跟随预览内容，居中放在内容上方。
 - 视频版空态使用 `.video-empty-frame`，保持和 Remotion Player 一样的 16:9 画布宽高，只在画布内显示弱占位文案。
-- JOJO 版手机壳使用 Figma 导出的钉钉顶栏和底部：`public/dingtalk-ui/topbar.png` 来自 Figma `3:14`，`public/dingtalk-ui/inputbar.png` 来自底部资源。
+- JOJO 版手机壳使用 Figma 导出的钉钉顶栏和底部：`public/dingtalk-ui/topbar.webp` 来自 Figma `3:14`，`public/dingtalk-ui/inputbar.webp` 来自底部资源。
 - JOJO 版中间聊天区左右分布：叫叫作为玩家永远右侧蓝色气泡；铃铛、猪小弟、系统在左侧白色气泡。
 
 ## 动效
@@ -47,7 +47,7 @@
 - 卡片容器：`.surface-card`、`.card-header`、`.card-content`。
 - 编故事输入框：`.prompt-textarea` 在 JOJO 版使用纯黑背景。
 - 预览容器：`.preview-wrap`、`.wechat-preview-shell`、`.player-frame`；`.wechat-preview-shell` 左对齐承载手机。
-- 微信预览顶底图：`.wechat-topbar-img` 使用 `topbar.png`，`.wechat-bottombar-img` 使用 `bottombar.png`；联系人名用 `.wechat-topbar-title` 叠在顶栏中间。
+- 微信预览顶底图：`.wechat-topbar-img` 使用 `topbar.webp`，`.wechat-bottombar-img` 使用 `bottombar.webp`；联系人名用 `.wechat-topbar-title` 叠在顶栏中间。
 - 钉钉预览顶底图：`.dingtalk-topbar-img`、`.dingtalk-inputbar-img`；聊天区 `.dingtalk-chat-scroll`。
 - JOJO 气泡：`.dingtalk-row-self .wechat-bubble` 为蓝底白字，`.dingtalk-row-other .wechat-bubble` 为白底深色字。
 - 品牌图标：`.brand-logo` 使用白底黑色单色蛐蛐，和 favicon 同源。

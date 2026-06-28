@@ -5,11 +5,11 @@ import { staticVisualAssetPaths } from "../src/shared/staticAssetCache";
 
 describe("static visual asset cache manifest", () => {
   it("only contains local public assets that exist in the repo", () => {
-    expect(staticVisualAssetPaths).toContain("/avatars/boy-soft-selfie.png");
-    expect(staticVisualAssetPaths).toContain("/avatars/jojo/jiaojiao.png");
-    expect(staticVisualAssetPaths).toContain("/memes/qface/20.png");
-    expect(staticVisualAssetPaths).toContain("/viral-assets/photos/phone-chat-blur.png");
-    expect(staticVisualAssetPaths).toContain("/jojo-assets/memes/jiaojiao-deadline.png");
+    expect(staticVisualAssetPaths).toContain("/avatars/boy-soft-selfie.webp");
+    expect(staticVisualAssetPaths).toContain("/avatars/jojo/jiaojiao.webp");
+    expect(staticVisualAssetPaths).toContain("/memes/qface/20.webp");
+    expect(staticVisualAssetPaths).toContain("/viral-assets/photos/phone-chat-blur.webp");
+    expect(staticVisualAssetPaths).toContain("/jojo-assets/memes/jiaojiao-deadline.webp");
 
     for (const assetPath of staticVisualAssetPaths) {
       expect(assetPath.startsWith("/")).toBe(true);

@@ -1,0 +1,22 @@
+{
+  "buildCommand": "npm run build:jojo",
+  "outputDirectory": "dist/jojo",
+  "rewrites": [
+    {
+      "source": "/api/story/continue",
+      "destination": "/api/story/continue"
+    },
+    {
+      "source": "/api/settings/deepseek",
+      "destination": "/api/settings/deepseek"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/cafe-table-blur.png",
+    localPath: "/viral-assets/photos/cafe-table-blur.webp",
     tags: ["咖啡", "桌面", "空镜", "约会", "等待", "夜晚", "餐厅"],
     riskLevel: "safe"
   },
@@ -27,7 +27,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/takeout-food-blur.png",
+    localPath: "/viral-assets/photos/takeout-food-blur.webp",
     tags: ["食物", "外卖", "夜宵", "餐盒", "吃饭", "日常"],
     riskLevel: "safe"
   },
@@ -38,7 +38,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/hand-phone-blur.png",
+    localPath: "/viral-assets/photos/hand-phone-blur.webp",
     tags: ["手", "手机", "截图", "聊天", "屏幕", "证据", "局部"],
     riskLevel: "safe"
   },
@@ -49,7 +49,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/mirror-selfie-hidden.png",
+    localPath: "/viral-assets/photos/mirror-selfie-hidden.webp",
     tags: ["自拍", "镜子", "背影", "氛围", "看不清", "房间", "身影"],
     riskLevel: "safe"
   },
@@ -60,7 +60,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/rainy-car-window.png",
+    localPath: "/viral-assets/photos/rainy-car-window.webp",
     tags: ["车", "雨", "窗", "夜晚", "定位", "路上", "光斑"],
     riskLevel: "safe"
   },
@@ -71,7 +71,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/bedside-props-blur.png",
+    localPath: "/viral-assets/photos/bedside-props-blur.webp",
     tags: ["床头", "道具", "房间", "项链", "钥匙", "夜晚", "私人物品"],
     riskLevel: "safe"
   },
@@ -82,7 +82,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/elevator-hand-blur.png",
+    localPath: "/viral-assets/photos/elevator-hand-blur.webp",
     tags: ["电梯", "手", "门口", "楼下", "小区", "酒店", "局部"],
     riskLevel: "safe"
   },
@@ -93,7 +93,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/night-street-blur.png",
+    localPath: "/viral-assets/photos/night-street-blur.webp",
     tags: ["街道", "路灯", "夜晚", "定位", "路上", "空镜", "等人"],
     riskLevel: "safe"
   },
@@ -104,7 +104,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/cup-lipstick-blur.png",
+    localPath: "/viral-assets/photos/cup-lipstick-blur.webp",
     tags: ["杯子", "口红", "餐厅", "暧昧", "证据", "桌面", "局部"],
     riskLevel: "safe"
   },
@@ -115,7 +115,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/door-card-blur.png",
+    localPath: "/viral-assets/photos/door-card-blur.webp",
     tags: ["门", "房卡", "钥匙", "酒店", "门口", "道具", "误会"],
     riskLevel: "safe"
   },
@@ -126,7 +126,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/shoes-door-blur.png",
+    localPath: "/viral-assets/photos/shoes-door-blur.webp",
     tags: ["鞋", "包", "门口", "回家", "生活", "同居", "玄关"],
     riskLevel: "safe"
   },
@@ -137,7 +137,7 @@ export const viralPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/viral-assets/photos/phone-chat-blur.png",
+    localPath: "/viral-assets/photos/phone-chat-blur.webp",
     tags: ["手机", "聊天", "截图", "账单", "备注", "屏幕", "证据"],
     riskLevel: "safe"
   }
@@ -151,7 +151,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/desk-morning-blur.png",
+    localPath: "/jojo-assets/photos/desk-morning-blur.webp",
     tags: ["工位", "桌面", "办公室", "早晨", "电脑", "日常", "打卡", "待办", "键盘", "开工"],
     riskLevel: "safe"
   },
@@ -162,7 +162,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/subway-commute-blur.png",
+    localPath: "/jojo-assets/photos/subway-commute-blur.webp",
     tags: ["通勤", "地铁", "路上", "迟到", "早高峰", "背影", "赶路", "人群", "站台", "上班"],
     riskLevel: "safe"
   },
@@ -173,7 +173,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/keyboard-coffee-blur.png",
+    localPath: "/jojo-assets/photos/keyboard-coffee-blur.webp",
     tags: ["键盘", "咖啡", "冷咖啡", "加班", "电脑", "工位", "deadline", "改稿", "代码", "疲惫"],
     riskLevel: "safe"
   },
@@ -184,7 +184,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/elevator-panel-blur.png",
+    localPath: "/jojo-assets/photos/elevator-panel-blur.webp",
     tags: ["电梯", "按钮", "迟到", "门口", "手", "通勤", "楼层", "赶路", "上班", "打卡"],
     riskLevel: "safe"
   },
@@ -195,7 +195,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/badge-lanyard-blur.png",
+    localPath: "/jojo-assets/photos/badge-lanyard-blur.webp",
     tags: ["工牌", "挂绳", "入职", "公司", "流程", "工位", "身份", "门禁", "考勤", "行政"],
     riskLevel: "safe"
   },
@@ -206,7 +206,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/office-corridor-blur.png",
+    localPath: "/jojo-assets/photos/office-corridor-blur.webp",
     tags: ["走廊", "背影", "办公室", "会议室", "客户", "路上", "加班", "路过", "工区", "门口"],
     riskLevel: "safe"
   },
@@ -217,7 +217,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/laptop-calendar-blur.png",
+    localPath: "/jojo-assets/photos/laptop-calendar-blur.webp",
     tags: ["电脑", "日程", "日历", "排期", "会议", "周报", "需求", "待办", "评审", "deadline"],
     riskLevel: "safe"
   },
@@ -228,7 +228,7 @@ export const jojoPhotoAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: generatedPhotoLicense,
-    localPath: "/jojo-assets/photos/rainy-office-window.png",
+    localPath: "/jojo-assets/photos/rainy-office-window.webp",
     tags: ["雨天", "窗边", "办公室", "加班", "下班", "氛围", "情绪", "晚高峰", "灯光", "工位"],
     riskLevel: "safe"
   }

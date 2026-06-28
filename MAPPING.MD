@@ -33,13 +33,13 @@
 | 聊天自动滚屏 | 微信/钉钉预览 | `visibleMessageCount`、`.scrollTo()` | `.wechat-chat-scroll` |
 | 聊天重播按钮 | 聊天信息流末尾 | `replayConversation`、`startMessageReveal`，播放完显示“再来一遍” | `.chat-replay-row`、`.chat-replay-button` |
 | JOJO 群聊名 | 钉钉顶栏 | `project.title`、`nextProjectTitle` | `.dingtalk-topbar-title` |
-| 微信顶栏整图 | 微信预览 | `/wechat-ui/topbar.png` | `.wechat-topbar`、`.wechat-topbar-img` |
+| 微信顶栏整图 | 微信预览 | `/wechat-ui/topbar.webp` | `.wechat-topbar`、`.wechat-topbar-img` |
 | 微信顶栏名字 | 微信预览 | `peer?.name || project.title` | `.wechat-topbar-title` |
-| 微信底部整图 | 微信预览 | `/wechat-ui/bottombar.png` | `.wechat-bottombar-img` |
+| 微信底部整图 | 微信预览 | `/wechat-ui/bottombar.webp` | `.wechat-bottombar-img` |
 | 聊天气泡 | 微信预览 | `WechatMessageContent` | `.wechat-bubble` |
 | 钉钉手机预览 | JOJO 预览 | `isJojoProject(project)` | `.dingtalk-phone`；1080px 以下配合底部半弹窗，400px 以下只等比缩小手机本体 |
-| 钉钉顶栏整图 | JOJO 预览 | `/dingtalk-ui/topbar.png`，Figma `3:14` | `.dingtalk-topbar-img` |
-| 钉钉底部整图 | JOJO 预览 | `/dingtalk-ui/inputbar.png` | `.dingtalk-inputbar-img` |
+| 钉钉顶栏整图 | JOJO 预览 | `/dingtalk-ui/topbar.webp`，Figma `3:14` | `.dingtalk-topbar-img` |
+| 钉钉底部整图 | JOJO 预览 | `/dingtalk-ui/inputbar.webp` | `.dingtalk-inputbar-img` |
 | 叫叫右侧蓝色气泡 | JOJO 预览 | `visualSideFor`、`roleId === "jiaojiao"` | `.dingtalk-row-self.wechat-row-right .wechat-bubble` |
 | 其他人左侧白色气泡 | JOJO 预览 | `visualSideFor` | `.dingtalk-row-other.wechat-row-left .wechat-bubble` |
 | 说话人名字 | JOJO 预览 | `getCharacter(project, message).name` | `.wechat-speaker-name` |
@@ -59,14 +59,14 @@
 | --- | --- | --- | --- |
 | JOJO 默认项目 | 数据预设 | `jojoProject` | `src/shared/jojoProject.ts` |
 | JOJO 固定素材池 | 数据预设 | `jojoCompanyAssets` | `src/shared/jojoProject.ts` |
-| 叫叫头像 | JOJO 头像 | `roleId: "jiaojiao"` | `/avatars/jojo/jiaojiao.png` |
-| 铃铛头像 | JOJO 头像 | `roleId: "lingdang"` | `/avatars/jojo/lingdang.png` |
-| 猪小弟头像 | JOJO 头像 | `roleId: "zhuxiaodi"` | `/avatars/jojo/zhuxiaodi.png` |
-| 系统头像 | JOJO 头像 | `roleId: "xitong"` | `/avatars/jojo/xitong.png` |
-| 会议局部照片 | JOJO 图片 | `assetId: "jojo-photo-meeting-blur"` | `/jojo-assets/photos/company-meeting-blur.png` |
-| 电梯背影照片 | JOJO 图片 | `assetId: "jojo-photo-corridor-blur"` | `/jojo-assets/photos/company-corridor-blur.png` |
-| JOJO 表情卡 | JOJO 表情 | `assetId: "jojo-meme-*"` | `/jojo-assets/memes/*.png` |
+| 叫叫头像 | JOJO 头像 | `roleId: "jiaojiao"` | `/avatars/jojo/jiaojiao.webp` |
+| 铃铛头像 | JOJO 头像 | `roleId: "lingdang"` | `/avatars/jojo/lingdang.webp` |
+| 猪小弟头像 | JOJO 头像 | `roleId: "zhuxiaodi"` | `/avatars/jojo/zhuxiaodi.webp` |
+| 系统头像 | JOJO 头像 | `roleId: "xitong"` | `/avatars/jojo/xitong.webp` |
+| 会议局部照片 | JOJO 图片 | `assetId: "jojo-photo-meeting-blur"` | `/jojo-assets/photos/company-meeting-blur.webp` |
+| 电梯背影照片 | JOJO 图片 | `assetId: "jojo-photo-corridor-blur"` | `/jojo-assets/photos/company-corridor-blur.webp` |
+| JOJO 表情卡 | JOJO 表情 | `assetId: "jojo-meme-*"` | `/jojo-assets/memes/*.webp` |
 | 公司中转配置 | 后端模型 | `getDeepSeekConfig` | `server/settings.ts` |
 | 静态部署公司中转 | 构建注入 | `VITE_INCLUDE_COMPANY_TOKEN=1`、`VITE_COMPANY_DEEPSEEK_API_KEY` | `vite.config.ts` 仅从环境变量读取 token |
 | 后端公司中转 token | 后端模型 | `COMPANY_DEEPSEEK_API_KEY`、`DEEPSEEK_API_KEY` | `server/settings.ts`，不再硬编码真实 key |
-| 微信版 README 截图 | GitHub 文档 | README 图片引用 | `docs/screenshots/fakechat-wechat.png` |
+| 微信版 README 截图 | GitHub 文档 | README 图片引用 | `docs/screenshots/fakechat-wechat.webp` |

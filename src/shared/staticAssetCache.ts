@@ -10,15 +10,15 @@ const assetCacheMessageType = "CACHE_STATIC_ASSETS";
 const maxParallelWarmups = 5;
 
 const staticUiAssetPaths = [
-  "/wechat-ui/statusbar.png",
-  "/wechat-ui/topbar.png",
-  "/wechat-ui/inputbar.png",
-  "/wechat-ui/bottombar.png",
-  "/dingtalk-ui/topbar.png",
-  "/dingtalk-ui/topbar-494757.png",
-  "/dingtalk-ui/topbar-node-3-14.png",
-  "/dingtalk-ui/inputbar.png",
-  "/dingtalk-ui/inputbar-7b5c5c.png",
+  "/wechat-ui/statusbar.webp",
+  "/wechat-ui/topbar.webp",
+  "/wechat-ui/inputbar.webp",
+  "/wechat-ui/bottombar.webp",
+  "/dingtalk-ui/topbar.webp",
+  "/dingtalk-ui/topbar-494757.webp",
+  "/dingtalk-ui/topbar-node-3-14.webp",
+  "/dingtalk-ui/inputbar.webp",
+  "/dingtalk-ui/inputbar-7b5c5c.webp",
   "/site-icon.svg",
   "/favicon-viral.svg",
   "/favicon-jojo.svg"

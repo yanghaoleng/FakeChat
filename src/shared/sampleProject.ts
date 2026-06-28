@@ -47,7 +47,7 @@ export const sampleProject: DramaProject = {
       sourceName: "Local Placeholder",
       sourceUrl: "",
       licenseNote: "本地占位图，正式导出前可替换为授权图片。",
-      localPath: "/viral-assets/photos/phone-chat-blur.png",
+      localPath: "/viral-assets/photos/phone-chat-blur.webp",
       tags: ["相亲", "小学同学", "毕业照", "旧照片"],
       riskLevel: "safe"
     }

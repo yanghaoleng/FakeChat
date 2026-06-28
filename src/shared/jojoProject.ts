@@ -10,7 +10,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "本地生成的真实办公室局部照片资产，无可识别正脸，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/photos/company-meeting-blur.png",
+    localPath: "/jojo-assets/photos/company-meeting-blur.webp",
     tags: ["公司", "会议", "办公室", "日常", "手", "电脑", "咖啡", "局部", "模糊"],
     riskLevel: "safe"
   },
@@ -21,7 +21,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "本地生成的真实办公室局部照片资产，无可识别正脸，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/photos/company-corridor-blur.png",
+    localPath: "/jojo-assets/photos/company-corridor-blur.webp",
     tags: ["公司", "电梯", "走廊", "背影", "手", "手机", "运动模糊", "局部"],
     riskLevel: "safe"
   },
@@ -32,7 +32,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "基于本地 JOJO 头像制作的固定表情卡，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/memes/jiaojiao-flag.png",
+    localPath: "/jojo-assets/memes/jiaojiao-flag.webp",
     tags: ["叫叫", "勇敢", "冲", "冒险", "开干"],
     riskLevel: "safe"
   },
@@ -43,7 +43,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "基于本地 JOJO 头像制作的固定表情卡，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/memes/lingdang-chart.png",
+    localPath: "/jojo-assets/memes/lingdang-chart.webp",
     tags: ["铃铛", "冷静", "分析", "高知", "复盘"],
     riskLevel: "safe"
   },
@@ -54,7 +54,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "基于本地 JOJO 头像制作的固定表情卡，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/memes/zhuxiaodi-like.png",
+    localPath: "/jojo-assets/memes/zhuxiaodi-like.webp",
     tags: ["猪小弟", "靠谱", "点赞", "跟班", "支持"],
     riskLevel: "safe"
   },
@@ -65,7 +65,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "基于本地 JOJO 头像制作的固定表情卡，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/memes/xitong-notice.png",
+    localPath: "/jojo-assets/memes/xitong-notice.webp",
     tags: ["系统", "提醒", "通知", "蓝色", "流程"],
     riskLevel: "safe"
   },
@@ -76,7 +76,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "基于本地 JOJO 头像制作的固定表情卡，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/memes/jiaojiao-deadline.png",
+    localPath: "/jojo-assets/memes/jiaojiao-deadline.webp",
     tags: ["叫叫", "deadline", "赶工", "冒汗", "自嘲"],
     riskLevel: "safe"
   },
@@ -87,7 +87,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
     sourceName: "AI-generated local bitmap",
     sourceUrl: "",
     licenseNote: "基于本地 JOJO 头像制作的固定表情卡，公开商用前建议人工复核。",
-    localPath: "/jojo-assets/memes/meeting-silence.png",
+    localPath: "/jojo-assets/memes/meeting-silence.webp",
     tags: ["会议", "沉默", "尴尬", "背锅", "无语"],
     riskLevel: "safe"
   }
@@ -109,7 +109,7 @@ export const jojoProject: DramaProject = {
       name: "叫叫",
       side: "right",
       avatarInitial: "叫",
-      avatarUrl: "/avatars/jojo/jiaojiao.png",
+      avatarUrl: "/avatars/jojo/jiaojiao.webp",
       avatarGradient: "linear-gradient(135deg,#fbbf24,#2563eb)",
       voiceId: "jojo-jiaojiao",
       voicePreset: "young_male",
@@ -120,7 +120,7 @@ export const jojoProject: DramaProject = {
       name: "铃铛",
       side: "left",
       avatarInitial: "铃",
-      avatarUrl: "/avatars/jojo/lingdang.png",
+      avatarUrl: "/avatars/jojo/lingdang.webp",
       avatarGradient: "linear-gradient(135deg,#60a5fa,#c4b5fd)",
       voiceId: "jojo-lingdang",
       voicePreset: "young_real_female",
@@ -131,7 +131,7 @@ export const jojoProject: DramaProject = {
       name: "猪小弟",
       side: "left",
       avatarInitial: "猪",
-      avatarUrl: "/avatars/jojo/zhuxiaodi.png",
+      avatarUrl: "/avatars/jojo/zhuxiaodi.webp",
       avatarGradient: "linear-gradient(135deg,#f9a8d4,#f97316)",
       voiceId: "jojo-zhuxiaodi",
       voicePreset: "young_male",
@@ -142,7 +142,7 @@ export const jojoProject: DramaProject = {
       name: "系统",
       side: "left",
       avatarInitial: "系",
-      avatarUrl: "/avatars/jojo/xitong.png",
+      avatarUrl: "/avatars/jojo/xitong.webp",
       avatarGradient: "linear-gradient(135deg,#38bdf8,#0f172a)",
       voiceId: "jojo-xitong",
       voicePreset: "young_real_female",

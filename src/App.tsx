@@ -293,7 +293,7 @@ function WechatStoryPreview({
     <div className="wechat-preview-shell">
       <div className={`wechat-phone ${jojoMode ? "dingtalk-phone" : ""}`} aria-label={jojoMode ? "钉钉手机版聊天预览" : "9:16 微信聊天预览"}>
         <div className={jojoMode ? "dingtalk-topbar" : "wechat-topbar"}>
-          <img className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.png" : "/wechat-ui/topbar.png")} alt="" draggable={false} />
+          <img className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.webp" : "/wechat-ui/topbar.webp")} alt="" draggable={false} />
           {jojoMode ? <strong className="dingtalk-topbar-title">{project.title || "工位蛐蛐小队"}</strong> : <strong className="wechat-topbar-title">{peer?.name || project.title}</strong>}
         </div>
         <div className={`wechat-chat-scroll ${jojoMode ? "dingtalk-chat-scroll" : ""}`}>
@@ -327,7 +327,7 @@ function WechatStoryPreview({
             </div>
           ) : null}
         </div>
-        <img className={jojoMode ? "dingtalk-inputbar-img" : "wechat-bottombar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/inputbar.png" : "/wechat-ui/bottombar.png")} alt="" draggable={false} />
+        <img className={jojoMode ? "dingtalk-inputbar-img" : "wechat-bottombar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/inputbar.webp" : "/wechat-ui/bottombar.webp")} alt="" draggable={false} />
       </div>
     </div>
   );

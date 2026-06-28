@@ -11,7 +11,7 @@
 
 ## 微信版截图
 
-![微信版截图](docs/screenshots/fakechat-wechat.png)
+![微信版截图](docs/screenshots/fakechat-wechat.webp)
 
 ## 快速启动
 
