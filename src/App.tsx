@@ -331,6 +331,7 @@ export default function App({ storyPackage }: AppProps) {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [focusedPromptCardId, setFocusedPromptCardId] = useState<string | null>(null);
   const [scrollTargetMessageId, setScrollTargetMessageId] = useState<string | null>(null);
+  const scrollTargetMessageIdRef = useRef<string | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
@@ -352,6 +353,11 @@ export default function App({ storyPackage }: AppProps) {
     () => ({ ...project, messages: project.messages.slice(0, visibleMessageCount) }),
     [project, visibleMessageCount]
   );
+
+  function updateScrollTargetMessageId(nextMessageId: string | null) {
+    scrollTargetMessageIdRef.current = nextMessageId;
+    setScrollTargetMessageId(nextMessageId);
+  }
 
   useEffect(() => () => {
     if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
@@ -524,7 +530,6 @@ export default function App({ storyPackage }: AppProps) {
     const frame = window.requestAnimationFrame(exposeTarget);
     const cleanupHighlight = window.setTimeout(() => {
       target.classList.remove("wechat-row-jump-target");
-      setScrollTargetMessageId((current) => current === scrollTargetMessageId ? null : current);
     }, 1400);
     return () => {
       window.cancelAnimationFrame(frame);
@@ -648,7 +653,6 @@ export default function App({ storyPackage }: AppProps) {
 
   function startMessageReveal(fromCount: number, toCount: number) {
     if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
-    setScrollTargetMessageId(null);
     setVisibleMessageCount(fromCount);
     let nextCount = fromCount;
     revealTimerRef.current = window.setInterval(() => {
@@ -741,7 +745,9 @@ export default function App({ storyPackage }: AppProps) {
     stopGenerationProgress();
     setGenerationProgress(100);
     setPendingPromptCard(null);
-    setFocusedPromptCardId(result.card.id);
+    if (!scrollTargetMessageIdRef.current) {
+      setFocusedPromptCardId(result.card.id);
+    }
     generationAbortRef.current = null;
     showSuggestedPrompt(nextPrompt);
     setVideoResult(null);
@@ -786,8 +792,10 @@ export default function App({ storyPackage }: AppProps) {
     startGenerationProgress(estimatedGenerationMs(project, storyPackage));
     setPendingPromptCard({ id: `pending-${runId}-${Date.now()}`, prompt });
     setDraftPrompt("");
-    setFocusedPromptCardId(null);
-    setScrollTargetMessageId(null);
+    if (!scrollTargetMessageIdRef.current) {
+      setFocusedPromptCardId(null);
+      updateScrollTargetMessageId(null);
+    }
     setStatusText(storyPackage === "jojo" ? "正在识别网络环境并请求 DeepSeek..." : "正在请求后端 DeepSeek 续写...");
 
     try {
@@ -864,7 +872,7 @@ export default function App({ storyPackage }: AppProps) {
     setPendingPromptCard(null);
     setGenerationProgress(0);
     setFocusedPromptCardId(null);
-    setScrollTargetMessageId(null);
+    updateScrollTargetMessageId(null);
     promptRestoreUndoRef.current = null;
     setDraftPrompt(initialPromptFor(storyPackage));
     finishPromptSuggestionAnimation();
@@ -878,7 +886,7 @@ export default function App({ storyPackage }: AppProps) {
   function replayConversation() {
     setVideoResult(null);
     setFocusedPromptCardId(null);
-    setScrollTargetMessageId(null);
+    updateScrollTargetMessageId(null);
     setStatus("done");
     setStatusText("聊天会话已重新播放入场");
     startMessageReveal(0, project.messages.length);
@@ -927,7 +935,7 @@ export default function App({ storyPackage }: AppProps) {
     }
     setVideoResult(null);
     setFocusedPromptCardId(card.id);
-    setScrollTargetMessageId(firstMessageId);
+    updateScrollTargetMessageId(firstMessageId);
     setVisibleMessageCount((current) => Math.max(current, targetIndex + 1));
     changePreviewMode("wechat");
     setStatus("done");
@@ -973,7 +981,7 @@ export default function App({ storyPackage }: AppProps) {
       setPendingPromptCard(null);
       setGenerationProgress(0);
       setFocusedPromptCardId(null);
-      setScrollTargetMessageId(null);
+      updateScrollTargetMessageId(null);
       promptRestoreUndoRef.current = null;
       setDraftPrompt("");
       finishPromptSuggestionAnimation();
