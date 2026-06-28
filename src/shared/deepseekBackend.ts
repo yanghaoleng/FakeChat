@@ -36,17 +36,19 @@ async function readError(response: Response) {
 export async function generateBackendStorySegment({
   project,
   prompt,
-  promptCards
+  promptCards,
+  signal
 }: {
   project: DramaProject;
   prompt: string;
   promptCards: PromptCard[];
+  signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
   const response = await fetch("/api/story/continue", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project, prompt, promptCards }),
-    signal: AbortSignal.timeout(50000)
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50000)]) : AbortSignal.timeout(50000)
   });
 
   if (!response.ok) {

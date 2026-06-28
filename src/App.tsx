@@ -2,6 +2,7 @@ import { Button } from "@heroui/react/button";
 import { Card, CardContent, CardHeader } from "@heroui/react/card";
 import { ScrollShadow } from "@heroui/react/scroll-shadow";
 import { Player, type PlayerRef } from "@remotion/player";
+import { Calligraph } from "calligraph";
 import gsap from "gsap";
 import {
   ArrowUpRight,
@@ -52,6 +53,14 @@ type PreviewTransition = {
   exiting: PreviewMode;
   id: number;
 };
+type PendingPromptCard = {
+  id: string;
+  prompt: string;
+};
+type PromptRestoreUndo = {
+  before: string;
+  after: string;
+};
 
 type AppProps = {
   storyPackage: StoryPackage;
@@ -61,6 +70,7 @@ const tokenServiceWifiToast = "token服务连不上，请连到叫叫的 Wi-Fi";
 const defaultJojoAppUrl = "https://jojodemos.mikeywa.icu/ququ/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
+const generationProgressCap = 99;
 
 const jojoGlassCardStyle: CSSProperties = {
   backdropFilter: "blur(24px) saturate(118%)",
@@ -88,7 +98,7 @@ function compactStatusText(value: string) {
 }
 
 function packageTitle(packageId: StoryPackage) {
-  return packageId === "jojo" ? "蛐蛐模拟器" : "网红短剧聊天生成器";
+  return packageId === "jojo" ? "蛐蛐模拟器" : "聊天记录生成器";
 }
 
 function packageReadyText(packageId: StoryPackage) {
@@ -111,6 +121,19 @@ function promptRiseAnimationMs(text: string) {
   return Math.min(3600, Math.max(1100, 700 + Array.from(text).length * 17));
 }
 
+function estimatedGenerationMs(project: DramaProject, packageId: StoryPackage) {
+  if (!project.messages.length) return packageId === "jojo" ? 32000 : 36000;
+  return packageId === "jojo" ? 22000 : 26000;
+}
+
+function estimateGenerationProgress(startedAt: number, estimateMs: number) {
+  const elapsed = Math.max(0, Date.now() - startedAt);
+  if (elapsed <= estimateMs) return Math.max(1, Math.floor((elapsed / estimateMs) * 90));
+  const tailElapsed = elapsed - estimateMs;
+  const tailProgress = 9 * (1 - Math.exp(-tailElapsed / 18000));
+  return Math.min(generationProgressCap, Math.floor(90 + tailProgress));
+}
+
 function renderPromptRiseText(text: string) {
   return Array.from(text).map((character, index) => {
     if (character === "\n") return <br key={`prompt-rise-break-${index}`} />;
@@ -124,6 +147,34 @@ function renderPromptRiseText(text: string) {
       </span>
     );
   });
+}
+
+function PendingPromptCardView({
+  prompt,
+  progress,
+  onEdit,
+  style
+}: {
+  prompt: string;
+  progress: number;
+  onEdit: () => void;
+  style?: CSSProperties;
+}) {
+  return (
+    <article className="prompt-card prompt-card-pending" style={style} aria-live="polite">
+      <div className="prompt-card-progress" aria-label={`生成进度 ${progress}%`}>
+        <Calligraph as="strong" variant="number" animation="snappy" className="prompt-card-progress-number">
+          {`${progress}%`}
+        </Calligraph>
+      </div>
+      <div className="prompt-card-pending-body">
+        <p>{prompt}</p>
+        <button className="prompt-card-edit-button" type="button" onClick={onEdit}>
+          重新编辑
+        </button>
+      </div>
+    </article>
+  );
 }
 
 function shouldUseStoryModal() {
@@ -226,7 +277,7 @@ function WechatStoryPreview({
           <div className="wechat-chat-date">{jojoMode ? "今天 09:27" : "今天 17:32"}</div>
           {project.messages.map((message) => {
             if (message.type === "system" || message.side === "center") {
-              return <div key={message.id} className="wechat-system-row">{message.text}</div>;
+              return <div key={message.id} className="wechat-system-row" data-message-id={message.id}>{message.text}</div>;
             }
             const character = getCharacter(project, message);
             const visualSide = visualSideFor(project, message);
@@ -234,6 +285,7 @@ function WechatStoryPreview({
               <div
                 key={message.id}
                 className={`wechat-row wechat-row-${visualSide} ${jojoMode ? `dingtalk-row ${message.roleId === "jiaojiao" ? "dingtalk-row-self" : "dingtalk-row-other"}` : ""}`}
+                data-message-id={message.id}
               >
                 {visualSide === "left" ? <WechatAvatar project={project} message={message} /> : null}
                 <div className="wechat-message-stack">
@@ -275,12 +327,22 @@ export default function App({ storyPackage }: AppProps) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [promptSuggestionActive, setPromptSuggestionActive] = useState(false);
   const [promptSuggestionKey, setPromptSuggestionKey] = useState(0);
+  const [pendingPromptCard, setPendingPromptCard] = useState<PendingPromptCard | null>(null);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [focusedPromptCardId, setFocusedPromptCardId] = useState<string | null>(null);
+  const [scrollTargetMessageId, setScrollTargetMessageId] = useState<string | null>(null);
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const revealTimerRef = useRef<number | undefined>(undefined);
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
   const promptSuggestionTimerRef = useRef<number | undefined>(undefined);
   const toastTimerRef = useRef<number | undefined>(undefined);
+  const generationAbortRef = useRef<AbortController | null>(null);
+  const generationProgressTimerRef = useRef<number | undefined>(undefined);
+  const generationRunRef = useRef(0);
+  const promptRestoreUndoRef = useRef<PromptRestoreUndo | null>(null);
+  const promptAnimationFocusGuardUntilRef = useRef(0);
   const playerRef = useRef<PlayerRef>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const jojoMode = storyPackage === "jojo";
@@ -296,6 +358,8 @@ export default function App({ storyPackage }: AppProps) {
     if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
     if (promptSuggestionTimerRef.current) window.clearTimeout(promptSuggestionTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    if (generationProgressTimerRef.current) window.clearInterval(generationProgressTimerRef.current);
+    generationAbortRef.current?.abort();
   }, []);
 
   useEffect(() => {
@@ -405,6 +469,7 @@ export default function App({ storyPackage }: AppProps) {
 
   useEffect(() => {
     if (!rootRef.current || previewMode !== "wechat") return undefined;
+    if (scrollTargetMessageId) return undefined;
     const root = rootRef.current;
     const chatScroll = root.querySelector<HTMLElement>(".wechat-chat-scroll");
     if (!chatScroll) return undefined;
@@ -433,7 +498,40 @@ export default function App({ storyPackage }: AppProps) {
       return () => window.clearTimeout(lateScroll);
     }
     return undefined;
-  }, [previewMode, previewProject.messages.length, visibleMessageCount, project.messages.length]);
+  }, [previewMode, previewProject.messages.length, visibleMessageCount, project.messages.length, scrollTargetMessageId]);
+
+  useEffect(() => {
+    if (!rootRef.current || previewMode !== "wechat" || !scrollTargetMessageId) return undefined;
+    const root = rootRef.current;
+    const chatScroll = root.querySelector<HTMLElement>(".wechat-chat-scroll");
+    if (!chatScroll) return undefined;
+    const target = Array.from(chatScroll.querySelectorAll<HTMLElement>("[data-message-id]"))
+      .find((element) => element.dataset.messageId === scrollTargetMessageId);
+    if (!target) return undefined;
+    const exposeTarget = () => {
+      if (!chatScroll.isConnected || !target.isConnected) return;
+      const containerRect = chatScroll.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const topPadding = 16;
+      const nextTop = chatScroll.scrollTop + targetRect.top - containerRect.top - topPadding;
+      chatScroll.scrollTo({
+        top: Math.max(0, Math.min(nextTop, chatScroll.scrollHeight - chatScroll.clientHeight)),
+        behavior: "smooth"
+      });
+      target.classList.add("wechat-row-jump-target");
+      gsap.fromTo(target, { scale: 0.985 }, { scale: 1, duration: 0.36, ease: "power3.out" });
+    };
+    const frame = window.requestAnimationFrame(exposeTarget);
+    const cleanupHighlight = window.setTimeout(() => {
+      target.classList.remove("wechat-row-jump-target");
+      setScrollTargetMessageId((current) => current === scrollTargetMessageId ? null : current);
+    }, 1400);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(cleanupHighlight);
+      target.classList.remove("wechat-row-jump-target");
+    };
+  }, [previewMode, previewProject.messages.length, scrollTargetMessageId]);
 
   useEffect(() => {
     if (!rootRef.current || !promptCards.length) return;
@@ -513,8 +611,44 @@ export default function App({ storyPackage }: AppProps) {
     }, 4200);
   }
 
+  function isCurrentGeneration(runId: number, signal: AbortSignal) {
+    return generationRunRef.current === runId && !signal.aborted;
+  }
+
+  function stopGenerationProgress() {
+    if (generationProgressTimerRef.current) {
+      window.clearInterval(generationProgressTimerRef.current);
+      generationProgressTimerRef.current = undefined;
+    }
+  }
+
+  function startGenerationProgress(estimateMs: number) {
+    stopGenerationProgress();
+    const startedAt = Date.now();
+    setGenerationProgress(1);
+    generationProgressTimerRef.current = window.setInterval(() => {
+      setGenerationProgress(estimateGenerationProgress(startedAt, estimateMs));
+    }, 320);
+  }
+
+  function stopStoryGeneration() {
+    if (status !== "loading") return;
+    const promptToEdit = pendingPromptCard?.prompt || "";
+    generationRunRef.current += 1;
+    generationAbortRef.current?.abort();
+    generationAbortRef.current = null;
+    stopGenerationProgress();
+    if (promptToEdit) restorePromptForEditing(promptToEdit);
+    setPendingPromptCard(null);
+    setGenerationProgress(0);
+    setVideoProgress(0);
+    setStatus("idle");
+    setStatusText("已停止生成，可以重新编辑这张故事卡片");
+  }
+
   function startMessageReveal(fromCount: number, toCount: number) {
     if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
+    setScrollTargetMessageId(null);
     setVisibleMessageCount(fromCount);
     let nextCount = fromCount;
     revealTimerRef.current = window.setInterval(() => {
@@ -535,15 +669,62 @@ export default function App({ storyPackage }: AppProps) {
     setPromptSuggestionActive(false);
   }
 
-  function showSuggestedPrompt(nextPrompt: string) {
+  function focusPromptTextareaAtEnd(text: string, preserveAnimation = false) {
+    if (preserveAnimation) promptAnimationFocusGuardUntilRef.current = Date.now() + 600;
+    window.requestAnimationFrame(() => {
+      const textarea = promptTextareaRef.current;
+      if (!textarea) {
+        promptAnimationFocusGuardUntilRef.current = 0;
+        return;
+      }
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(text.length, text.length);
+    });
+  }
+
+  function showSuggestedPrompt(nextPrompt: string, options: { preservePromptUndo?: boolean; focusAtEnd?: boolean } = {}) {
     if (promptSuggestionTimerRef.current) window.clearTimeout(promptSuggestionTimerRef.current);
+    if (!options.preservePromptUndo) promptRestoreUndoRef.current = null;
     setDraftPrompt(nextPrompt);
     setPromptSuggestionKey((current) => current + 1);
     setPromptSuggestionActive(true);
+    if (options.focusAtEnd) focusPromptTextareaAtEnd(nextPrompt, true);
     promptSuggestionTimerRef.current = window.setTimeout(() => {
       setPromptSuggestionActive(false);
       promptSuggestionTimerRef.current = undefined;
     }, promptRiseAnimationMs(nextPrompt));
+  }
+
+  function restorePromptForEditing(nextPrompt: string) {
+    const previousPrompt = draftPrompt;
+    promptRestoreUndoRef.current = previousPrompt === nextPrompt ? null : { before: previousPrompt, after: nextPrompt };
+    showSuggestedPrompt(nextPrompt, { preservePromptUndo: true, focusAtEnd: true });
+  }
+
+  function undoPromptRestore() {
+    const undo = promptRestoreUndoRef.current;
+    if (!undo || draftPrompt !== undo.after) return false;
+    promptRestoreUndoRef.current = null;
+    finishPromptSuggestionAnimation();
+    setDraftPrompt(undo.before);
+    focusPromptTextareaAtEnd(undo.before);
+    setStatus("idle");
+    setStatusText("已撤回重新编辑填入的提示词");
+    return true;
+  }
+
+  function handleDraftPromptChange(nextPrompt: string) {
+    if (promptRestoreUndoRef.current && nextPrompt !== promptRestoreUndoRef.current.after) {
+      promptRestoreUndoRef.current = null;
+    }
+    setDraftPrompt(nextPrompt);
+    finishPromptSuggestionAnimation();
+  }
+
+  function handlePromptTextareaFocus() {
+    if (!promptSuggestionActive) return;
+    if (Date.now() < promptAnimationFocusGuardUntilRef.current) return;
+    finishPromptSuggestionAnimation();
   }
 
   function applyStorySegment(result: { project: DramaProject; card: PromptCard; messages: ChatMessage[] }, nextStatusText: string) {
@@ -557,6 +738,11 @@ export default function App({ storyPackage }: AppProps) {
     });
     setProject(result.project);
     setPromptCards(nextPromptCards);
+    stopGenerationProgress();
+    setGenerationProgress(100);
+    setPendingPromptCard(null);
+    setFocusedPromptCardId(result.card.id);
+    generationAbortRef.current = null;
     showSuggestedPrompt(nextPrompt);
     setVideoResult(null);
     setStatus("done");
@@ -581,22 +767,38 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   async function continueStory() {
-    if (!draftPrompt.trim()) {
+    const prompt = draftPrompt.trim();
+    if (!prompt) {
       setStatus("error");
       setStatusText("先写一段要推进的故事");
       return;
     }
+    promptRestoreUndoRef.current = null;
+    finishPromptSuggestionAnimation();
+    generationAbortRef.current?.abort();
+    const controller = new AbortController();
+    const runId = generationRunRef.current + 1;
+    generationRunRef.current = runId;
+    generationAbortRef.current = controller;
+    const signal = controller.signal;
     setStatus("loading");
     setVideoProgress(0);
+    startGenerationProgress(estimatedGenerationMs(project, storyPackage));
+    setPendingPromptCard({ id: `pending-${runId}-${Date.now()}`, prompt });
+    setDraftPrompt("");
+    setFocusedPromptCardId(null);
+    setScrollTargetMessageId(null);
     setStatusText(storyPackage === "jojo" ? "正在识别网络环境并请求 DeepSeek..." : "正在请求后端 DeepSeek 续写...");
 
     try {
       if (storyPackage === "jojo" && hasBrowserDeepSeekKey()) {
         try {
-          const result = await generateDeepSeekStorySegment({ project, prompt: draftPrompt, promptCards });
+          const result = await generateDeepSeekStorySegment({ project, prompt, promptCards, signal });
+          if (!isCurrentGeneration(runId, signal)) return;
           applyStorySegment(result, `${result.provider?.label || "DeepSeek 前端"}已追加 ${result.messages.length} 条消息`);
           return;
         } catch (browserError) {
+          if (!isCurrentGeneration(runId, signal)) return;
           console.warn("[deepseek] browser direct unavailable", browserError);
           showToast(tokenServiceWifiToast);
           setStatusText("前端直连不可用，正在尝试后端代理...");
@@ -605,10 +807,12 @@ export default function App({ storyPackage }: AppProps) {
 
       let backendError: unknown;
       try {
-        const result = await generateBackendStorySegment({ project, prompt: draftPrompt, promptCards });
+        const result = await generateBackendStorySegment({ project, prompt, promptCards, signal });
+        if (!isCurrentGeneration(runId, signal)) return;
         applyStorySegment(result, `DeepSeek 后端已追加 ${result.messages.length} 条消息`);
         return;
       } catch (error) {
+        if (!isCurrentGeneration(runId, signal)) return;
         backendError = error;
         console.warn("[deepseek] backend unavailable", error);
       }
@@ -616,10 +820,12 @@ export default function App({ storyPackage }: AppProps) {
       if (hasBrowserDeepSeekKey()) {
         setStatusText("后端不可用，正在浏览器直连 DeepSeek...");
         try {
-          const result = await generateDeepSeekStorySegment({ project, prompt: draftPrompt, promptCards });
+          const result = await generateDeepSeekStorySegment({ project, prompt, promptCards, signal });
+          if (!isCurrentGeneration(runId, signal)) return;
           applyStorySegment(result, `DeepSeek 前端已追加 ${result.messages.length} 条消息`);
           return;
         } catch (browserError) {
+          if (!isCurrentGeneration(runId, signal)) return;
           console.warn("[deepseek] browser token service unavailable", browserError);
           showToast(tokenServiceWifiToast);
         }
@@ -628,22 +834,40 @@ export default function App({ storyPackage }: AppProps) {
       }
 
       setStatusText("DeepSeek 未连通，使用本地续写...");
-      const result = generateStorySegment({ project, prompt: draftPrompt, promptCards });
+      if (!isCurrentGeneration(runId, signal)) return;
+      const result = generateStorySegment({ project, prompt, promptCards });
       applyStorySegment(result, `DeepSeek 未连通，已本地续写 ${result.messages.length} 条`);
     } catch (error) {
+      if (!isCurrentGeneration(runId, signal)) return;
       console.error("[deepseek] fallback", error);
       showToast(tokenServiceWifiToast);
-      const result = generateStorySegment({ project, prompt: draftPrompt, promptCards });
+      const result = generateStorySegment({ project, prompt, promptCards });
       applyStorySegment(result, `DeepSeek 异常，已本地续写 ${result.messages.length} 条`);
+    } finally {
+      if (generationRunRef.current === runId) {
+        generationAbortRef.current = null;
+        stopGenerationProgress();
+        setGenerationProgress(0);
+        setPendingPromptCard(null);
+      }
     }
   }
 
   function clearLine() {
+    generationRunRef.current += 1;
+    generationAbortRef.current?.abort();
+    generationAbortRef.current = null;
+    stopGenerationProgress();
     const nextProject = { ...createInitialStaticProject(storyPackage), messages: [] };
     setProject(nextProject);
     setPromptCards([]);
+    setPendingPromptCard(null);
+    setGenerationProgress(0);
+    setFocusedPromptCardId(null);
+    setScrollTargetMessageId(null);
+    promptRestoreUndoRef.current = null;
     setDraftPrompt(initialPromptFor(storyPackage));
-    setPromptSuggestionActive(false);
+    finishPromptSuggestionAnimation();
     setClips({});
     setVideoResult(null);
     setVisibleMessageCount(0);
@@ -653,6 +877,8 @@ export default function App({ storyPackage }: AppProps) {
 
   function replayConversation() {
     setVideoResult(null);
+    setFocusedPromptCardId(null);
+    setScrollTargetMessageId(null);
     setStatus("done");
     setStatusText("聊天会话已重新播放入场");
     startMessageReveal(0, project.messages.length);
@@ -682,6 +908,49 @@ export default function App({ storyPackage }: AppProps) {
     }
   }
 
+  function focusPromptCard(card: PromptCard, options: { focusButton?: boolean } = {}) {
+    const firstMessageId = card.messageIds[0];
+    if (!firstMessageId) {
+      setStatus("error");
+      setStatusText("这张故事卡片没有可定位的对话");
+      return;
+    }
+    const targetIndex = project.messages.findIndex((message) => message.id === firstMessageId);
+    if (targetIndex < 0) {
+      setStatus("error");
+      setStatusText("没有找到这张故事卡片对应的起始对话");
+      return;
+    }
+    if (revealTimerRef.current) {
+      window.clearInterval(revealTimerRef.current);
+      revealTimerRef.current = undefined;
+    }
+    setVideoResult(null);
+    setFocusedPromptCardId(card.id);
+    setScrollTargetMessageId(firstMessageId);
+    setVisibleMessageCount((current) => Math.max(current, targetIndex + 1));
+    changePreviewMode("wechat");
+    setStatus("done");
+    setStatusText("已定位到这张故事卡片的起始对话");
+    if (options.focusButton) {
+      window.requestAnimationFrame(() => {
+        const targetButton = Array.from(rootRef.current?.querySelectorAll<HTMLButtonElement>("[data-prompt-card-id]") || [])
+          .find((button) => button.dataset.promptCardId === card.id);
+        targetButton?.focus({ preventScroll: true });
+      });
+    }
+  }
+
+  function focusPromptCardByStep(direction: 1 | -1) {
+    if (!promptCards.length) return false;
+    const currentIndex = focusedPromptCardId ? promptCards.findIndex((card) => card.id === focusedPromptCardId) : -1;
+    const nextIndex = currentIndex < 0
+      ? direction > 0 ? 0 : promptCards.length - 1
+      : (currentIndex + direction + promptCards.length) % promptCards.length;
+    focusPromptCard(promptCards[nextIndex], { focusButton: true });
+    return true;
+  }
+
   function exportJson() {
     const archive = makeStoryArchive(project, promptCards);
     downloadBlob(new Blob([`${JSON.stringify(archive, null, 2)}\n`], { type: "application/json" }), `chat-line-${Date.now()}.json`);
@@ -701,8 +970,13 @@ export default function App({ storyPackage }: AppProps) {
       }
       setProject(archive.project);
       setPromptCards(archive.promptCards);
+      setPendingPromptCard(null);
+      setGenerationProgress(0);
+      setFocusedPromptCardId(null);
+      setScrollTargetMessageId(null);
+      promptRestoreUndoRef.current = null;
       setDraftPrompt("");
-      setPromptSuggestionActive(false);
+      finishPromptSuggestionAnimation();
       setVisibleMessageCount(archive.project.messages.length);
       setClips({});
       setVideoResult(null);
@@ -840,6 +1114,69 @@ export default function App({ storyPackage }: AppProps) {
 
   const switchLink = packageSwitchLink(storyPackage);
   const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
+  const storyCardCount = promptCards.length + (pendingPromptCard ? 1 : 0);
+
+  useEffect(() => {
+    const isTextEditingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      if (target.isContentEditable) return true;
+      if (target instanceof HTMLTextAreaElement) return true;
+      if (!(target instanceof HTMLInputElement)) return false;
+      return !["button", "checkbox", "file", "radio", "range", "reset", "submit"].includes(target.type);
+    };
+    const isButtonLikeTarget = (target: EventTarget | null) => (
+      target instanceof Element && Boolean(target.closest("button,a,[role='button']"))
+    );
+    const handlePageShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return;
+      const key = event.key;
+      const isUndoKey = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && key.toLowerCase() === "z";
+      if (isUndoKey) {
+        if (undoPromptRestore()) event.preventDefault();
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (key === "Enter") {
+        if (event.shiftKey || isButtonLikeTarget(event.target)) return;
+        event.preventDefault();
+        if (status !== "loading") void continueStory();
+        return;
+      }
+
+      if (key === "Escape") {
+        if (status === "loading" && pendingPromptCard) {
+          event.preventDefault();
+          stopStoryGeneration();
+          return;
+        }
+        if (promptSuggestionActive) {
+          event.preventDefault();
+          finishPromptSuggestionAnimation();
+        }
+        return;
+      }
+
+      if (key === "Tab") {
+        if (!promptCards.length) return;
+        event.preventDefault();
+        focusPromptCardByStep(event.shiftKey ? -1 : 1);
+        return;
+      }
+
+      const arrowDirection = key === "ArrowDown" || key === "ArrowRight"
+        ? 1
+        : key === "ArrowUp" || key === "ArrowLeft"
+          ? -1
+          : 0;
+      if (!arrowDirection || !promptCards.length || isTextEditingTarget(event.target)) return;
+      event.preventDefault();
+      focusPromptCardByStep(arrowDirection);
+    };
+
+    window.addEventListener("keydown", handlePageShortcut);
+    return () => window.removeEventListener("keydown", handlePageShortcut);
+  }, [draftPrompt, focusedPromptCardId, pendingPromptCard, promptCards, promptSuggestionActive, status]);
 
   return (
     <div ref={rootRef} className={`app-shell dark ${storyPackage === "jojo" ? "app-shell-jojo" : ""}`} data-theme="dark" data-vibrant-palette="true">
@@ -943,7 +1280,7 @@ export default function App({ storyPackage }: AppProps) {
             <span className="story-panel-status-icon" aria-hidden="true">
               {storyPanelOpen ? <ChevronDown size={16} /> : <PenLine size={16} />}
             </span>
-            <small>{promptCards.length ? `${promptCards.length} 张故事卡片` : "准备生成"}</small>
+            <small>{storyCardCount ? `${storyCardCount} 张故事卡片` : "准备生成"}</small>
           </button>
           <Card className="surface-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
             <CardHeader className="card-header">
@@ -955,13 +1292,11 @@ export default function App({ storyPackage }: AppProps) {
             <CardContent className="card-content">
               <div className={promptSuggestionActive ? "prompt-textarea-shell prompt-textarea-shell-animating" : "prompt-textarea-shell"}>
                 <textarea
+                  ref={promptTextareaRef}
                   className="hero-textarea prompt-textarea"
                   value={draftPrompt}
-                  onChange={(event) => {
-                    setDraftPrompt(event.target.value);
-                    setPromptSuggestionActive(false);
-                  }}
-                  onFocus={() => setPromptSuggestionActive(false)}
+                  onChange={(event) => handleDraftPromptChange(event.target.value)}
+                  onFocus={handlePromptTextareaFocus}
                   placeholder="输入下一段要推进的剧情。它会结合此前故事卡片和现有对话继续往后写。"
                   rows={5}
                 />
@@ -973,7 +1308,13 @@ export default function App({ storyPackage }: AppProps) {
                   </div>
                 ) : null}
               </div>
-              <Button fullWidth variant="primary" onPress={continueStory} isDisabled={status === "loading"}>
+              <Button
+                className="story-action-button"
+                fullWidth
+                variant="primary"
+                onPress={continueStory}
+                isDisabled={status === "loading"}
+              >
                 {status === "loading" ? <Hourglass className="hourglass-spin" size={17} /> : <MessageSquarePlus size={17} />}
                 {status === "loading" ? "生成中" : "开始编"}
               </Button>
@@ -989,21 +1330,41 @@ export default function App({ storyPackage }: AppProps) {
             </CardContent>
           </Card>
 
-          {promptCards.length ? (
+          {storyCardCount ? (
             <Card className="surface-card prompt-history-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
-              <CardHeader className="card-header">
+              <CardHeader className="card-header prompt-history-header">
                 <div className="panel-title">
                   <Save size={18} />
                   故事卡片
                 </div>
               </CardHeader>
               <CardContent className="card-content prompt-card-list">
-                {[...promptCards].reverse().map((card, index) => (
-                  <article key={card.id} className="prompt-card" style={jojoMode ? jojoPromptCardGlassStyle : undefined}>
-                    <div className="prompt-card-index">{String(promptCards.length - index).padStart(2, "0")}</div>
-                    <p>{card.prompt}</p>
-                  </article>
-                ))}
+                {pendingPromptCard ? (
+                  <PendingPromptCardView
+                    prompt={pendingPromptCard.prompt}
+                    progress={generationProgress}
+                    onEdit={stopStoryGeneration}
+                    style={jojoMode ? jojoPromptCardGlassStyle : undefined}
+                  />
+                ) : null}
+                {[...promptCards].reverse().map((card, index) => {
+                  const cardNumber = promptCards.length - index;
+                  return (
+                    <button
+                      key={card.id}
+                      className={focusedPromptCardId === card.id ? "prompt-card prompt-card-button prompt-card-active" : "prompt-card prompt-card-button"}
+                      style={jojoMode ? jojoPromptCardGlassStyle : undefined}
+                      type="button"
+                      data-prompt-card-id={card.id}
+                      aria-pressed={focusedPromptCardId === card.id}
+                      aria-label={`定位到第 ${cardNumber} 张故事卡片`}
+                      onClick={() => focusPromptCard(card)}
+                    >
+                      <div className="prompt-card-index">{String(cardNumber).padStart(2, "0")}</div>
+                      <p>{card.prompt}</p>
+                    </button>
+                  );
+                })}
               </CardContent>
             </Card>
           ) : null}

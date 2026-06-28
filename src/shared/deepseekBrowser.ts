@@ -501,13 +501,15 @@ export async function generateDeepSeekStorySegmentWithConfig({
   prompt,
   promptCards,
   config,
-  logLabel = "deepseek"
+  logLabel = "deepseek",
+  signal
 }: {
   project: DramaProject;
   prompt: string;
   promptCards: PromptCard[];
   config: DeepSeekCompletionConfig;
   logLabel?: string;
+  signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
   const normalizedConfig = {
     apiKey: config.apiKey.trim(),
@@ -547,7 +549,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
         "Content-Type": "application/json"
       },
       body: JSON.stringify(makeDeepSeekBody(project, premise, promptCards, normalizedConfig.model, repairAttempt)),
-      signal: AbortSignal.timeout(45000)
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45000)]) : AbortSignal.timeout(45000)
     });
 
     console.info(`[${logLabel}] response`, { ok: response.ok, status: response.status, repairAttempt });
@@ -615,11 +617,13 @@ export async function generateDeepSeekStorySegmentWithConfig({
 export async function generateDeepSeekStorySegment({
   project,
   prompt,
-  promptCards
+  promptCards,
+  signal
 }: {
   project: DramaProject;
   prompt: string;
   promptCards: PromptCard[];
+  signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
   const config = await resolveBrowserDeepSeekConfig(project);
   return generateDeepSeekStorySegmentWithConfig({
@@ -627,6 +631,7 @@ export async function generateDeepSeekStorySegment({
     prompt,
     promptCards,
     config,
-    logLabel: config.source === "company" ? "deepseek-browser-company" : "deepseek-browser-default"
+    logLabel: config.source === "company" ? "deepseek-browser-company" : "deepseek-browser-default",
+    signal
   });
 }

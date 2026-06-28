@@ -1,5 +1,6 @@
 import { getCharacter, messageVoiceText, type ChatMessage, type DramaProject } from "./schema";
 import { imageNarrativeCopy, imageSourceForMessage } from "./imageNarrative";
+import { isJojoProject } from "./jojoProject";
 import { resolvePublicAssetPath } from "./publicPath";
 import { buildTimeline, getDurationInFrames, getScrollY, type TimelineEntry } from "./timing";
 import type { TtsClipMap } from "./edgeTts";
@@ -23,7 +24,11 @@ const videoMimeTypes = [
   { mimeType: "video/webm", extension: "webm" as const }
 ];
 const exportSize = { width: 1280, height: 720 };
-type ImageCache = Map<string, HTMLImageElement>;
+type VisualSide = "left" | "right";
+type ImageCache = {
+  avatars: Map<string, HTMLImageElement>;
+  media: Map<string, HTMLImageElement>;
+};
 
 function pickMimeType() {
   return videoMimeTypes.find((item) => MediaRecorder.isTypeSupported(item.mimeType)) || videoMimeTypes.at(-1)!;
@@ -55,51 +60,127 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 function loadCanvasImage(src: string): Promise<HTMLImageElement | undefined> {
   return new Promise((resolve) => {
     const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.decoding = "async";
     image.onload = () => resolve(image);
     image.onerror = () => resolve(undefined);
     image.src = src;
   });
 }
 
-async function preloadMemeImages(project: DramaProject) {
-  const cache: ImageCache = new Map();
+function visualSideFor(project: DramaProject, message: ChatMessage): ChatMessage["side"] {
+  if (!isJojoProject(project)) return message.side;
+  if (message.roleId === "jiaojiao") return "right";
+  if (message.side === "center") return "center";
+  return "left";
+}
+
+function parseGradientColors(value: string | undefined, fallback: [string, string]): [string, string] {
+  const colors = value?.match(/#[0-9a-f]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)/gi);
+  return [colors?.[0] || fallback[0], colors?.[1] || colors?.[0] || fallback[1]];
+}
+
+function drawImageCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) return;
+  const scale = Math.max(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawImageContain(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) return;
+  const scale = Math.min(width / sourceWidth, height / sourceHeight, 1);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+async function preloadRenderImages(project: DramaProject) {
+  const cache: ImageCache = {
+    avatars: new Map(),
+    media: new Map()
+  };
+
+  await Promise.all(project.characters.map(async (character) => {
+    const src = resolvePublicAssetPath(character.avatarUrl);
+    if (!src) return;
+    const image = await loadCanvasImage(src);
+    if (image) cache.avatars.set(character.id, image);
+  }));
+
   await Promise.all(project.messages.map(async (message) => {
-    if (message.type !== "meme") return;
+    if (message.type !== "image" && message.type !== "meme") return;
     const src = resolvePublicAssetPath(imageSourceForMessage(project, message));
     if (!src) return;
     const image = await loadCanvasImage(src);
-    if (image) cache.set(message.id, image);
+    if (image) cache.media.set(message.id, image);
   }));
+
   return cache;
 }
 
-function drawAvatar(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, x: number, y: number) {
+function drawAvatar(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
   const character = getCharacter(project, message);
+  const avatarImage = imageCache.avatars.get(character.id);
+  const radius = isJojoProject(project) ? 18 : 12;
   ctx.save();
-  roundRect(ctx, x, y, 112, 112, 12);
+  roundRect(ctx, x, y, 112, 112, radius);
   ctx.clip();
+  const fallbackColors: [string, string] = message.side === "left" ? ["#f9a8d4", "#64748b"] : ["#0f172a", "#7c2d12"];
+  const [startColor, endColor] = parseGradientColors(character.avatarGradient, fallbackColors);
   const gradient = ctx.createLinearGradient(x, y, x + 112, y + 112);
-  gradient.addColorStop(0, message.side === "left" ? "#f9a8d4" : "#0f172a");
-  gradient.addColorStop(1, message.side === "left" ? "#64748b" : "#7c2d12");
+  gradient.addColorStop(0, startColor);
+  gradient.addColorStop(1, endColor);
   ctx.fillStyle = gradient;
   ctx.fillRect(x, y, 112, 112);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "700 48px PingFang SC, Microsoft YaHei, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(character.avatarInitial || character.name.slice(0, 1), x + 56, y + 57);
+  let drewAvatarImage = false;
+  if (avatarImage) {
+    try {
+      drawImageCover(ctx, avatarImage, x, y, 112, 112);
+      drewAvatarImage = true;
+    } catch {
+      // Cross-origin images without canvas permission fall back to initials.
+    }
+  }
+  if (!drewAvatarImage) {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 48px PingFang SC, Microsoft YaHei, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(character.avatarInitial || character.name.slice(0, 1), x + 56, y + 57);
+  }
   ctx.restore();
 }
 
-function drawTextBubble(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number, y: number, maxWidth: number) {
+function drawTextBubble(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, visualSide: VisualSide, x: number, y: number, maxWidth: number) {
   ctx.font = "500 62px PingFang SC, Microsoft YaHei, sans-serif";
   const lines = wrapText(ctx, message.text || messageVoiceText(message), maxWidth - 112);
   const width = Math.min(maxWidth, Math.max(260, ...lines.map((line) => ctx.measureText(line).width + 112)));
   const height = Math.max(112, 62 * lines.length * 1.18 + 60);
-  ctx.fillStyle = message.side === "right" ? "#74f153" : "#ffffff";
+  const jojoMode = isJojoProject(project);
+  const bubbleColor = jojoMode && visualSide === "right" ? "#1677ff" : visualSide === "right" ? "#95ec69" : "#ffffff";
+  const textColor = jojoMode && visualSide === "right" ? "#ffffff" : jojoMode ? "#162033" : "#111111";
+  ctx.fillStyle = bubbleColor;
   roundRect(ctx, x, y, width, height, 8);
   ctx.fill();
-  ctx.fillStyle = "#111111";
+  ctx.beginPath();
+  if (visualSide === "left") {
+    ctx.moveTo(x, y + 42);
+    ctx.lineTo(x - 24, y + 60);
+    ctx.lineTo(x, y + 78);
+  } else {
+    ctx.moveTo(x + width, y + 42);
+    ctx.lineTo(x + width + 24, y + 60);
+    ctx.lineTo(x + width, y + 78);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = textColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   lines.forEach((line, index) => {
@@ -130,8 +211,9 @@ function drawTransfer(ctx: CanvasRenderingContext2D, message: ChatMessage, x: nu
   return { width: 700, height: 228 };
 }
 
-function drawImageCard(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, x: number, y: number) {
+function drawImageCard(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
   const copy = imageNarrativeCopy(project, message);
+  const image = imageCache.media.get(message.id);
   const gradient = ctx.createLinearGradient(x, y, x + 700, y + 430);
   gradient.addColorStop(0, "#7c2d12");
   gradient.addColorStop(0.5, "#eab308");
@@ -141,15 +223,27 @@ function drawImageCard(ctx: CanvasRenderingContext2D, project: DramaProject, mes
   ctx.clip();
   ctx.fillStyle = gradient;
   ctx.fillRect(x, y, 700, 430);
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.fillRect(x, y, 700, 430);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "650 44px PingFang SC, Microsoft YaHei, sans-serif";
-  wrapText(ctx, copy.description, 610).slice(0, 4).forEach((line, index) => {
-    ctx.fillText(line, x + 42, y + 164 + index * 56);
-  });
+  let drewImage = false;
+  if (image) {
+    try {
+      drawImageCover(ctx, image, x, y, 700, 430);
+      drewImage = true;
+    } catch {
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.fillRect(x, y, 700, 430);
+    }
+  }
+  if (!drewImage) {
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.fillRect(x, y, 700, 430);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "650 44px PingFang SC, Microsoft YaHei, sans-serif";
+    wrapText(ctx, copy.description, 610).slice(0, 4).forEach((line, index) => {
+      ctx.fillText(line, x + 42, y + 164 + index * 56);
+    });
+  }
   ctx.restore();
   return { width: 700, height: 430 };
 }
@@ -160,13 +254,15 @@ function drawMeme(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number
   ctx.fill();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const image = imageCache.get(message.id);
+  const image = imageCache.media.get(message.id);
   if (image) {
-    const maxSize = 230;
-    const ratio = Math.min(maxSize / image.naturalWidth, maxSize / image.naturalHeight, 1);
-    const width = image.naturalWidth * ratio;
-    const height = image.naturalHeight * ratio;
-    ctx.drawImage(image, x + 260 - width / 2, y + 158 - height / 2, width, height);
+    try {
+      drawImageContain(ctx, image, x + 70, y + 34, 380, 240);
+    } catch {
+      ctx.fillStyle = "#111111";
+      ctx.font = "800 62px PingFang SC, Microsoft YaHei, sans-serif";
+      ctx.fillText(message.text || "表情", x + 260, y + 180);
+    }
     ctx.fillStyle = "#111111";
     ctx.font = "700 34px PingFang SC, Microsoft YaHei, sans-serif";
     ctx.fillText(message.text || "表情", x + 260, y + 308);
@@ -200,13 +296,14 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
   const leftAvatarX = 70;
   const rightAvatarX = project.canvas.width - 70 - 112;
   const leftBubbleX = leftAvatarX + 112 + 52;
+  const visualSide: VisualSide = visualSideFor(project, message) === "right" ? "right" : "left";
 
-  if (message.side === "left") {
-    drawAvatar(ctx, project, message, leftAvatarX, avatarY);
+  if (visualSide === "left") {
+    drawAvatar(ctx, project, message, leftAvatarX, avatarY, imageCache);
     if (message.type === "transfer") drawTransfer(ctx, message, leftBubbleX, bubbleY);
-    else if (message.type === "image") drawImageCard(ctx, project, message, leftBubbleX, bubbleY);
+    else if (message.type === "image") drawImageCard(ctx, project, message, leftBubbleX, bubbleY, imageCache);
     else if (message.type === "meme") drawMeme(ctx, message, leftBubbleX, bubbleY, imageCache);
-    else drawTextBubble(ctx, message, leftBubbleX, bubbleY, 980);
+    else drawTextBubble(ctx, project, message, visualSide, leftBubbleX, bubbleY, 980);
   } else {
     const maxBubbleWidth = 980;
     const probeX = 0;
@@ -224,10 +321,10 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
     }
     const bubbleX = rightAvatarX - 52 - size.width;
     if (message.type === "transfer") drawTransfer(ctx, message, bubbleX, bubbleY);
-    else if (message.type === "image") drawImageCard(ctx, project, message, bubbleX, bubbleY);
+    else if (message.type === "image") drawImageCard(ctx, project, message, bubbleX, bubbleY, imageCache);
     else if (message.type === "meme") drawMeme(ctx, message, bubbleX, bubbleY, imageCache);
-    else drawTextBubble(ctx, message, bubbleX || probeX, bubbleY, maxBubbleWidth);
-    drawAvatar(ctx, project, message, rightAvatarX, avatarY);
+    else drawTextBubble(ctx, project, message, visualSide, bubbleX || probeX, bubbleY, maxBubbleWidth);
+    drawAvatar(ctx, project, message, rightAvatarX, avatarY, imageCache);
   }
 
   ctx.globalAlpha = 1;
@@ -235,7 +332,8 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
 
 function drawFrame(ctx: CanvasRenderingContext2D, project: DramaProject, frame: number, imageCache: ImageCache) {
   ctx.clearRect(0, 0, project.canvas.width, project.canvas.height);
-  ctx.fillStyle = "#ebebeb";
+  const background = isJojoProject(project) ? "#eef3f9" : "#ebebeb";
+  ctx.fillStyle = background;
   ctx.fillRect(0, 0, project.canvas.width, project.canvas.height);
   const scrollY = getScrollY(project, frame);
   const timeline = buildTimeline(project);
@@ -246,8 +344,8 @@ function drawFrame(ctx: CanvasRenderingContext2D, project: DramaProject, frame: 
     drawMessage(ctx, project, entry, y, imageCache);
   }
   const fade = ctx.createLinearGradient(0, project.canvas.height - 120, 0, project.canvas.height);
-  fade.addColorStop(0, "rgba(235,235,235,0)");
-  fade.addColorStop(1, "rgba(235,235,235,0.95)");
+  fade.addColorStop(0, isJojoProject(project) ? "rgba(238,243,249,0)" : "rgba(235,235,235,0)");
+  fade.addColorStop(1, isJojoProject(project) ? "rgba(238,243,249,0.95)" : "rgba(235,235,235,0.95)");
   ctx.fillStyle = fade;
   ctx.fillRect(0, project.canvas.height - 120, project.canvas.width, 120);
 }
@@ -303,7 +401,7 @@ export async function exportBrowserVideo(
   if (!ctx) throw new Error("当前浏览器无法创建 Canvas 渲染上下文");
   const scaleX = canvas.width / project.canvas.width;
   const scaleY = canvas.height / project.canvas.height;
-  const imageCache = await preloadMemeImages(project);
+  const imageCache = await preloadRenderImages(project);
 
   const audioContext = new AudioContext({ sampleRate: 48000 });
   const audioDestination = audioContext.createMediaStreamDestination();
