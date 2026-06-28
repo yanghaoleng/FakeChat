@@ -1369,11 +1369,11 @@ button[disabled],
 @keyframes desk-breathe-primary {
   0%,
   100% {
-    translate: -12px 0;
+    translate: -6px 0;
     rotate: -0.6deg;
   }
   50% {
-    translate: -12px -7px;
+    translate: -6px 0;
     rotate: -0.6deg;
   }
 }
@@ -2169,11 +2169,10 @@ button[disabled],
     height: 100%;
     max-height: 100%;
     overflow-y: auto;
-    padding: var(--desktop-story-panel-top-offset) 10px 24px;
+    padding: 24px 10px;
     mask-image: none !important;
     -webkit-mask-image: none !important;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
     transform: none;
   }
 
@@ -2196,7 +2195,12 @@ button[disabled],
     position: sticky;
     top: 0;
     z-index: 6;
+    margin-top: auto;
     animation: desk-breathe-primary 6.4s ease-in-out infinite;
+  }
+
+  .static-workspace .left-panel > .surface-card:last-child {
+    margin-bottom: auto;
   }
 
   .static-workspace .left-panel > .prompt-history-card {
