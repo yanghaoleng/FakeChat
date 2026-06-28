@@ -523,7 +523,11 @@ function archiveTimestamp(date = new Date()) {
 }
 
 function archiveFilename(date = new Date()) {
-  return `存档-fakechat-${archiveTimestamp(date)}.json`;
+  return `存档-ququ-${archiveTimestamp(date)}.json`;
+}
+
+function videoFilename(extension: VideoExportResult["extension"], date = new Date()) {
+  return `聊天录屏-${archiveTimestamp(date)}.${extension}`;
 }
 
 type LayoutSnapshot = Map<string, { left: number; top: number }>;
@@ -2029,7 +2033,7 @@ export default function App({ storyPackage }: AppProps) {
         </div>
         {status === "loading" && videoProgress > 0 ? <progress className="video-progress" max={1} value={videoProgress} /> : null}
         {videoResult ? (
-          <a className="download-link" href={videoResult.url} download={`chat-drama-${Date.now()}.${videoResult.extension}`}>
+          <a className="download-link" href={videoResult.url} download={videoFilename(videoResult.extension)}>
             <Download size={16} />
             下载 {videoResult.extension.toUpperCase()}
           </a>
