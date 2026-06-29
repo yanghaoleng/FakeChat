@@ -892,7 +892,7 @@ export default function App({ storyPackage }: AppProps) {
       if (draftPromptRef.current.trim()) return;
       const nextPrompt = initialPresetArchiveRef.current?.nextPrompt || "";
       if (nextPrompt) showSuggestedPrompt(nextPrompt);
-      setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "预设开场已载入" : current);
+      setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "预设提示词已载入" : current);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [storyPackage]);
@@ -2093,9 +2093,8 @@ export default function App({ storyPackage }: AppProps) {
   const deferredSuggestionText = deferredSuggestedPrompt?.trim() || "";
   const canSwitchInitialPreset = status !== "loading"
     && pendingPromptCards.length === 0
-    && promptCards.length === 1
-    && isPresetPromptCard(promptCards[0])
-    && project.messages.length === promptCards[0].messageIds.length;
+    && promptCards.length === 0
+    && project.messages.length === 0;
   const promptTextareaShellClassName = [
     "prompt-textarea-shell",
     promptSuggestionActive ? "prompt-textarea-shell-animating" : "",

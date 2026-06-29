@@ -576,29 +576,19 @@ export function createPresetInitialArchive(packageId: StoryPackage, requestedInd
   const presetIndex = ((requestedIndex % stories.length) + stories.length) % stories.length;
   const preset = stories[presetIndex];
   const baseProject = baseProjectFor(packageId);
-  const messages = buildPresetMessages(baseProject, preset);
   const project = parseProject({
     ...baseProject,
     id: `${packageId}-${preset.id}`,
     title: preset.title,
     brief: preset.prompt,
-    messages
+    messages: []
   });
-  const promptCard: PromptCard = {
-    id: `preset-${preset.id}`,
-    prompt: preset.prompt,
-    createdAt: new Date().toISOString(),
-    messageIds: messages.map((message) => message.id),
-    summary: `预设开场 ${messages.length} 条消息`,
-    suggestedPrompt: preset.nextPrompt
-  };
 
   return {
     preset,
     presetIndex,
     project,
-    promptCards: [promptCard],
-    nextPrompt: preset.nextPrompt
+    promptCards: [],
+    nextPrompt: preset.prompt
   };
 }
-

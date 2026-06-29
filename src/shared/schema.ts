@@ -73,7 +73,7 @@ export const projectSchema = z.object({
     height: z.number().int().default(852)
   }),
   characters: z.array(characterSchema).min(2),
-  messages: z.array(chatMessageSchema).min(1),
+  messages: z.array(chatMessageSchema),
   assets: z.array(assetSchema).default([]),
   sfx: z.object({
     send: z.string().optional(),

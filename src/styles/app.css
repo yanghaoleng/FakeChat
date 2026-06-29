@@ -2911,6 +2911,10 @@ button[disabled],
     animation: desk-breathe-primary 6.4s ease-in-out infinite;
   }
 
+  .static-workspace .left-panel-scroll:not(:has(.prompt-history-card)) > .story-composer-card {
+    margin-top: var(--desktop-story-panel-top-offset);
+  }
+
   .static-workspace .left-panel-scroll > .surface-card:last-child {
     margin-bottom: auto;
   }
