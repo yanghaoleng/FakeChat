@@ -1641,6 +1641,88 @@ export default function App({ storyPackage }: AppProps) {
     return true;
   }
 
+  function removeCompletedPromptCard(card: PromptCard) {
+    const currentPromptCards = promptCardsRef.current;
+    const cardIndex = currentPromptCards.findIndex((item) => item.id === card.id);
+    if (cardIndex < 0) {
+      setStatus("error");
+      setStatusText("没有找到这张故事卡");
+      return false;
+    }
+
+    generationRunRef.current += 1;
+    generationAbortRef.current?.abort();
+    generationAbortRef.current = null;
+    stopGenerationProgress();
+    if (revealTimerRef.current) {
+      window.clearInterval(revealTimerRef.current);
+      revealTimerRef.current = undefined;
+    }
+    pendingPromptRemovalTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    pendingPromptRemovalTimersRef.current.clear();
+    queueProcessingRef.current = false;
+    activePromptCardIdRef.current = null;
+
+    const nextPromptCards = currentPromptCards.slice(0, cardIndex);
+    const previousCard = nextPromptCards.at(-1);
+    const currentProject = projectRef.current;
+    const previousLastMessageId = previousCard
+      ? [...previousCard.messageIds].reverse().find((messageId) => (
+          currentProject.messages.some((message) => message.id === messageId)
+        ))
+      : undefined;
+    const previousLastMessageIndex = previousLastMessageId
+      ? currentProject.messages.findIndex((message) => message.id === previousLastMessageId)
+      : -1;
+    const nextMessages = previousCard
+      ? previousLastMessageIndex >= 0
+        ? currentProject.messages.slice(0, previousLastMessageIndex + 1)
+        : currentProject.messages.filter((message) => nextPromptCards.some((item) => item.messageIds.includes(message.id)))
+      : [];
+    const nextMessageIds = new Set(nextMessages.map((message) => message.id));
+    const nextProject: DramaProject = {
+      ...currentProject,
+      brief: nextPromptCards.map((item) => item.prompt).join("\n") || initialPresetArchiveRef.current?.preset.prompt || currentProject.brief,
+      messages: nextMessages
+    };
+    const removedCount = currentPromptCards.length - cardIndex;
+
+    captureCurrentStoryLayoutSnapshot();
+    projectRef.current = nextProject;
+    promptCardsRef.current = nextPromptCards;
+    settledPromptCardIdsRef.current.clear();
+    completedPromptCardLayoutKeysRef.current.clear();
+    setProject(nextProject);
+    setPromptCards(nextPromptCards);
+    updatePendingPromptCards(() => []);
+    setFocusedPromptCardId(previousCard?.id ?? null);
+    setFocusedPendingPromptCardId(null);
+    setEditingPendingPromptCardId(null);
+    setOpenPromptCardMenuId(null);
+    updateScrollTargetMessageId(null);
+    updateGenerationProgress(0);
+    setVideoProgress(0);
+    setVideoResult(null);
+    setVisibleMessageCount(nextMessages.length);
+    setClips((current) => Object.fromEntries(
+      Object.entries(current).filter(([messageId]) => nextMessageIds.has(messageId))
+    ) as TtsClipMap);
+    setDeferredSuggestedPrompt(null);
+    setSuggestionDialogOpen(false);
+    restorePromptForEditing(card.prompt);
+    setStatus("done");
+    setStatusText(removedCount > 1 ? `已删除第 ${cardIndex + 1} 张故事卡及后续内容` : `已删除第 ${cardIndex + 1} 张故事卡`);
+    return true;
+  }
+
+  function removeFocusedStoryCard() {
+    if (focusedPendingPromptCardId) return removeFocusedPendingPromptCard();
+    if (!focusedPromptCardId) return false;
+    const targetCard = promptCardsRef.current.find((card) => card.id === focusedPromptCardId);
+    if (!targetCard) return false;
+    return removeCompletedPromptCard(targetCard);
+  }
+
   function continueStory() {
     const prompt = draftPrompt.trim();
     if (!prompt) return;
@@ -2257,7 +2339,7 @@ export default function App({ storyPackage }: AppProps) {
         return;
       }
 
-      if (key === "Delete" && !isTextEditingTarget(event.target) && removeFocusedPendingPromptCard()) {
+      if ((key === "Backspace" || key === "Delete") && !isTextEditingTarget(event.target) && removeFocusedStoryCard()) {
         event.preventDefault();
         return;
       }
