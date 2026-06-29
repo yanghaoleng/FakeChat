@@ -109,12 +109,13 @@ function sideFromSpeaker(value: string | undefined): ChatMessage["side"] | undef
   if (/^(right|boy|male|man|user|player|me)$/.test(normalized) || /男主|男生|男方|玩家|用户|我方/.test(value)) return "right";
   if (/^(left|girl|female|woman|assistant|npc)$/.test(normalized) || /女主|女生|女方|对方/.test(value)) return "left";
   if (/叫叫|jiaojiao/.test(value)) return "right";
+  if (/NPC|npc|新同事|新领导|甲方|乙方|其他部门|外包|财务|法务|园区/.test(value)) return "right";
   if (/铃铛|lingdang|猪小弟|zhuxiaodi|系统|xitong/.test(value)) return "left";
   return undefined;
 }
 
 function splitSpeakerPrefix(text: string): { side?: ChatMessage["side"]; text: string } {
-  const match = text.match(/^(男主|男生|玩家|用户|我|女主|女生|对方|叫叫|铃铛|猪小弟|系统)\s*[：:]\s*(.+)$/);
+  const match = text.match(/^(男主|男生|玩家|用户|我|女主|女生|对方|叫叫|NPC|铃铛|猪小弟|系统)\s*[：:]\s*(.+)$/i);
   if (!match) return { text };
   const side = sideFromSpeaker(match[1]);
   return { side, text: match[2].trim() || text };

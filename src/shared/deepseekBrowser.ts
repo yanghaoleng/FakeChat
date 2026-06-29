@@ -134,10 +134,11 @@ function roleForGeneratedMessage(project: DramaProject, message: ChatMessage, in
   const playerRole = project.characters.find((character) => character.side === "right")?.id || "jiaojiao";
   if (/我先|我来|我已经|我/.test(corpus)) return playerRole;
   if (/叫叫|jiaojiao/.test(corpus)) return "jiaojiao";
+  if (/NPC|npc|新同事|新领导|甲方|乙方|其他部门|外包|财务|法务|HR|园区|喵|兔|狐|熊|蛙|鹿|鹅/.test(corpus)) return "npc";
   if (/铃铛|lingdang|分析|冷静|排期|数据|拆/.test(corpus)) return "lingdang";
   if (/猪小弟|zhuxiaodi|垫|早餐|我给|靠谱|跟班/.test(corpus)) return "zhuxiaodi";
   if (/系统|xitong|提醒|已读|流程|通知/.test(corpus)) return "xitong";
-  const sequence = ["jiaojiao", "lingdang", "zhuxiaodi", "xitong", "jiaojiao", "lingdang"];
+  const sequence = project.characters.filter((character) => character.id !== "xitong").map((character) => character.id);
   return sequence[Math.abs(index) % sequence.length];
 }
 
@@ -319,6 +320,17 @@ function jojoPerspectiveInstruction(project: DramaProject) {
   };
 }
 
+function jojoRoleListInstruction(project: DramaProject) {
+  return project.characters.map((character) => {
+    if (character.id === "jiaojiao") return "叫叫 roleId=jiaojiao，是勇敢爱冒险的小鸡吉祥物";
+    if (character.id === "npc") return `${character.name} roleId=npc，是随机小动物 NPC，可作为新同事、新领导、其他部门、甲方、乙方、外包、财务、法务或园区运营等外来角色`;
+    if (character.id === "lingdang") return "铃铛 roleId=lingdang，是高知女生，聪明冷静会来事";
+    if (character.id === "zhuxiaodi") return "猪小弟 roleId=zhuxiaodi，憨厚踏实、家里条件好、正直";
+    if (character.id === "xitong") return "系统 roleId=xitong，冷静无情地提醒流程";
+    return `${character.name} roleId=${character.id}`;
+  }).join("；");
+}
+
 function repairInstruction(project: DramaProject, attempt: number) {
   const viralInstruction = viralPerspectiveInstruction(project);
   const hardTemplate = attempt > 1
@@ -373,7 +385,7 @@ function systemPrompt(project: DramaProject) {
       "title 是群聊名称，要像同事背后蛐蛐用的小群名，4-10 个中文字，轻松、机灵、有梗，不要正式公司群名。示例：工位蛐蛐小队、早会避难所、需求受害者联盟、周报幸存者。",
       "只写叫叫公司里的日常吐槽、自嘲、会议、需求、排期、周报、老板、客户、工位、电梯口、咖啡、deadline 等职场小反转。",
       "喜剧密度要更高：多写办公室荒诞、同事吐槽、反差包袱、系统无情补刀；每 4-6 条至少有一个轻笑点，但不要变成段子合集。",
-      `固定角色和 roleId：叫叫 roleId=jiaojiao，是勇敢爱冒险的小鸡吉祥物；铃铛 roleId=lingdang，是高知女生，聪明冷静会来事；猪小弟 roleId=zhuxiaodi，憨厚踏实、家里条件好、正直；系统 roleId=xitong，冷静无情地提醒流程。当前用户自己是${jojoInstruction.player.name}。`,
+      `固定角色和 roleId：${jojoRoleListInstruction(project)}。当前用户自己是${jojoInstruction.player.name}。`,
       jojoInstruction.messageRule,
       targetMessageRange(project),
       mediaRule(project),

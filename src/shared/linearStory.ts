@@ -105,12 +105,19 @@ function roleForSide(project: DramaProject, side: ChatMessage["side"]) {
 }
 
 function jojoCharacterForTurn(project: DramaProject, index: number, type: ChatMessage["type"]) {
+  const hasCharacter = (id: string) => project.characters.some((character) => character.id === id);
+  const playerId = project.characters.find((character) => character.side === "right")?.id || "jiaojiao";
+  const npcSequence = ["npc", "jiaojiao", "lingdang", "zhuxiaodi", "npc", "jiaojiao", "xitong"];
+  const jiaojiaoSequence = ["jiaojiao", "npc", "lingdang", "zhuxiaodi", "jiaojiao", "lingdang", "xitong"];
   const sequence = type === "image"
-    ? ["xitong", "lingdang"]
+    ? ["xitong", playerId === "npc" ? "npc" : "lingdang"]
     : type === "meme"
-      ? ["jiaojiao", "zhuxiaodi", "lingdang", "xitong"]
-      : ["jiaojiao", "lingdang", "zhuxiaodi", "xitong", "jiaojiao", "lingdang", "zhuxiaodi"];
-  const id = sequence[Math.abs(index) % sequence.length];
+      ? [playerId, "jiaojiao", "zhuxiaodi", "lingdang", "xitong"]
+      : playerId === "npc"
+        ? npcSequence
+        : jiaojiaoSequence;
+  const validSequence = sequence.filter(hasCharacter);
+  const id = seededPick(validSequence.length ? validSequence : project.characters.map((character) => character.id), index);
   return project.characters.find((character) => character.id === id) ?? project.characters[0];
 }
 
@@ -336,6 +343,22 @@ export function suggestNextStoryPrompt({
   const index = promptCards.length;
 
   if (jojoMode) {
+    const player = project.characters.find((character) => character.side === "right");
+    if (player?.id === "npc") {
+      const npcRoutes = /甲方|乙方|客户|领导|其他部门|外包|财务|法务|园区/.test(context)
+        ? [
+            "接着写 NPC 说明自己只是来同步一个小问题，叫叫听完发现它能拆出五个部门，铃铛开始画风险边界，系统补上一条更扎心的待办。",
+            "接着写 NPC 想把话说得客气一点，结果越解释越像正式甩锅，猪小弟认真帮忙圆场却暴露了更多细节。",
+            "接着写叫叫试探 NPC 到底带来了需求还是风险，NPC 发来一张局部照片，群里瞬间从寒暄进入救火。"
+          ]
+        : [
+            `接着“${latest.slice(0, 10) || "上一段"}”写 NPC 第一次在公司群里试探发言，叫叫热情接话，铃铛冷静观察，猪小弟把气氛越帮越忙。`,
+            "接着写 NPC 刚加入就遇到一个看似很小的流程问题，叫叫想表现专业，系统用一句提醒把问题放大。",
+            "接着写 NPC 以为只是普通寒暄，三四句后发现自己已经被卷进叫叫公司的荒诞日常。"
+          ];
+      return npcRoutes[index % npcRoutes.length];
+    }
+
     const jojoRoutes = /老板|客户|需求|排期|周报|会议|工位|报销|咖啡/.test(context)
       ? [
           "接着写老板突然进群催进度，叫叫假装冷静接招，铃铛用一句话拆穿排期漏洞，猪小弟默默补上最离谱的后勤成本。",

@@ -1,4 +1,5 @@
 import type { ChatMessage, DramaProject, MemeAsset } from "./schema.js";
+import { defaultJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { localMemeAssets } from "./memeLibrary.js";
 import { jojoPhotoAssets } from "./photoLibrary.js";
 
@@ -90,7 +91,7 @@ export const jojoCompanyAssets: MemeAsset[] = [
 export const jojoProject: DramaProject = {
   id: "jojo-company-default",
   title: "工位蛐蛐小队",
-  brief: "叫叫是用户自己扮演的勇敢小鸡吉祥物，和铃铛、猪小弟、系统在叫叫公司上班。剧情围绕公司日常吐槽、自嘲、会议、需求、排期和职场小反转展开。",
+  brief: "叫叫是用户默认扮演的勇敢小鸡吉祥物，也可以切换扮演随机 NPC 小动物。剧情围绕叫叫公司日常吐槽、自嘲、会议、需求、排期、甲乙方和职场小反转展开。",
   stylePreset: "jojo-company-chat",
   fps: 30,
   canvas: {
@@ -108,6 +109,17 @@ export const jojoProject: DramaProject = {
       voiceId: "jojo-jiaojiao",
       voicePreset: "young_male",
       voiceDescription: "年轻、有冒险感的小鸡吉祥物声线，语速轻快，带一点嘴硬和热血，像用户自己在公司群里发言"
+    },
+    {
+      id: "npc",
+      name: defaultJojoNpcProfile.name,
+      side: "left",
+      avatarInitial: defaultJojoNpcProfile.avatarInitial,
+      avatarUrl: defaultJojoNpcProfile.avatarUrl,
+      avatarGradient: defaultJojoNpcProfile.avatarGradient,
+      voiceId: "jojo-npc",
+      voicePreset: defaultJojoNpcProfile.voicePreset,
+      voiceDescription: defaultJojoNpcProfile.voiceDescription
     },
     {
       id: "lingdang",

@@ -104,9 +104,9 @@ const jojoStoryToggleGlassStyle: CSSProperties = {
   WebkitBackdropFilter: "blur(14px) saturate(118%)"
 };
 
-const viralRoleOptions: Array<{ id: ViralPresetRole; label: string; detail: string }> = [
-  { id: "male", label: "男性", detail: "男主视角" },
-  { id: "female", label: "女性", detail: "女主视角" }
+const viralRoleOptions: Array<{ id: ViralPresetRole; label: string }> = [
+  { id: "male", label: "扮演男生" },
+  { id: "female", label: "扮演女生" }
 ];
 
 const viralRoleAvatarIds: Record<ViralPresetRole, string[]> = {
@@ -114,7 +114,7 @@ const viralRoleAvatarIds: Record<ViralPresetRole, string[]> = {
   female: ["girl-nostalgia-dark", "girl-sweater-soft", "girl-cartoon-pink", "girl-soft-flash", "girl-headphone-blur"]
 };
 
-const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "zhuxiaodi", "lingdang"];
+const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
 
 function randomViralRoleAvatarUrl(role: ViralPresetRole) {
   const avatars = defaultAvatars.filter((avatar) => viralRoleAvatarIds[role].includes(avatar.id));
@@ -133,7 +133,7 @@ function packageSwitchLink(packageId: StoryPackage) {
       }
     : {
         href: import.meta.env.VITE_JOJO_APP_URL || defaultJojoAppUrl,
-        label: "钉钉版"
+        label: "去钉钉版"
       };
 }
 
@@ -1414,6 +1414,7 @@ export default function App({ storyPackage }: AppProps) {
 
   function roleStatusLabel(roleSelection: PresetRoleSelection) {
     if (storyPackage !== "jojo") return roleSelection.viralRole === "female" ? "女性视角" : "男性视角";
+    if (roleSelection.jojoRole === "npc") return "NPC";
     const character = projectRef.current.characters.find((item) => item.id === roleSelection.jojoRole);
     return character?.name || "叫叫";
   }
@@ -2222,8 +2223,16 @@ export default function App({ storyPackage }: AppProps) {
   const switchLink = packageSwitchLink(storyPackage);
   const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
   const jojoRoleChoices = jojoRoleOptions
-    .map((roleId) => project.characters.find((character) => character.id === roleId))
-    .filter((character): character is DramaProject["characters"][number] => Boolean(character));
+    .flatMap((roleId): Array<{ roleId: JojoPresetRole; label: string; avatarInitial: string; avatarUrl?: string }> => {
+      const character = project.characters.find((character) => character.id === roleId);
+      if (!character) return [];
+      return [{
+        roleId,
+        label: roleId === "npc" ? "NPC" : character.name,
+        avatarInitial: roleId === "npc" ? "N" : character.avatarInitial,
+        avatarUrl: character.avatarUrl
+      }];
+    });
   const viralRoleChoices = useMemo(
     () => viralRoleOptions.map((option) => ({
       ...option,
@@ -2481,14 +2490,14 @@ export default function App({ storyPackage }: AppProps) {
                     <div className="title-role-avatar-grid">
                       {jojoRoleChoices.map((character) => (
                         <button
-                          key={character.id}
-                          className={activePresetRole.jojoRole === character.id ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
+                          key={character.roleId}
+                          className={activePresetRole.jojoRole === character.roleId ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
                           type="button"
-                          onClick={() => switchPresetRole({ jojoRole: character.id as JojoPresetRole })}
-                          aria-pressed={activePresetRole.jojoRole === character.id}
+                          onClick={() => switchPresetRole({ jojoRole: character.roleId })}
+                          aria-pressed={activePresetRole.jojoRole === character.roleId}
                         >
                           {character.avatarUrl ? <img src={resolvePublicAssetPath(character.avatarUrl)} alt="" /> : <span className="title-role-avatar-fallback">{character.avatarInitial}</span>}
-                          <strong>{character.name}</strong>
+                          <strong>{character.label}</strong>
                         </button>
                       ))}
                     </div>
@@ -2504,13 +2513,12 @@ export default function App({ storyPackage }: AppProps) {
                         >
                           {option.avatarUrl ? <img src={resolvePublicAssetPath(option.avatarUrl)} alt="" /> : <span className="title-role-avatar-fallback">{option.label.slice(0, 1)}</span>}
                           <strong>{option.label}</strong>
-                          <small>{option.detail}</small>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <a className="title-menu-item" role="menuitem" href={switchLink.href} onClick={closeSettingsMenu}>
+                <a className="title-menu-item" role="menuitem" href={switchLink.href} target="_blank" rel="noreferrer" onClick={closeSettingsMenu}>
                   <ArrowUpRight size={16} />
                   <span>{switchLink.label}</span>
                   <small>切换版本</small>

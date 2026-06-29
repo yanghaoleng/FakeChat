@@ -1,4 +1,5 @@
 import { jojoProject } from "./jojoProject.js";
+import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { sampleProject } from "./sampleProject.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
@@ -26,7 +27,7 @@ export type PresetStory = {
 };
 
 export type ViralPresetRole = "male" | "female";
-export type JojoPresetRole = "jiaojiao" | "zhuxiaodi" | "lingdang";
+export type JojoPresetRole = "jiaojiao" | "npc";
 export type PresetRoleSelection = {
   viralRole: ViralPresetRole;
   jojoRole: JojoPresetRole;
@@ -61,7 +62,7 @@ export const defaultPresetRoleSelection: PresetRoleSelection = {
 export function normalizePresetRoleSelection(selection: Partial<PresetRoleSelection> = {}): PresetRoleSelection {
   return {
     viralRole: selection.viralRole === "female" ? "female" : "male",
-    jojoRole: selection.jojoRole === "lingdang" || selection.jojoRole === "zhuxiaodi" ? selection.jojoRole : "jiaojiao"
+    jojoRole: selection.jojoRole === "npc" ? "npc" : "jiaojiao"
   };
 }
 
@@ -758,6 +759,229 @@ const jojoPresetStories: PresetStory[] = [
   }
 ];
 
+const jojoNpcPresetStories: PresetStory[] = [
+  {
+    id: "jojo-npc-new-coworker",
+    title: "新同事第一天",
+    prompt: "用户扮演一只随机 NPC 小动物，作为叫叫公司的新同事第一天入群。大家从自我介绍、工牌和座位安排里开始蛐蛐新人到底是高手还是关系户。",
+    nextPrompt: "接着写 NPC 第一次被拉进会议，叫叫想套近乎，铃铛冷静观察，猪小弟认真帮忙占座，系统突然分配第一个待办。",
+    messages: [
+      m("xitong", "新人已加入本群"),
+      m("npc", "大家好，我今天入职"),
+      m("jiaojiao", "欢迎来到工位副本"),
+      m("lingdang", "先别吓新人"),
+      m("zhuxiaodi", "我给你留了座位"),
+      m("npc", "听起来很需要勇气"),
+      m("jiaojiao", "勇气是本公司基础福利"),
+      m("xitong", "工牌挂绳局部：新工牌还没有贴照片", { type: "image", assetId: "jojo-photo-badge-lanyard", emotion: "入职" }),
+      m("lingdang", "第一天先观察"),
+      m("npc", "我已经观察到大家都很忙"),
+      m("jiaojiao", "这叫氛围感"),
+      m("xitong", "新人待办已生成"),
+      m("npc", "入职礼物是待办吗"),
+      m("zhuxiaodi", "还有早餐券")
+    ]
+  },
+  {
+    id: "jojo-npc-new-leader",
+    title: "新领导空降",
+    prompt: "用户扮演一只随机 NPC 小动物，作为新来的小领导空降进群。叫叫想表现，铃铛观察话术，猪小弟担心组织架构又要变。",
+    nextPrompt: "接着写 NPC 新领导说先不改流程，结果第一句话就让大家同步所有历史文档，叫叫瞬间从欢迎模式切到求生模式。",
+    messages: [
+      m("xitong", "新负责人已入群"),
+      m("npc", "大家不用紧张"),
+      m("jiaojiao", "我一点都不紧张"),
+      m("lingdang", "你打字有点快"),
+      m("zhuxiaodi", "领导好"),
+      m("npc", "先了解一下现有项目"),
+      m("jiaojiao", "现有项目比较有层次"),
+      m("lingdang", "也可以叫坑"),
+      m("xitong", "会议桌局部抓拍：电脑上打开组织架构表", { type: "image", assetId: "jojo-photo-meeting-blur", emotion: "空降" }),
+      m("npc", "历史文档都同步我一下"),
+      m("jiaojiao", "历史比较长"),
+      m("lingdang", "从盘古开需求开始"),
+      m("npc", "那先同步最近三版"),
+      m("zhuxiaodi", "最近三版也很多")
+    ]
+  },
+  {
+    id: "jojo-npc-other-department",
+    title: "其他部门来借人",
+    prompt: "用户扮演一只随机 NPC 小动物，来自其他部门，临时来群里借叫叫参与一个跨部门项目。大家一边礼貌接待，一边判断这是不是新锅。",
+    nextPrompt: "接着写 NPC 解释只是一个很小的协同，铃铛把协同拆成五个工种，叫叫发现自己已经被写进排期。",
+    messages: [
+      m("npc", "打扰一下，想借叫叫半天"),
+      m("jiaojiao", "借我需要押金吗"),
+      m("lingdang", "先问借去做什么"),
+      m("npc", "一个很小的跨部门协同"),
+      m("zhuxiaodi", "小到什么程度"),
+      m("npc", "大概半页需求"),
+      m("lingdang", "半页可以藏很多字"),
+      m("xitong", "电脑日程表虚焦：叫叫下午排期被标红", { type: "image", assetId: "jojo-photo-laptop-calendar", emotion: "借人" }),
+      m("jiaojiao", "我怎么已经在排期里"),
+      m("npc", "我以为这是确认流程"),
+      m("lingdang", "这是预埋流程"),
+      m("jiaojiao", "我被借得很突然"),
+      m("npc", "那我先正式借一下"),
+      m("zhuxiaodi", "叫哥被礼貌装走了")
+    ]
+  },
+  {
+    id: "jojo-npc-client-party-a",
+    title: "甲方突然进群",
+    prompt: "用户扮演一只随机 NPC 小动物，作为甲方公司的联系人突然进群。叫叫努力保持专业，铃铛负责翻译需求，猪小弟默默统计新增工作量。",
+    nextPrompt: "接着写 NPC 甲方说只是补充一个小需求，叫叫发现这个小需求需要设计、开发、法务和老板一起点头。",
+    messages: [
+      m("xitong", "甲方联系人已加入"),
+      m("npc", "大家好，我这边补充一点"),
+      m("jiaojiao", "一点是计量单位吗"),
+      m("lingdang", "先听完"),
+      m("npc", "不影响主流程"),
+      m("zhuxiaodi", "这句话听着像会影响"),
+      m("npc", "只是入口文案和链路都调一下"),
+      m("jiaojiao", "入口和链路叫主流程全家"),
+      m("xitong", "会议桌局部抓拍：电脑旁边贴着客户反馈", { type: "image", assetId: "jojo-photo-meeting-blur", emotion: "甲方" }),
+      m("lingdang", "需要确认范围"),
+      m("npc", "我可以先发标注"),
+      m("jiaojiao", "标注越多越冷静"),
+      m("zhuxiaodi", "我先泡咖啡"),
+      m("npc", "辛苦大家")
+    ]
+  },
+  {
+    id: "jojo-npc-vendor-party-b",
+    title: "乙方项目经理求救",
+    prompt: "用户扮演一只随机 NPC 小动物，作为乙方公司的项目经理来找叫叫公司救火。表面是对接，实际上是来承认交付快翻车了。",
+    nextPrompt: "接着写 NPC 乙方项目经理说只差一点点，铃铛一问发现差的是需求、排期和测试，叫叫开始判断要不要接锅。",
+    messages: [
+      m("npc", "我这边想同步个风险"),
+      m("jiaojiao", "风险一般不会自己来"),
+      m("lingdang", "它已经进群了"),
+      m("npc", "乙方交付可能晚一天"),
+      m("zhuxiaodi", "一天还好吧"),
+      m("npc", "也可能是三个工作日"),
+      m("jiaojiao", "一天长大了"),
+      m("xitong", "雨天办公室窗边：灯光还亮着，桌上有半杯咖啡", { type: "image", assetId: "jojo-photo-rainy-office-window", emotion: "救火" }),
+      m("lingdang", "具体卡在哪里"),
+      m("npc", "需求还有两处没闭环"),
+      m("jiaojiao", "这叫还没出生"),
+      m("npc", "所以想请你们帮忙评估"),
+      m("zhuxiaodi", "评估是不是要加班"),
+      m("lingdang", "大概率")
+    ]
+  },
+  {
+    id: "jojo-npc-outsourced-designer",
+    title: "外包设计师进群",
+    prompt: "用户扮演一只随机 NPC 小动物，作为外包设计师进群交稿。叫叫觉得很好看，铃铛发现尺寸不对，猪小弟只关心能不能今天下班。",
+    nextPrompt: "接着写 NPC 设计师说尺寸是按旧文档做的，系统翻出新版规范，大家开始追查到底是谁没同步。",
+    messages: [
+      m("npc", "设计稿我发群里了"),
+      m("jiaojiao", "看起来很高级"),
+      m("lingdang", "尺寸不对"),
+      m("zhuxiaodi", "高级但放不下？"),
+      m("npc", "我按文档来的"),
+      m("jiaojiao", "文档也会老"),
+      m("xitong", "电脑日程表虚焦：设计稿标注和规范尺寸不一致", { type: "image", assetId: "jojo-photo-laptop-calendar", emotion: "稿件" }),
+      m("lingdang", "你拿的是旧规范"),
+      m("npc", "我收到的就是这版"),
+      m("jiaojiao", "谁给的"),
+      m("zhuxiaodi", "不会是我转的吧"),
+      m("xitong", "转发人：猪小弟"),
+      m("zhuxiaodi", "我先道歉"),
+      m("npc", "那我先改一版")
+    ]
+  },
+  {
+    id: "jojo-npc-finance-audit",
+    title: "财务来查报销",
+    prompt: "用户扮演一只随机 NPC 小动物，作为财务同事来群里查一笔会议室费。叫叫以为只是报销，结果费用备注写得像悬疑片。",
+    nextPrompt: "接着写 NPC 财务要求解释“冒险经费”是什么，叫叫试图美化，铃铛把它翻译成会议室超时费。",
+    messages: [
+      m("npc", "有笔报销需要解释"),
+      m("jiaojiao", "解释也是我的强项"),
+      m("lingdang", "先看金额"),
+      m("npc", "88，备注冒险经费"),
+      m("zhuxiaodi", "听起来很热血"),
+      m("jiaojiao", "其实是团队建设"),
+      m("npc", "会议室超时费用？"),
+      m("xitong", "会议桌局部抓拍：费用单上写着超时 30 分钟", { type: "image", assetId: "jojo-photo-meeting-blur", emotion: "报销" }),
+      m("lingdang", "热血翻译成超时"),
+      m("jiaojiao", "职业表达被拆穿了"),
+      m("npc", "那不能走团建"),
+      m("zhuxiaodi", "能走冒险吗"),
+      m("npc", "不能"),
+      m("jiaojiao", "财务很冷静")
+    ]
+  },
+  {
+    id: "jojo-npc-hrbp",
+    title: "HRBP 关怀一下",
+    prompt: "用户扮演一只随机 NPC 小动物，作为 HRBP 来群里做员工关怀。叫叫努力表现积极，铃铛觉得这像压力测试，猪小弟认真回答得过于真实。",
+    nextPrompt: "接着写 NPC HRBP 问大家最近工作状态如何，系统自动弹出加班记录，关怀现场变成证据展示。",
+    messages: [
+      m("npc", "来做个轻量关怀"),
+      m("jiaojiao", "我们很轻量"),
+      m("lingdang", "精神重量另算"),
+      m("zhuxiaodi", "我最近睡得很快"),
+      m("npc", "这听起来不错"),
+      m("zhuxiaodi", "因为太累了"),
+      m("jiaojiao", "他比较诚实"),
+      m("xitong", "早晨工位桌面抓拍：屏幕角落有未关闭的待办", { type: "image", assetId: "jojo-photo-desk-morning", emotion: "关怀" }),
+      m("npc", "大家压力大吗"),
+      m("lingdang", "这个问题有标准答案吗"),
+      m("jiaojiao", "我们压力很有成长性"),
+      m("npc", "我记录一下"),
+      m("zhuxiaodi", "能记录成调休吗"),
+      m("npc", "我努力往上反馈")
+    ]
+  },
+  {
+    id: "jojo-npc-legal-review",
+    title: "法务同事看一眼",
+    prompt: "用户扮演一只随机 NPC 小动物，作为法务同事来群里看合同。叫叫以为只是看一眼，结果 NPC 连续圈出三个高危条款。",
+    nextPrompt: "接着写 NPC 法务说这个合同不能随手签，甲方把责任都塞进附件。叫叫开始感谢这只看起来很温和的小动物。",
+    messages: [
+      m("npc", "合同我看了一眼"),
+      m("jiaojiao", "一眼就好"),
+      m("npc", "一眼三个风险"),
+      m("lingdang", "法务的一眼很长"),
+      m("zhuxiaodi", "要不要喝咖啡"),
+      m("npc", "先别签附件二"),
+      m("jiaojiao", "附件二怎么了"),
+      m("xitong", "电脑屏幕局部：合同附件被红色批注圈出", { type: "image", assetId: "jojo-photo-laptop-calendar", emotion: "法务" }),
+      m("npc", "责任全在你们这边"),
+      m("jiaojiao", "这不是附件，是陷阱"),
+      m("lingdang", "幸好看了一眼"),
+      m("npc", "我再多看两眼"),
+      m("zhuxiaodi", "法务眼神真好"),
+      m("jiaojiao", "救命眼神")
+    ]
+  },
+  {
+    id: "jojo-npc-park-ops",
+    title: "园区运营通知",
+    prompt: "用户扮演一只随机 NPC 小动物，作为园区运营来群里通知电梯维护。叫叫以为只是通知，结果发现维护时间刚好卡在客户来访前。",
+    nextPrompt: "接着写 NPC 园区运营提出备用路线，叫叫和猪小弟开始计算客户爬楼梯时的情绪风险，铃铛准备改接待方案。",
+    messages: [
+      m("npc", "通知一下，电梯下午维护"),
+      m("jiaojiao", "维护多久"),
+      m("npc", "14 点到 17 点"),
+      m("lingdang", "客户 15 点到"),
+      m("zhuxiaodi", "那客户要爬楼？"),
+      m("npc", "有备用货梯"),
+      m("jiaojiao", "客户走货梯会不会太硬核"),
+      m("xitong", "电梯口面板虚焦：维护通知贴在按钮旁", { type: "image", assetId: "jojo-photo-elevator-panel", emotion: "通知" }),
+      m("npc", "也可以从 B 座绕行"),
+      m("lingdang", "路线发我"),
+      m("jiaojiao", "我负责假装这是参观动线"),
+      m("zhuxiaodi", "我负责引路"),
+      m("npc", "我给你们开门禁"),
+      m("jiaojiao", "园区救场侠")
+    ]
+  }
+];
+
 function cloneBaseProject(project: DramaProject): DramaProject {
   return parseProject({
     ...project,
@@ -771,7 +995,7 @@ function cloneBaseProject(project: DramaProject): DramaProject {
 
 function presetStoriesFor(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
   const role = normalizePresetRoleSelection(roleSelection);
-  if (packageId === "jojo") return jojoPresetStories;
+  if (packageId === "jojo") return role.jojoRole === "npc" ? jojoNpcPresetStories : jojoPresetStories;
   return role.viralRole === "female" ? viralFemalePresetStories : viralMalePresetStories;
 }
 
@@ -794,16 +1018,39 @@ function applyViralRole(project: DramaProject, viralRole: ViralPresetRole): Dram
   });
 }
 
-function applyJojoRole(project: DramaProject, jojoRole: JojoPresetRole): DramaProject {
-  return parseProject({
+function withRandomJojoNpc(project: DramaProject): DramaProject {
+  const npc = randomJojoNpcProfile();
+  return {
     ...project,
+    characters: project.characters.map((character) => {
+      if (character.id !== "npc") return character;
+      return {
+        ...character,
+        name: npc.name,
+        avatarInitial: npc.avatarInitial,
+        avatarUrl: npc.avatarUrl,
+        avatarGradient: npc.avatarGradient,
+        voicePreset: npc.voicePreset,
+        voiceDescription: npc.voiceDescription
+      };
+    })
+  };
+}
+
+function applyJojoRole(project: DramaProject, jojoRole: JojoPresetRole): DramaProject {
+  const projectWithNpc = jojoRole === "npc" ? withRandomJojoNpc(project) : project;
+  const selectedCharacter = projectWithNpc.characters.find((character) => character.id === jojoRole);
+  return parseProject({
+    ...projectWithNpc,
     id: `${project.id}-${jojoRole}`,
-    brief: project.brief.replace(/叫叫是用户自己扮演/g, `${project.characters.find((character) => character.id === jojoRole)?.name || "叫叫"}是用户自己扮演`),
-    characters: project.characters.map((character) => ({
+    brief: jojoRole === "npc"
+      ? `${selectedCharacter?.name || "NPC"}是用户自己扮演的随机小动物 NPC，可能是新同事、新领导、其他部门、甲方或乙方角色。叫叫、铃铛、猪小弟和系统在左侧参与公司群聊。`
+      : "叫叫是用户自己扮演的勇敢小鸡吉祥物，随机 NPC 小动物、铃铛、猪小弟和系统在左侧参与公司群聊。",
+    characters: projectWithNpc.characters.map((character) => ({
       ...character,
       side: character.id === jojoRole ? "right" as const : "left" as const
     })),
-    messages: project.messages.map((message) => {
+    messages: projectWithNpc.messages.map((message) => {
       if (!message.roleId) return message;
       return { ...message, side: message.roleId === jojoRole ? "right" as const : "left" as const };
     })

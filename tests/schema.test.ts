@@ -25,7 +25,8 @@ describe("project schema", () => {
   it("accepts the built-in JOJO company sample", () => {
     const project = parseProject(jojoProject);
     expect(project.stylePreset).toBe("jojo-company-chat");
-    expect(project.characters.map((character) => character.id)).toEqual(["jiaojiao", "lingdang", "zhuxiaodi", "xitong"]);
+    expect(project.characters.map((character) => character.id)).toEqual(["jiaojiao", "npc", "lingdang", "zhuxiaodi", "xitong"]);
+    expect(project.characters.find((character) => character.id === "npc")?.avatarUrl).toMatch(/^\/avatars\/jojo\/npc-/);
     expect(project.messages.some((message) => message.roleId === "jiaojiao")).toBe(true);
     expect(project.assets.some((asset) => asset.id === "jojo-photo-meeting-blur")).toBe(true);
     expect(project.assets.find((asset) => asset.id === "jojo-photo-laptop-calendar")?.tags).toContain("排期");
