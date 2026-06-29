@@ -597,6 +597,28 @@ button[disabled],
   background-clip: content-box;
 }
 
+.left-panel-scroll {
+  scrollbar-color: transparent transparent;
+}
+
+.left-panel-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  background-clip: content-box;
+}
+
+.left-panel-scroll:hover,
+.left-panel-scroll:focus-within,
+.left-panel-scroll-scrolling {
+  scrollbar-color: var(--app-scroll-thumb) transparent;
+}
+
+.left-panel-scroll:hover::-webkit-scrollbar-thumb,
+.left-panel-scroll:focus-within::-webkit-scrollbar-thumb,
+.left-panel-scroll-scrolling::-webkit-scrollbar-thumb {
+  background: var(--app-scroll-thumb);
+  background-clip: content-box;
+}
+
 .surface-card {
   flex: 0 0 auto;
   border: 1px solid var(--app-border);
@@ -717,6 +739,10 @@ button[disabled],
   padding-bottom: 46px;
 }
 
+.prompt-textarea-shell-has-preset-switch .prompt-textarea {
+  padding-bottom: 46px;
+}
+
 .prompt-textarea-shell-animating .prompt-textarea {
   color: transparent !important;
   caret-color: var(--app-text);
@@ -759,6 +785,47 @@ button[disabled],
   color: var(--wechat-green);
   opacity: 0.92;
   transform: translateY(-1px);
+}
+
+.preset-switch-button {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(112, 240, 170, 0.28);
+  border-radius: 50%;
+  background: rgba(7, 193, 96, 0.12);
+  color: var(--app-accent-readable);
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.preset-switch-button:hover,
+.preset-switch-button:focus-visible {
+  border-color: var(--wechat-green-border);
+  background: var(--app-accent-hover-soft);
+  color: var(--wechat-green);
+  outline: none;
+  transform: translateY(-1px) rotate(12deg);
+}
+
+.app-shell-jojo .preset-switch-button {
+  border-color: rgba(115, 169, 239, 0.34);
+  background: rgba(22, 119, 255, 0.14);
+  color: #d8e8ff;
+}
+
+.app-shell-jojo .preset-switch-button:hover,
+.app-shell-jojo .preset-switch-button:focus-visible {
+  border-color: rgba(115, 169, 239, 0.7);
+  background: rgba(22, 119, 255, 0.24);
+  color: #ffffff;
 }
 
 .prompt-suggestion-popover {

@@ -32,14 +32,19 @@ import { generateBackendStorySegment } from "./shared/deepseekBackend";
 import { generateDeepSeekStorySegment, getBrowserDeepSeekStatusText, hasBrowserDeepSeekKey } from "./shared/deepseekBrowser";
 import { synthesizeMessageClip, type TtsClipMap } from "./shared/edgeTts";
 import {
-  createInitialStaticProject,
-  createInitialPlaybackProject,
   makeStoryArchive,
   parseStoryArchive,
   suggestNextStoryPrompt,
   type PromptCard,
   type StoryPackage
 } from "./shared/linearStory";
+import {
+  createPresetInitialArchive,
+  isPresetPromptCard,
+  nextPresetStoryIndex,
+  randomPresetStoryIndex,
+  type PresetInitialArchive
+} from "./shared/presetStories";
 import { ChatDrama } from "./remotion/ChatDrama";
 import { imageNarrativeCopy, imageSourceForMessage } from "./shared/imageNarrative";
 import { jojoCssMemeCardForMessage, type JojoCssMemeCard } from "./shared/jojoMemeCards";
@@ -73,7 +78,7 @@ type AppProps = {
 };
 
 const deepSeekServiceToast = "DeepSeek 服务暂时连不上，已停止生成";
-const defaultJojoAppUrl = "https://jojodemos.mikeywa.icu/ququ/";
+const defaultJojoAppUrl = "https://ququ.mikeywa.icu/ding/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
 const generationProgressCap = 99;
@@ -94,43 +99,8 @@ const jojoStoryToggleGlassStyle: CSSProperties = {
   WebkitBackdropFilter: "blur(14px) saturate(118%)"
 };
 
-function initialPromptFor(packageId: StoryPackage) {
-  return packageId === "jojo"
-    ? "老板说这个需求很简单，叫叫准备勇敢接下，铃铛开始冷静拆穿排期，猪小弟默默垫上会议室费用。"
-    : "张阿姨给男主介绍相亲对象，聊了半天才发现对方是他小时候暗恋过的小学同学，女生用旧绰号和毕业照把回忆翻出来。";
-}
-
-function normalizedPrompt(value: string) {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function isInitialPresetPrompt(packageId: StoryPackage, prompt: string) {
-  return normalizedPrompt(prompt) === normalizedPrompt(initialPromptFor(packageId));
-}
-
-function createEmptyInitialProject(packageId: StoryPackage) {
-  return { ...createInitialStaticProject(packageId), messages: [] };
-}
-
-function createInitialPresetStorySegment(packageId: StoryPackage, prompt: string) {
-  const project = { ...createInitialPlaybackProject(packageId), brief: prompt };
-  const messages = project.messages;
-  const card: PromptCard = {
-    id: `prompt-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    prompt,
-    createdAt: new Date().toISOString(),
-    messageIds: messages.map((message) => message.id),
-    summary: `追加 ${messages.length} 条消息，承接 0 条历史对话`
-  };
-  return { card, messages, project };
-}
-
 function packageTitle(_packageId: StoryPackage) {
   return "蛐蛐模拟器";
-}
-
-function packageReadyText(packageId: StoryPackage) {
-  return packageId === "jojo" ? "JOJO 版已就绪：默认公司群剧情已载入" : "网红短剧版已就绪：默认相亲剧情已载入";
 }
 
 function packageSwitchLink(packageId: StoryPackage) {
@@ -705,8 +675,13 @@ function WechatStoryPreview({
 
 export default function App({ storyPackage }: AppProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [project, setProject] = useState<DramaProject>(() => createEmptyInitialProject(storyPackage));
-  const [promptCards, setPromptCards] = useState<PromptCard[]>([]);
+  const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
+  if (!initialPresetArchiveRef.current) {
+    initialPresetArchiveRef.current = createPresetInitialArchive(storyPackage);
+  }
+  const [activePresetIndex, setActivePresetIndex] = useState(initialPresetArchiveRef.current.presetIndex);
+  const [project, setProject] = useState<DramaProject>(() => initialPresetArchiveRef.current!.project);
+  const [promptCards, setPromptCards] = useState<PromptCard[]>(() => initialPresetArchiveRef.current!.promptCards);
   const [draftPrompt, setDraftPrompt] = useState("");
   const [previewMode, setPreviewMode] = useState<PreviewMode>("wechat");
   const [status, setStatus] = useState<ApiState>("idle");
@@ -915,8 +890,9 @@ export default function App({ storyPackage }: AppProps) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (draftPromptRef.current.trim()) return;
-      showSuggestedPrompt(initialPromptFor(storyPackage));
-      setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "准备生成第一段故事" : current);
+      const nextPrompt = initialPresetArchiveRef.current?.nextPrompt || "";
+      if (nextPrompt) showSuggestedPrompt(nextPrompt);
+      setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "预设开场已载入" : current);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [storyPackage]);
@@ -1322,7 +1298,8 @@ export default function App({ storyPackage }: AppProps) {
   ) {
     const deepseekSuggestion = result.suggestedPrompt?.trim();
     if (deepseekSuggestion) return deepseekSuggestion;
-    if (nextPromptCards.length !== 1) return "";
+    const isFirstGeneratedAfterPreset = nextPromptCards.length === 2 && isPresetPromptCard(nextPromptCards[0]);
+    if (nextPromptCards.length !== 1 && !isFirstGeneratedAfterPreset) return "";
     return suggestNextStoryPrompt({
       project: result.project,
       prompt: result.card.prompt,
@@ -1361,6 +1338,54 @@ export default function App({ storyPackage }: AppProps) {
     if (!promptSuggestionActive) return;
     if (Date.now() < promptAnimationFocusGuardUntilRef.current) return;
     finishPromptSuggestionAnimation();
+  }
+
+  function loadInitialPresetArchive(archive: PresetInitialArchive, statusText: string) {
+    generationRunRef.current += 1;
+    generationAbortRef.current?.abort();
+    generationAbortRef.current = null;
+    stopGenerationProgress();
+    clearPendingPromptRemovalTimers();
+    if (revealTimerRef.current) {
+      window.clearInterval(revealTimerRef.current);
+      revealTimerRef.current = undefined;
+    }
+    captureCurrentStoryLayoutSnapshot();
+    initialPresetArchiveRef.current = archive;
+    projectRef.current = archive.project;
+    promptCardsRef.current = archive.promptCards;
+    pendingPromptCardsRef.current = [];
+    queueProcessingRef.current = false;
+    activePromptCardIdRef.current = null;
+    settledPromptCardIdsRef.current.clear();
+    completedPromptCardLayoutKeysRef.current.clear();
+    setActivePresetIndex(archive.presetIndex);
+    setProject(archive.project);
+    setPromptCards(archive.promptCards);
+    updatePendingPromptCards(() => []);
+    setDeferredSuggestedPrompt(null);
+    setSuggestionDialogOpen(false);
+    setFocusedPromptCardId(null);
+    setFocusedPendingPromptCardId(null);
+    setEditingPendingPromptCardId(null);
+    setOpenPromptCardMenuId(null);
+    updateScrollTargetMessageId(null);
+    promptRestoreUndoRef.current = null;
+    setClips({});
+    setVideoResult(null);
+    setVideoProgress(0);
+    updateGenerationProgress(0);
+    setVisibleMessageCount(0);
+    setStatus("done");
+    setStatusText(statusText);
+    showSuggestedPrompt(archive.nextPrompt);
+    window.requestAnimationFrame(() => startMessageReveal(0, archive.project.messages.length));
+  }
+
+  function switchInitialPreset() {
+    const nextIndex = nextPresetStoryIndex(storyPackage, activePresetIndex);
+    const archive = createPresetInitialArchive(storyPackage, nextIndex);
+    loadInitialPresetArchive(archive, `已切换预设：${archive.preset.title}`);
   }
 
   function applyStorySegment(
@@ -1425,13 +1450,6 @@ export default function App({ storyPackage }: AppProps) {
     runId: number;
     signal: AbortSignal;
   }) {
-    if (!projectSnapshot.messages.length && !promptCardsSnapshot.length && isInitialPresetPrompt(storyPackage, prompt)) {
-      setStatusText("正在展开默认开场...");
-      const result = createInitialPresetStorySegment(storyPackage, prompt);
-      if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
-      return { result, statusText: `默认开场已追加 ${result.messages.length} 条消息` };
-    }
-
     let backendError: unknown;
     setStatusText("正在请求后端 DeepSeek 续写...");
     try {
@@ -1759,37 +1777,8 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function clearLine() {
-    generationRunRef.current += 1;
-    generationAbortRef.current?.abort();
-    generationAbortRef.current = null;
-    stopGenerationProgress();
-    clearPendingPromptRemovalTimers();
-    const nextProject = createEmptyInitialProject(storyPackage);
-    captureCurrentStoryLayoutSnapshot();
-    projectRef.current = nextProject;
-    promptCardsRef.current = [];
-    settledPromptCardIdsRef.current.clear();
-    completedPromptCardLayoutKeysRef.current.clear();
-    setProject(nextProject);
-    setPromptCards([]);
-    updatePendingPromptCards(() => []);
-    settledPromptCardIdsRef.current.clear();
-    setDeferredSuggestedPrompt(null);
-    setSuggestionDialogOpen(false);
-    activePromptCardIdRef.current = null;
-    setFocusedPendingPromptCardId(null);
-    setEditingPendingPromptCardId(null);
-    setOpenPromptCardMenuId(null);
-    updateGenerationProgress(0);
-    setFocusedPromptCardId(null);
-    updateScrollTargetMessageId(null);
-    promptRestoreUndoRef.current = null;
-    showSuggestedPrompt(initialPromptFor(storyPackage));
-    setClips({});
-    setVideoResult(null);
-    setVisibleMessageCount(0);
-    setStatus("idle");
-    setStatusText("故事已重新开始，模拟界面已清空");
+    const archive = createPresetInitialArchive(storyPackage, randomPresetStoryIndex(storyPackage));
+    loadInitialPresetArchive(archive, `故事已重新开始：${archive.preset.title}`);
   }
 
   function replayConversation() {
@@ -2102,10 +2091,16 @@ export default function App({ storyPackage }: AppProps) {
     void drainPromptQueue();
   }, [pendingPromptCards.length, status]);
   const deferredSuggestionText = deferredSuggestedPrompt?.trim() || "";
+  const canSwitchInitialPreset = status !== "loading"
+    && pendingPromptCards.length === 0
+    && promptCards.length === 1
+    && isPresetPromptCard(promptCards[0])
+    && project.messages.length === promptCards[0].messageIds.length;
   const promptTextareaShellClassName = [
     "prompt-textarea-shell",
     promptSuggestionActive ? "prompt-textarea-shell-animating" : "",
-    deferredSuggestionText ? "prompt-textarea-shell-has-suggestion" : ""
+    deferredSuggestionText ? "prompt-textarea-shell-has-suggestion" : "",
+    canSwitchInitialPreset ? "prompt-textarea-shell-has-preset-switch" : ""
   ].filter(Boolean).join(" ");
 
   useLayoutEffect(() => {
@@ -2421,6 +2416,17 @@ export default function App({ storyPackage }: AppProps) {
                         {renderPromptRiseText(draftPrompt)}
                       </span>
                     </div>
+                  ) : null}
+                  {canSwitchInitialPreset ? (
+                    <button
+                      className="preset-switch-button"
+                      type="button"
+                      aria-label="切换一套预制存档"
+                      title="切换预制存档"
+                      onClick={switchInitialPreset}
+                    >
+                      <RefreshCcw size={16} />
+                    </button>
                   ) : null}
                   {deferredSuggestionText ? (
                     <button
