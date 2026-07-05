@@ -501,6 +501,7 @@ button[disabled],
 .ambient-ribbons,
 .ambient-particle-field,
 .ambient-meteor-field,
+.ambient-daisy-field,
 .ambient-figure,
 .ambient-feedback-layer,
 .ambient-feedback {
@@ -627,6 +628,34 @@ button[disabled],
   filter: drop-shadow(0 0 8px rgba(119, 217, 255, 0.46));
 }
 
+.ambient-daisy-field {
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-daisy {
+  position: absolute;
+  bottom: -5vh;
+  width: auto;
+  height: min(46vh, 430px);
+  opacity: 0;
+  transform-origin: 50% 100%;
+  filter: saturate(0.88) brightness(0.86) drop-shadow(0 24px 38px rgba(0, 0, 0, 0.42));
+  will-change: transform;
+}
+
+.ambient-daisy-a {
+  left: max(-28px, 4vw);
+  transform: rotate(-7deg);
+}
+
+.ambient-daisy-b {
+  right: max(-34px, 5vw);
+  height: min(42vh, 390px);
+  transform: rotate(8deg);
+}
+
 .ambient-feedback-layer {
   display: none;
   overflow: hidden;
@@ -667,17 +696,49 @@ button[disabled],
 }
 
 .ambient-feedback-brown-sweep {
-  top: -8vh;
-  left: -28vw;
-  width: 156vw;
-  height: 34vh;
+  top: -28vh;
+  left: -58vw;
+  width: 174vw;
+  height: 42vh;
   background:
-    linear-gradient(102deg, transparent 0 22%, rgba(24, 12, 5, 0.2) 34%, rgba(255, 230, 184, 0.1) 48%, rgba(24, 12, 5, 0.16) 62%, transparent 80%),
-    linear-gradient(180deg, rgba(255, 233, 194, 0.08), rgba(26, 12, 5, 0.14) 72%, transparent 100%);
-  filter: blur(18px);
-  mix-blend-mode: multiply;
-  transform: translate3d(-28vw, 0, 0);
+    linear-gradient(118deg, transparent 0 26%, rgba(255, 239, 205, 0.05) 34%, rgba(255, 221, 160, 0.24) 48%, rgba(255, 246, 221, 0.1) 62%, transparent 78%),
+    linear-gradient(180deg, rgba(255, 233, 194, 0.08), transparent 76%);
+  filter: blur(22px);
+  mix-blend-mode: screen;
+  transform: translate3d(-34vw, -18vh, 0) rotate(-7deg);
   will-change: transform, opacity;
+}
+
+.ambient-theme-swipe {
+  position: absolute;
+  inset: -10%;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.ambient-theme-swipe span {
+  position: absolute;
+  top: -16%;
+  bottom: -16%;
+  width: min(46vw, 520px);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.08) 22%, var(--ambient-one) 44%, rgba(255, 255, 255, 0.12) 58%, transparent 100%);
+  filter: blur(18px) saturate(130%);
+  opacity: 0;
+  transform: translate3d(-120%, 0, 0) skewX(-12deg);
+  will-change: transform, opacity;
+}
+
+.ambient-theme-swipe-right span {
+  left: -24vw;
+  animation: ambient-theme-swipe-right 0.86s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ambient-theme-swipe-left span {
+  right: -24vw;
+  animation: ambient-theme-swipe-left 0.86s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .ambient-figure {
@@ -1430,6 +1491,25 @@ button[disabled],
   --ambient-opacity: 0.98;
 }
 
+.app-shell[data-ambient-skin="nightdaisy"] {
+  --board-base: #050817;
+  --board-grid-fine: rgba(7, 193, 96, 0.028);
+  --board-grid-strong: rgba(122, 211, 255, 0.042);
+  --board-fiber: rgba(255, 255, 255, 0.012);
+  --board-vignette: rgba(0, 0, 0, 0.58);
+  --ambient-one: rgba(236, 65, 162, 0.12);
+  --ambient-two: rgba(7, 193, 96, 0.17);
+  --ambient-three: rgba(126, 230, 255, 0.12);
+  --ambient-particle: rgba(226, 250, 255, 0.58);
+  --ambient-particle-alt: rgba(255, 255, 255, 0.48);
+  --ambient-particle-soft: rgba(7, 193, 96, 0.32);
+  --ambient-ribbon: rgba(255, 255, 255, 0.06);
+  --ambient-ribbon-alt: rgba(7, 193, 96, 0.08);
+  --ambient-feedback: rgba(245, 252, 255, 0.9);
+  --ambient-feedback-soft: rgba(7, 193, 96, 0.16);
+  --ambient-opacity: 0.98;
+}
+
 .app-shell[data-ambient-skin="brown"] .ambient-layer {
   background:
     radial-gradient(ellipse at 52% 42%, rgba(204, 149, 83, 0.18), transparent 34%),
@@ -1607,14 +1687,85 @@ button[disabled],
   animation: ambient-meteor-fall 15s linear 8.5s infinite;
 }
 
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(7, 193, 96, 0.2), transparent 42%),
+    radial-gradient(ellipse at 18% 0%, rgba(236, 65, 162, 0.11), transparent 36%),
+    radial-gradient(ellipse at 82% 8%, rgba(122, 211, 255, 0.1), transparent 38%),
+    linear-gradient(180deg, #09071a 0, #050b18 58%, #061915 100%);
+}
+
+.app-shell-jojo[data-ambient-skin="nightdaisy"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(22, 119, 255, 0.22), transparent 42%),
+    radial-gradient(ellipse at 18% 0%, rgba(236, 65, 162, 0.11), transparent 36%),
+    radial-gradient(ellipse at 82% 8%, rgba(122, 211, 255, 0.1), transparent 38%),
+    linear-gradient(180deg, #09071a 0, #050b18 58%, #06121d 100%);
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::before {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 100%);
+  background-size: 64px 64px;
+  opacity: 0.18;
+  mask-image: radial-gradient(ellipse at 50% 56%, #000 0 52%, transparent 82%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 56%, #000 0 52%, transparent 82%);
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::after {
+  background:
+    radial-gradient(ellipse at 50% 76%, rgba(255, 255, 255, 0.08), transparent 44%),
+    linear-gradient(180deg, rgba(1, 4, 12, 0.08) 0, transparent 48%, rgba(0, 0, 0, 0.2) 100%);
+  opacity: 0.72;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-wash,
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-ribbons {
+  opacity: 0.05;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-particle-field {
+  opacity: 0.44;
+  mask-image: linear-gradient(180deg, #000 0 58%, transparent 82% 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 58%, transparent 82% 100%);
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-particle {
+  width: calc(var(--particle-size) * 0.22);
+  height: calc(var(--particle-size) * 0.22);
+  min-width: 1px;
+  min-height: 1px;
+  background: rgba(230, 250, 255, 0.72);
+  box-shadow: 0 0 8px rgba(206, 245, 255, 0.42);
+  animation-name: ambient-star-twinkle;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field {
+  display: block;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy {
+  opacity: 0.74;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-a {
+  animation: ambient-daisy-wind-a 2.28s cubic-bezier(0.2, 0.72, 0.22, 1) both;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-b {
+  animation: ambient-daisy-wind-b 2.38s cubic-bezier(0.2, 0.72, 0.22, 1) both;
+}
+
 .app-shell[data-ambient-skin="brown"] .ambient-feedback-layer,
 .app-shell[data-ambient-skin="grid"] .ambient-feedback-layer,
-.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-layer {
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-layer,
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-feedback-layer {
   display: block;
 }
 
 .app-shell[data-ambient-skin="brown"] .ambient-feedback-brown-sweep {
-  animation: ambient-feedback-brown-sweep 2.45s cubic-bezier(0.2, 0.72, 0.18, 1) both;
+  animation: ambient-feedback-brown-sweep 3.55s cubic-bezier(0.2, 0.72, 0.18, 1) both;
 }
 
 .app-shell[data-ambient-skin="grid"] .ambient-feedback-grid-glow {
@@ -1751,14 +1902,71 @@ button[disabled],
 @keyframes ambient-feedback-brown-sweep {
   0% {
     opacity: 0;
-    transform: translate3d(-32vw, -2vh, 0);
+    transform: translate3d(-42vw, -26vh, 0) rotate(-7deg);
   }
   22% {
-    opacity: 0.78;
+    opacity: 0.72;
+  }
+  64% {
+    opacity: 0.42;
   }
   100% {
     opacity: 0;
-    transform: translate3d(30vw, 4vh, 0);
+    transform: translate3d(42vw, 34vh, 0) rotate(-7deg);
+  }
+}
+
+@keyframes ambient-daisy-wind-a {
+  0%,
+  100% {
+    transform: rotate(-7deg) translate3d(0, 0, 0);
+  }
+  28% {
+    transform: rotate(-1.5deg) translate3d(0.8vw, -0.5vh, 0);
+  }
+  62% {
+    transform: rotate(-10deg) translate3d(-0.5vw, 0, 0);
+  }
+}
+
+@keyframes ambient-daisy-wind-b {
+  0%,
+  100% {
+    transform: rotate(8deg) translate3d(0, 0, 0);
+  }
+  34% {
+    transform: rotate(13deg) translate3d(-0.8vw, -0.4vh, 0);
+  }
+  68% {
+    transform: rotate(4deg) translate3d(0.5vw, 0, 0);
+  }
+}
+
+@keyframes ambient-theme-swipe-right {
+  0% {
+    opacity: 0;
+    transform: translate3d(-120%, 0, 0) skewX(-12deg);
+  }
+  18% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(240%, 0, 0) skewX(-12deg);
+  }
+}
+
+@keyframes ambient-theme-swipe-left {
+  0% {
+    opacity: 0;
+    transform: translate3d(120%, 0, 0) skewX(12deg);
+  }
+  18% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-240%, 0, 0) skewX(12deg);
   }
 }
 
@@ -2039,9 +2247,11 @@ button[disabled],
   .ambient-figure,
   .ambient-particle,
   .ambient-meteor,
+  .ambient-daisy,
   .ambient-feedback-meteor,
   .ambient-feedback-grid-glow,
   .ambient-feedback-brown-sweep,
+  .ambient-theme-swipe span,
   .ambient-feedback-ring,
   .ambient-feedback-glow,
   .ambient-feedback-spark {
@@ -2053,7 +2263,8 @@ button[disabled],
   }
 
   .ambient-feedback,
-  .ambient-feedback-layer {
+  .ambient-feedback-layer,
+  .ambient-theme-swipe {
     display: none;
   }
 }
@@ -2261,15 +2472,13 @@ button[disabled],
 }
 
 .title-ambient-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
 .title-ambient-option {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  align-items: center;
-  flex: 1 1 0;
+  display: block;
   min-width: 0;
   min-height: 34px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2277,8 +2486,8 @@ button[disabled],
   background: rgba(255, 255, 255, 0.035);
   color: var(--app-text-muted);
   cursor: pointer;
-  padding: 7px 9px;
-  text-align: left;
+  padding: 8px 6px;
+  text-align: center;
   font: inherit;
   transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
@@ -2466,6 +2675,10 @@ button[disabled],
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.title-role-symbol-grid .title-role-avatar {
+  min-height: 70px;
+}
+
 .title-role-avatar {
   display: grid;
   justify-items: center;
@@ -2475,7 +2688,8 @@ button[disabled],
 }
 
 .title-role-avatar img,
-.title-role-avatar-fallback {
+.title-role-avatar-fallback,
+.title-role-symbol {
   display: grid;
   place-items: center;
   width: 42px;
@@ -2483,6 +2697,14 @@ button[disabled],
   border-radius: 12px;
   background: var(--app-surface-3);
   object-fit: cover;
+}
+
+.title-role-symbol {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--app-accent-readable);
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .title-role-avatar strong {

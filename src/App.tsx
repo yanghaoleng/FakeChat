@@ -66,12 +66,16 @@ type PreviewTransition = {
   exiting: PreviewMode;
   id: number;
 };
-type AmbientSkinId = "brown" | "grid" | "nightmeadow";
+type AmbientSkinId = "brown" | "grid" | "nightmeadow" | "nightdaisy";
 type AmbientFeedbackType = "idle" | "skin" | "queue" | "generating" | "story" | "preset" | "focus";
 type AmbientFeedback = {
   id: number;
   type: Exclude<AmbientFeedbackType, "idle">;
   style: CSSProperties;
+};
+type AmbientSkinTransition = {
+  id: number;
+  direction: "left" | "right";
 };
 type PendingPromptCard = {
   id: string;
@@ -99,7 +103,8 @@ const generationProgressLoadingCap = 96;
 const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = [
   { id: "brown", label: "棕砂", hint: "扫光" },
   { id: "grid", label: "暗网格", hint: "移光" },
-  { id: "nightmeadow", label: "夜草地", hint: "流星" }
+  { id: "nightmeadow", label: "夜草地", hint: "流星" },
+  { id: "nightdaisy", label: "夜雏菊", hint: "摇曳" }
 ];
 
 const defaultAmbientSkinByPackage: Record<StoryPackage, AmbientSkinId> = {
@@ -149,17 +154,7 @@ const viralRoleOptions: Array<{ id: ViralPresetRole; label: string }> = [
   { id: "female", label: "扮演女生" }
 ];
 
-const viralRoleAvatarIds: Record<ViralPresetRole, string[]> = {
-  male: ["boy-soft-selfie", "boy-cartoon-night", "boy-neon-blur", "boy-room-selfie", "boy-mono-blur"],
-  female: ["girl-nostalgia-dark", "girl-sweater-soft", "girl-cartoon-pink", "girl-soft-flash", "girl-headphone-blur"]
-};
-
 const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
-
-function randomViralRoleAvatarUrl(role: ViralPresetRole) {
-  const avatars = defaultAvatars.filter((avatar) => viralRoleAvatarIds[role].includes(avatar.id));
-  return avatars[Math.floor(Math.random() * avatars.length)]?.url;
-}
 
 function packageTitle(_packageId: StoryPackage) {
   return "蛐蛐模拟器";
@@ -455,7 +450,16 @@ function PendingPromptCardView({
   );
 }
 
-function AmbientLayer({ feedback }: { feedback: AmbientFeedback | null }) {
+function AmbientLayer({
+  feedback,
+  transition
+}: {
+  feedback: AmbientFeedback | null;
+  transition: AmbientSkinTransition | null;
+}) {
+  const daisyFieldClassName = feedback
+    ? "ambient-daisy-field ambient-daisy-field-feedback"
+    : "ambient-daisy-field";
   return (
     <div className="ambient-layer" aria-hidden="true">
       <div className="ambient-texture" />
@@ -477,11 +481,20 @@ function AmbientLayer({ feedback }: { feedback: AmbientFeedback | null }) {
         <span className="ambient-meteor ambient-meteor-a" />
         <span className="ambient-meteor ambient-meteor-b" />
       </div>
+      <div key={`ambient-daisy-${feedback?.id ?? "idle"}`} className={daisyFieldClassName}>
+        <img className="ambient-daisy ambient-daisy-a" src="/ambient/night-daisy-a.png" alt="" />
+        <img className="ambient-daisy ambient-daisy-b" src="/ambient/night-daisy-b.png" alt="" />
+      </div>
       {feedback ? (
         <div key={feedback.id} className={`ambient-feedback-layer ambient-feedback-${feedback.type}`} style={feedback.style}>
           <span className="ambient-feedback-meteor" />
           <span className="ambient-feedback-grid-glow" />
           <span className="ambient-feedback-brown-sweep" />
+        </div>
+      ) : null}
+      {transition ? (
+        <div key={transition.id} className={`ambient-theme-swipe ambient-theme-swipe-${transition.direction}`}>
+          <span />
         </div>
       ) : null}
       <div className="ambient-figure" />
@@ -814,6 +827,7 @@ export default function App({ storyPackage }: AppProps) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [ambientFeedback, setAmbientFeedback] = useState<AmbientFeedback | null>(null);
+  const [ambientTransition, setAmbientTransition] = useState<AmbientSkinTransition | null>(null);
   const [promptSuggestionActive, setPromptSuggestionActive] = useState(false);
   const [promptSuggestionKey, setPromptSuggestionKey] = useState(0);
   const [deferredSuggestedPrompt, setDeferredSuggestedPrompt] = useState<string | null>(null);
@@ -846,6 +860,7 @@ export default function App({ storyPackage }: AppProps) {
   const revealTimerRef = useRef<number | undefined>(undefined);
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
   const ambientFeedbackTimerRef = useRef<number | undefined>(undefined);
+  const ambientTransitionTimerRef = useRef<number | undefined>(undefined);
   const promptSuggestionTimerRef = useRef<number | undefined>(undefined);
   const leftPanelScrollTimerRef = useRef<number | undefined>(undefined);
   const toastTimerRef = useRef<number | undefined>(undefined);
@@ -947,7 +962,7 @@ export default function App({ storyPackage }: AppProps) {
     return roundedProgress;
   }
 
-  function triggerAmbientFeedback(type: AmbientFeedbackType) {
+  function triggerAmbientFeedback(type: AmbientFeedbackType, feedbackSkin: AmbientSkinId = ambientSkin) {
     if (ambientFeedbackTimerRef.current) {
       window.clearTimeout(ambientFeedbackTimerRef.current);
       ambientFeedbackTimerRef.current = undefined;
@@ -976,16 +991,33 @@ export default function App({ storyPackage }: AppProps) {
     };
 
     setAmbientFeedback(nextFeedback);
+    const feedbackDuration = feedbackSkin === "brown" ? 3600 : feedbackSkin === "nightdaisy" ? 2400 : 1800;
     ambientFeedbackTimerRef.current = window.setTimeout(() => {
       setAmbientFeedback(null);
       ambientFeedbackTimerRef.current = undefined;
-    }, ambientSkin === "brown" ? 2600 : 1800);
+    }, feedbackDuration);
   }
 
   function selectAmbientSkin(nextSkin: AmbientSkinId) {
+    if (nextSkin !== ambientSkin) {
+      if (ambientTransitionTimerRef.current) {
+        window.clearTimeout(ambientTransitionTimerRef.current);
+        ambientTransitionTimerRef.current = undefined;
+      }
+      const currentIndex = ambientSkins.findIndex((skin) => skin.id === ambientSkin);
+      const nextIndex = ambientSkins.findIndex((skin) => skin.id === nextSkin);
+      setAmbientTransition({
+        id: Date.now(),
+        direction: nextIndex >= currentIndex ? "right" : "left"
+      });
+      ambientTransitionTimerRef.current = window.setTimeout(() => {
+        setAmbientTransition(null);
+        ambientTransitionTimerRef.current = undefined;
+      }, 920);
+    }
     setAmbientSkin(nextSkin);
     window.localStorage.setItem(ambientSkinStorageKey(storyPackage), nextSkin);
-    triggerAmbientFeedback("skin");
+    triggerAmbientFeedback("skin", nextSkin);
     setStatus("done");
     setStatusText(`背景已切换：${ambientSkinLabel(nextSkin)}`);
   }
@@ -1006,6 +1038,7 @@ export default function App({ storyPackage }: AppProps) {
     if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
     if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
     if (ambientFeedbackTimerRef.current) window.clearTimeout(ambientFeedbackTimerRef.current);
+    if (ambientTransitionTimerRef.current) window.clearTimeout(ambientTransitionTimerRef.current);
     if (promptSuggestionTimerRef.current) window.clearTimeout(promptSuggestionTimerRef.current);
     if (leftPanelScrollTimerRef.current) window.clearTimeout(leftPanelScrollTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -2387,7 +2420,7 @@ export default function App({ storyPackage }: AppProps) {
   const viralRoleChoices = useMemo(
     () => viralRoleOptions.map((option) => ({
       ...option,
-      avatarUrl: randomViralRoleAvatarUrl(option.id)
+      symbol: option.id === "male" ? "♂" : "♀"
     })),
     []
   );
@@ -2604,7 +2637,7 @@ export default function App({ storyPackage }: AppProps) {
       data-vibrant-palette="true"
       data-ambient-skin={ambientSkin}
     >
-      <AmbientLayer feedback={ambientFeedback} />
+      <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
       <header className="topbar motion-in">
         <div className="brand-block">
           <h1>{packageTitle(storyPackage)}</h1>
@@ -2660,7 +2693,7 @@ export default function App({ storyPackage }: AppProps) {
                       ))}
                     </div>
                   ) : (
-                    <div className="title-role-avatar-grid title-role-avatar-grid-two">
+                    <div className="title-role-avatar-grid title-role-avatar-grid-two title-role-symbol-grid">
                       {viralRoleChoices.map((option) => (
                         <button
                           key={option.id}
@@ -2669,7 +2702,7 @@ export default function App({ storyPackage }: AppProps) {
                           onClick={() => switchPresetRole({ viralRole: option.id })}
                           aria-pressed={activePresetRole.viralRole === option.id}
                         >
-                          {option.avatarUrl ? <img src={resolvePublicAssetPath(option.avatarUrl)} alt="" /> : <span className="title-role-avatar-fallback">{option.label.slice(0, 1)}</span>}
+                          <span className="title-role-symbol" aria-hidden="true">{option.symbol}</span>
                           <strong>{option.label}</strong>
                         </button>
                       ))}
@@ -2690,13 +2723,7 @@ export default function App({ storyPackage }: AppProps) {
                         aria-pressed={ambientSkin === skin.id}
                         onClick={() => selectAmbientSkin(skin.id)}
                       >
-                        <span className={`title-ambient-swatch title-ambient-swatch-${skin.id}`} aria-hidden="true">
-                          <i />
-                          <i />
-                          <i />
-                        </span>
                         <span>{skin.label}</span>
-                        <small>{skin.hint}</small>
                       </button>
                     ))}
                   </div>
