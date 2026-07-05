@@ -66,6 +66,13 @@ type PreviewTransition = {
   exiting: PreviewMode;
   id: number;
 };
+type AmbientSkinId = "brown" | "grid" | "nightmeadow";
+type AmbientFeedbackType = "idle" | "skin" | "queue" | "generating" | "story" | "preset" | "focus";
+type AmbientFeedback = {
+  id: number;
+  type: Exclude<AmbientFeedbackType, "idle">;
+  style: CSSProperties;
+};
 type PendingPromptCard = {
   id: string;
   prompt: string;
@@ -88,6 +95,39 @@ const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
 const generationProgressCap = 99;
 const generationProgressLoadingCap = 96;
+
+const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = [
+  { id: "brown", label: "棕砂", hint: "扫光" },
+  { id: "grid", label: "暗网格", hint: "移光" },
+  { id: "nightmeadow", label: "夜草地", hint: "流星" }
+];
+
+const defaultAmbientSkinByPackage: Record<StoryPackage, AmbientSkinId> = {
+  viral: "grid",
+  jojo: "grid"
+};
+
+const ambientParticles = Array.from({ length: 46 }, (_, index) => {
+  const x = (index * 37 + 9) % 100;
+  const y = (index * 53 + 17) % 100;
+  const size = 2 + ((index * 7) % 8);
+  const driftX = ((index % 9) - 4) * 12;
+  const driftY = -22 - ((index * 11) % 68);
+  const duration = 8.5 + ((index * 5) % 13) * 0.72;
+  const delay = -((index * 3) % 17) * 0.58;
+  return {
+    id: `ambient-particle-${index}`,
+    style: {
+      "--particle-x": `${x}%`,
+      "--particle-y": `${y}%`,
+      "--particle-size": `${size}px`,
+      "--particle-drift-x": `${driftX}px`,
+      "--particle-drift-y": `${driftY}px`,
+      "--particle-duration": `${duration}s`,
+      "--particle-delay": `${delay}s`
+    } as CSSProperties
+  };
+});
 
 const jojoGlassCardStyle: CSSProperties = {
   backdropFilter: "blur(24px) saturate(118%)",
@@ -135,6 +175,28 @@ function packageSwitchLink(packageId: StoryPackage) {
         href: import.meta.env.VITE_JOJO_APP_URL || defaultJojoAppUrl,
         label: "去钉钉版"
       };
+}
+
+function ambientSkinStorageKey(packageId: StoryPackage) {
+  return `ququ-ambient-skin-v2-${packageId}`;
+}
+
+function isAmbientSkinId(value: string | null): value is AmbientSkinId {
+  return ambientSkins.some((skin) => skin.id === value);
+}
+
+function readInitialAmbientSkin(packageId: StoryPackage) {
+  if (typeof window === "undefined") return defaultAmbientSkinByPackage[packageId];
+  const storedSkin = window.localStorage.getItem(ambientSkinStorageKey(packageId));
+  return isAmbientSkinId(storedSkin) ? storedSkin : defaultAmbientSkinByPackage[packageId];
+}
+
+function ambientSkinLabel(skinId: AmbientSkinId) {
+  return ambientSkins.find((skin) => skin.id === skinId)?.label ?? "背景";
+}
+
+function randomPercent(min: number, max: number) {
+  return min + Math.random() * (max - min);
 }
 
 function promptRiseAnimationMs(text: string) {
@@ -390,6 +452,40 @@ function PendingPromptCardView({
         )}
       </div>
     </article>
+  );
+}
+
+function AmbientLayer({ feedback }: { feedback: AmbientFeedback | null }) {
+  return (
+    <div className="ambient-layer" aria-hidden="true">
+      <div className="ambient-texture" />
+      <div className="ambient-lines" />
+      <div className="ambient-wash ambient-wash-primary" />
+      <div className="ambient-wash ambient-wash-secondary" />
+      <div className="ambient-wash ambient-wash-tertiary" />
+      <div className="ambient-ribbons" />
+      <div className="ambient-particle-field">
+        {ambientParticles.map((particle, index) => (
+          <span
+            key={particle.id}
+            className={`ambient-particle ambient-particle-${index % 3}`}
+            style={particle.style}
+          />
+        ))}
+      </div>
+      <div className="ambient-meteor-field">
+        <span className="ambient-meteor ambient-meteor-a" />
+        <span className="ambient-meteor ambient-meteor-b" />
+      </div>
+      {feedback ? (
+        <div key={feedback.id} className={`ambient-feedback-layer ambient-feedback-${feedback.type}`} style={feedback.style}>
+          <span className="ambient-feedback-meteor" />
+          <span className="ambient-feedback-grid-glow" />
+          <span className="ambient-feedback-brown-sweep" />
+        </div>
+      ) : null}
+      <div className="ambient-figure" />
+    </div>
   );
 }
 
@@ -716,6 +812,8 @@ export default function App({ storyPackage }: AppProps) {
   const [storyPanelOpen, setStoryPanelOpen] = useState(() => !shouldUseStoryModal());
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
+  const [ambientFeedback, setAmbientFeedback] = useState<AmbientFeedback | null>(null);
   const [promptSuggestionActive, setPromptSuggestionActive] = useState(false);
   const [promptSuggestionKey, setPromptSuggestionKey] = useState(0);
   const [deferredSuggestedPrompt, setDeferredSuggestedPrompt] = useState<string | null>(null);
@@ -747,6 +845,7 @@ export default function App({ storyPackage }: AppProps) {
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const revealTimerRef = useRef<number | undefined>(undefined);
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
+  const ambientFeedbackTimerRef = useRef<number | undefined>(undefined);
   const promptSuggestionTimerRef = useRef<number | undefined>(undefined);
   const leftPanelScrollTimerRef = useRef<number | undefined>(undefined);
   const toastTimerRef = useRef<number | undefined>(undefined);
@@ -848,6 +947,49 @@ export default function App({ storyPackage }: AppProps) {
     return roundedProgress;
   }
 
+  function triggerAmbientFeedback(type: AmbientFeedbackType) {
+    if (ambientFeedbackTimerRef.current) {
+      window.clearTimeout(ambientFeedbackTimerRef.current);
+      ambientFeedbackTimerRef.current = undefined;
+    }
+
+    if (type === "idle") {
+      setAmbientFeedback(null);
+      return;
+    }
+
+    const targetX = randomPercent(18, 82);
+    const targetY = randomPercent(16, type === "focus" ? 54 : 70);
+    const driftX = randomPercent(-24, 24);
+    const driftY = randomPercent(-16, 16);
+    const meteorAngle = randomPercent(-29, -17);
+    const nextFeedback: AmbientFeedback = {
+      id: Date.now(),
+      type,
+      style: {
+        "--feedback-x": `${targetX.toFixed(1)}%`,
+        "--feedback-y": `${targetY.toFixed(1)}%`,
+        "--feedback-dx": `${driftX.toFixed(1)}vw`,
+        "--feedback-dy": `${driftY.toFixed(1)}vh`,
+        "--feedback-angle": `${meteorAngle.toFixed(1)}deg`
+      } as CSSProperties
+    };
+
+    setAmbientFeedback(nextFeedback);
+    ambientFeedbackTimerRef.current = window.setTimeout(() => {
+      setAmbientFeedback(null);
+      ambientFeedbackTimerRef.current = undefined;
+    }, ambientSkin === "brown" ? 2600 : 1800);
+  }
+
+  function selectAmbientSkin(nextSkin: AmbientSkinId) {
+    setAmbientSkin(nextSkin);
+    window.localStorage.setItem(ambientSkinStorageKey(storyPackage), nextSkin);
+    triggerAmbientFeedback("skin");
+    setStatus("done");
+    setStatusText(`背景已切换：${ambientSkinLabel(nextSkin)}`);
+  }
+
   useEffect(() => {
     projectRef.current = project;
   }, [project]);
@@ -863,6 +1005,7 @@ export default function App({ storyPackage }: AppProps) {
   useEffect(() => () => {
     if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
     if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
+    if (ambientFeedbackTimerRef.current) window.clearTimeout(ambientFeedbackTimerRef.current);
     if (promptSuggestionTimerRef.current) window.clearTimeout(promptSuggestionTimerRef.current);
     if (leftPanelScrollTimerRef.current) window.clearTimeout(leftPanelScrollTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -1403,6 +1546,7 @@ export default function App({ storyPackage }: AppProps) {
     setStatus("done");
     setStatusText(statusText);
     showSuggestedPrompt(archive.nextPrompt);
+    triggerAmbientFeedback("preset");
     window.requestAnimationFrame(() => startMessageReveal(0, archive.project.messages.length));
   }
 
@@ -1459,6 +1603,7 @@ export default function App({ storyPackage }: AppProps) {
     setStatusText(options.queueWillContinue ? `${nextStatusText}，继续生成下一张...` : nextStatusText);
     if (!options.queueWillContinue && shouldUseStoryModal()) setStoryPanelOpenWithContinuity(false);
     startMessageReveal(previousCount, result.project.messages.length);
+    triggerAmbientFeedback("story");
   }
 
   function closeSettingsMenu() {
@@ -1552,6 +1697,7 @@ export default function App({ storyPackage }: AppProps) {
         setStatus("loading");
         setVideoProgress(0);
         startGenerationProgress(estimatedGenerationMs(projectSnapshot, storyPackage));
+        triggerAmbientFeedback("generating");
 
         try {
           const { result, statusText } = await generateStoryForPrompt({
@@ -1634,6 +1780,7 @@ export default function App({ storyPackage }: AppProps) {
     setFocusedPendingPromptCardId(cardId);
     setEditingPendingPromptCardId(null);
     setStatusText("已更新排队中的故事卡");
+    triggerAmbientFeedback("queue");
   }
 
   function selectPendingPromptCard(cardId: string, options: { focusElement?: boolean } = {}) {
@@ -1642,6 +1789,7 @@ export default function App({ storyPackage }: AppProps) {
     setFocusedPromptCardId(null);
     setFocusedPendingPromptCardId(cardId);
     setEditingPendingPromptCardId((current) => current && current !== cardId ? null : current);
+    triggerAmbientFeedback("focus");
     if (options.focusElement) {
       window.requestAnimationFrame(() => {
         const targetCardElement = rootRef.current?.querySelector<HTMLElement>(`[data-pending-prompt-card-id="${cardId}"]`);
@@ -1807,6 +1955,7 @@ export default function App({ storyPackage }: AppProps) {
       updateScrollTargetMessageId(null);
     }
     setStatusText(cardsAhead ? `已加入队列，前面还有 ${cardsAhead} 张` : "已加入队列，准备生成...");
+    triggerAmbientFeedback(card.status === "queued" ? "queue" : "generating");
   }
 
   function suggestPromptAfterCard(card: PromptCard, nextProject: DramaProject, nextPromptCards: PromptCard[]) {
@@ -2013,6 +2162,7 @@ export default function App({ storyPackage }: AppProps) {
     changePreviewMode("wechat");
     setStatus("done");
     setStatusText("已定位到这张故事卡的起始对话");
+    triggerAmbientFeedback("focus");
     if (options.focusButton) {
       window.requestAnimationFrame(() => {
         const targetCard = Array.from(rootRef.current?.querySelectorAll<HTMLElement>("[data-prompt-card-id]") || [])
@@ -2090,6 +2240,7 @@ export default function App({ storyPackage }: AppProps) {
       setVideoResult(null);
       setStatus("done");
       setStatusText(`已读档 ${archive.promptCards.length} 张故事卡`);
+      triggerAmbientFeedback("story");
     } catch (error) {
       handleError("读档", error);
     } finally {
@@ -2446,7 +2597,14 @@ export default function App({ storyPackage }: AppProps) {
   }, [draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, openPromptCardMenuId, pendingPromptCards, promptCards, promptSuggestionActive, status, suggestionDialogOpen]);
 
   return (
-    <div ref={rootRef} className={`app-shell dark ${storyPackage === "jojo" ? "app-shell-jojo" : ""}`} data-theme="dark" data-vibrant-palette="true">
+    <div
+      ref={rootRef}
+      className={`app-shell dark ${storyPackage === "jojo" ? "app-shell-jojo" : ""}`}
+      data-theme="dark"
+      data-vibrant-palette="true"
+      data-ambient-skin={ambientSkin}
+    >
+      <AmbientLayer feedback={ambientFeedback} />
       <header className="topbar motion-in">
         <div className="brand-block">
           <h1>{packageTitle(storyPackage)}</h1>
@@ -2517,6 +2675,31 @@ export default function App({ storyPackage }: AppProps) {
                       ))}
                     </div>
                   )}
+                </div>
+                <div className="title-menu-panel title-ambient-panel" role="group" aria-label="切换背景">
+                  <div className="title-menu-section-label">
+                    <Sparkles size={14} />
+                    <span>背景</span>
+                  </div>
+                  <div className="title-ambient-grid">
+                    {ambientSkins.map((skin) => (
+                      <button
+                        key={skin.id}
+                        className={ambientSkin === skin.id ? "title-ambient-option title-ambient-option-active" : "title-ambient-option"}
+                        type="button"
+                        aria-pressed={ambientSkin === skin.id}
+                        onClick={() => selectAmbientSkin(skin.id)}
+                      >
+                        <span className={`title-ambient-swatch title-ambient-swatch-${skin.id}`} aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                        <span>{skin.label}</span>
+                        <small>{skin.hint}</small>
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <a className="title-menu-item" role="menuitem" href={switchLink.href} target="_blank" rel="noreferrer" onClick={closeSettingsMenu}>
                   <ArrowUpRight size={16} />

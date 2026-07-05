@@ -58,6 +58,17 @@
   --board-grid-strong: rgba(118, 255, 172, 0.095);
   --board-fiber: rgba(255, 255, 255, 0.018);
   --board-vignette: rgba(0, 0, 0, 0.38);
+  --ambient-one: rgba(118, 255, 172, 0.22);
+  --ambient-two: rgba(105, 189, 255, 0.16);
+  --ambient-three: rgba(255, 255, 255, 0.12);
+  --ambient-particle: rgba(180, 255, 214, 0.82);
+  --ambient-particle-alt: rgba(122, 211, 255, 0.72);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.46);
+  --ambient-ribbon: rgba(112, 240, 170, 0.16);
+  --ambient-ribbon-alt: rgba(103, 185, 255, 0.12);
+  --ambient-feedback: rgba(112, 240, 170, 0.88);
+  --ambient-feedback-soft: rgba(112, 240, 170, 0.22);
+  --ambient-opacity: 0.9;
 }
 
 html,
@@ -236,6 +247,1817 @@ button[disabled],
   --board-vignette: rgba(0, 7, 20, 0.42);
 }
 
+.app-shell[data-ambient-skin="vaultline"] {
+  --board-base: #dff9fb;
+  --board-grid-fine: rgba(48, 188, 217, 0.05);
+  --board-grid-strong: rgba(48, 188, 217, 0.08);
+  --board-fiber: rgba(255, 255, 255, 0.04);
+  --board-vignette: rgba(9, 92, 114, 0.14);
+  --ambient-one: rgba(52, 218, 238, 0.32);
+  --ambient-two: rgba(255, 255, 255, 0.48);
+  --ambient-three: rgba(75, 163, 244, 0.22);
+  --ambient-particle: rgba(255, 255, 255, 0.86);
+  --ambient-particle-alt: rgba(55, 209, 234, 0.66);
+  --ambient-particle-soft: rgba(195, 249, 255, 0.72);
+  --ambient-ribbon: rgba(255, 255, 255, 0.34);
+  --ambient-ribbon-alt: rgba(72, 207, 235, 0.16);
+  --ambient-feedback: rgba(55, 209, 234, 0.92);
+  --ambient-feedback-soft: rgba(55, 209, 234, 0.24);
+  --ambient-opacity: 0.94;
+}
+
+.app-shell[data-ambient-skin="praha"] {
+  --board-base: #f3f3f1;
+  --board-grid-fine: rgba(0, 0, 0, 0.018);
+  --board-grid-strong: rgba(0, 0, 0, 0.035);
+  --board-fiber: rgba(0, 0, 0, 0.015);
+  --board-vignette: rgba(0, 0, 0, 0.12);
+  --ambient-one: rgba(255, 255, 255, 0.62);
+  --ambient-two: rgba(199, 255, 92, 0.12);
+  --ambient-three: rgba(0, 0, 0, 0.05);
+  --ambient-particle: rgba(168, 168, 168, 0.32);
+  --ambient-particle-alt: rgba(42, 42, 42, 0.16);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.72);
+  --ambient-ribbon: rgba(255, 255, 255, 0.3);
+  --ambient-ribbon-alt: rgba(60, 60, 60, 0.06);
+  --ambient-feedback: rgba(126, 224, 58, 0.88);
+  --ambient-feedback-soft: rgba(126, 224, 58, 0.18);
+  --ambient-opacity: 0.9;
+}
+
+.app-shell[data-ambient-skin="pricing"] {
+  --board-base: #050507;
+  --board-grid-fine: rgba(86, 120, 255, 0.03);
+  --board-grid-strong: rgba(86, 120, 255, 0.06);
+  --board-fiber: rgba(255, 255, 255, 0.014);
+  --board-vignette: rgba(0, 0, 0, 0.58);
+  --ambient-one: rgba(63, 77, 255, 0.36);
+  --ambient-two: rgba(127, 241, 255, 0.28);
+  --ambient-three: rgba(255, 255, 255, 0.04);
+  --ambient-particle: rgba(190, 210, 255, 0.68);
+  --ambient-particle-alt: rgba(97, 116, 255, 0.74);
+  --ambient-particle-soft: rgba(110, 247, 255, 0.58);
+  --ambient-ribbon: rgba(63, 77, 255, 0.2);
+  --ambient-ribbon-alt: rgba(91, 220, 255, 0.18);
+  --ambient-feedback: rgba(88, 103, 255, 0.95);
+  --ambient-feedback-soft: rgba(88, 103, 255, 0.25);
+  --ambient-opacity: 0.98;
+}
+
+.app-shell[data-ambient-skin="workflow"] {
+  --board-base: #f3f0f7;
+  --board-grid-fine: rgba(116, 105, 145, 0.035);
+  --board-grid-strong: rgba(116, 105, 145, 0.055);
+  --board-fiber: rgba(255, 255, 255, 0.03);
+  --board-vignette: rgba(48, 32, 70, 0.12);
+  --ambient-one: rgba(255, 181, 75, 0.28);
+  --ambient-two: rgba(129, 132, 255, 0.26);
+  --ambient-three: rgba(255, 255, 255, 0.36);
+  --ambient-particle: rgba(255, 255, 255, 0.76);
+  --ambient-particle-alt: rgba(255, 185, 82, 0.7);
+  --ambient-particle-soft: rgba(141, 143, 255, 0.58);
+  --ambient-ribbon: rgba(255, 255, 255, 0.33);
+  --ambient-ribbon-alt: rgba(178, 176, 255, 0.17);
+  --ambient-feedback: rgba(255, 185, 82, 0.9);
+  --ambient-feedback-soft: rgba(129, 132, 255, 0.22);
+  --ambient-opacity: 0.9;
+}
+
+.app-shell[data-ambient-skin="testimonial"] {
+  --board-base: #f4f4f2;
+  --board-grid-fine: rgba(0, 0, 0, 0.025);
+  --board-grid-strong: rgba(0, 0, 0, 0.045);
+  --board-fiber: rgba(0, 0, 0, 0.016);
+  --board-vignette: rgba(0, 0, 0, 0.12);
+  --ambient-one: rgba(255, 255, 255, 0.66);
+  --ambient-two: rgba(0, 0, 0, 0.06);
+  --ambient-three: rgba(255, 255, 255, 0.38);
+  --ambient-particle: rgba(40, 40, 40, 0.12);
+  --ambient-particle-alt: rgba(0, 172, 210, 0.2);
+  --ambient-particle-soft: rgba(255, 101, 89, 0.16);
+  --ambient-ribbon: rgba(0, 0, 0, 0.055);
+  --ambient-ribbon-alt: rgba(0, 0, 0, 0.035);
+  --ambient-feedback: rgba(36, 180, 211, 0.82);
+  --ambient-feedback-soft: rgba(36, 180, 211, 0.16);
+  --ambient-opacity: 0.86;
+}
+
+.app-shell[data-ambient-skin="flowercode"] {
+  --board-base: #f8e4fb;
+  --board-grid-fine: rgba(210, 82, 181, 0.035);
+  --board-grid-strong: rgba(210, 82, 181, 0.055);
+  --board-fiber: rgba(255, 255, 255, 0.025);
+  --board-vignette: rgba(146, 50, 130, 0.12);
+  --ambient-one: rgba(247, 128, 211, 0.24);
+  --ambient-two: rgba(255, 230, 108, 0.24);
+  --ambient-three: rgba(255, 255, 255, 0.5);
+  --ambient-particle: rgba(255, 255, 255, 0.84);
+  --ambient-particle-alt: rgba(236, 65, 162, 0.54);
+  --ambient-particle-soft: rgba(255, 232, 112, 0.58);
+  --ambient-ribbon: rgba(255, 255, 255, 0.32);
+  --ambient-ribbon-alt: rgba(236, 65, 162, 0.14);
+  --ambient-feedback: rgba(236, 65, 162, 0.92);
+  --ambient-feedback-soft: rgba(236, 65, 162, 0.22);
+  --ambient-opacity: 0.9;
+}
+
+.app-shell[data-ambient-skin="journey"] {
+  --board-base: #f7f7fb;
+  --board-grid-fine: rgba(168, 169, 224, 0.035);
+  --board-grid-strong: rgba(237, 126, 192, 0.052);
+  --board-fiber: rgba(255, 255, 255, 0.03);
+  --board-vignette: rgba(100, 86, 150, 0.1);
+  --ambient-one: rgba(255, 198, 142, 0.18);
+  --ambient-two: rgba(225, 101, 190, 0.16);
+  --ambient-three: rgba(145, 174, 255, 0.16);
+  --ambient-particle: rgba(255, 132, 188, 0.54);
+  --ambient-particle-alt: rgba(255, 178, 111, 0.58);
+  --ambient-particle-soft: rgba(156, 178, 255, 0.52);
+  --ambient-ribbon: rgba(255, 132, 188, 0.14);
+  --ambient-ribbon-alt: rgba(156, 178, 255, 0.14);
+  --ambient-feedback: rgba(255, 132, 188, 0.9);
+  --ambient-feedback-soft: rgba(255, 132, 188, 0.2);
+  --ambient-opacity: 0.9;
+}
+
+.app-shell[data-ambient-skin="sandglass"] {
+  --board-base: #cbb78f;
+  --board-grid-fine: rgba(87, 61, 23, 0.03);
+  --board-grid-strong: rgba(87, 61, 23, 0.05);
+  --board-fiber: rgba(84, 55, 18, 0.02);
+  --board-vignette: rgba(77, 50, 14, 0.22);
+  --ambient-one: rgba(255, 239, 196, 0.24);
+  --ambient-two: rgba(97, 64, 18, 0.14);
+  --ambient-three: rgba(255, 255, 255, 0.11);
+  --ambient-particle: rgba(255, 232, 181, 0.7);
+  --ambient-particle-alt: rgba(116, 83, 33, 0.34);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.3);
+  --ambient-ribbon: rgba(255, 239, 196, 0.12);
+  --ambient-ribbon-alt: rgba(92, 64, 22, 0.08);
+  --ambient-feedback: rgba(255, 232, 181, 0.88);
+  --ambient-feedback-soft: rgba(97, 64, 18, 0.18);
+  --ambient-opacity: 0.92;
+}
+
+.app-shell[data-ambient-skin="meadow"] {
+  --board-base: #edf7f2;
+  --board-grid-fine: rgba(81, 154, 45, 0.032);
+  --board-grid-strong: rgba(81, 154, 45, 0.055);
+  --board-fiber: rgba(255, 255, 255, 0.025);
+  --board-vignette: rgba(32, 92, 22, 0.15);
+  --ambient-one: rgba(169, 219, 103, 0.28);
+  --ambient-two: rgba(190, 228, 255, 0.38);
+  --ambient-three: rgba(255, 255, 255, 0.36);
+  --ambient-particle: rgba(255, 255, 255, 0.82);
+  --ambient-particle-alt: rgba(145, 202, 87, 0.58);
+  --ambient-particle-soft: rgba(255, 218, 235, 0.48);
+  --ambient-ribbon: rgba(145, 202, 87, 0.16);
+  --ambient-ribbon-alt: rgba(255, 255, 255, 0.2);
+  --ambient-feedback: rgba(126, 188, 65, 0.9);
+  --ambient-feedback-soft: rgba(126, 188, 65, 0.22);
+  --ambient-opacity: 0.94;
+}
+
+.app-shell[data-ambient-skin="waveform"] {
+  --board-base: #f3ebdf;
+  --board-grid-fine: rgba(255, 172, 39, 0.032);
+  --board-grid-strong: rgba(120, 120, 210, 0.052);
+  --board-fiber: rgba(255, 255, 255, 0.03);
+  --board-vignette: rgba(71, 50, 98, 0.1);
+  --ambient-one: rgba(255, 194, 83, 0.22);
+  --ambient-two: rgba(174, 166, 255, 0.22);
+  --ambient-three: rgba(255, 255, 255, 0.32);
+  --ambient-particle: rgba(255, 172, 39, 0.62);
+  --ambient-particle-alt: rgba(120, 112, 220, 0.38);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.62);
+  --ambient-ribbon: rgba(255, 172, 39, 0.26);
+  --ambient-ribbon-alt: rgba(255, 255, 255, 0.34);
+  --ambient-feedback: rgba(255, 172, 39, 0.9);
+  --ambient-feedback-soft: rgba(255, 172, 39, 0.2);
+  --ambient-opacity: 0.9;
+}
+
+.app-shell[data-ambient-feedback="skin"] {
+  --feedback-x: 18%;
+  --feedback-y: 76px;
+  --feedback-size: min(72vmin, 520px);
+}
+
+.app-shell[data-ambient-feedback="queue"] {
+  --feedback-x: 28%;
+  --feedback-y: 72%;
+  --feedback-size: min(64vmin, 440px);
+}
+
+.app-shell[data-ambient-feedback="generating"] {
+  --feedback-x: 28%;
+  --feedback-y: 64%;
+  --feedback-size: min(78vmin, 560px);
+}
+
+.app-shell[data-ambient-feedback="story"] {
+  --feedback-x: 58%;
+  --feedback-y: 48%;
+  --feedback-size: min(86vmin, 620px);
+}
+
+.app-shell[data-ambient-feedback="preset"] {
+  --feedback-x: 42%;
+  --feedback-y: 52%;
+  --feedback-size: min(92vmin, 660px);
+}
+
+.app-shell[data-ambient-feedback="focus"] {
+  --feedback-x: 70%;
+  --feedback-y: 46%;
+  --feedback-size: min(54vmin, 380px);
+}
+
+.ambient-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 24% 20%, var(--ambient-one), transparent 34%),
+    radial-gradient(circle at 78% 22%, var(--ambient-two), transparent 38%),
+    radial-gradient(circle at 50% 88%, var(--ambient-three), transparent 46%),
+    var(--board-base);
+  opacity: var(--ambient-opacity);
+}
+
+.ambient-layer::before,
+.ambient-layer::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.ambient-texture,
+.ambient-lines,
+.ambient-wash,
+.ambient-ribbons,
+.ambient-particle-field,
+.ambient-meteor-field,
+.ambient-figure,
+.ambient-feedback-layer,
+.ambient-feedback {
+  position: absolute;
+  inset: 0;
+}
+
+.ambient-texture {
+  opacity: 0.68;
+  mix-blend-mode: soft-light;
+}
+
+.ambient-lines {
+  overflow: hidden;
+  opacity: 0.62;
+  mix-blend-mode: screen;
+}
+
+.ambient-lines::before,
+.ambient-lines::after {
+  position: absolute;
+  display: none;
+  width: min(560px, 46vw);
+  color: rgba(255, 255, 255, 0.62);
+  content: "";
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.65;
+  opacity: 0.35;
+  filter: blur(1.2px);
+  white-space: normal;
+}
+
+.ambient-wash {
+  border-radius: 999px;
+  filter: blur(38px);
+  mix-blend-mode: screen;
+  opacity: 0.72;
+  will-change: transform, opacity;
+}
+
+.ambient-wash-primary {
+  width: 46vmax;
+  height: 46vmax;
+  top: -18vmax;
+  left: -10vmax;
+  background: radial-gradient(circle, var(--ambient-one), transparent 64%);
+  animation: ambient-wash-drift 18s ease-in-out infinite;
+}
+
+.ambient-wash-secondary {
+  right: -16vmax;
+  bottom: -22vmax;
+  width: 54vmax;
+  height: 54vmax;
+  background: radial-gradient(circle, var(--ambient-two), transparent 66%);
+  animation: ambient-wash-drift 21s ease-in-out -5s infinite reverse;
+}
+
+.ambient-wash-tertiary {
+  right: 18vw;
+  bottom: -20vmax;
+  width: 42vmax;
+  height: 38vmax;
+  background: radial-gradient(circle, var(--ambient-three), transparent 62%);
+  opacity: 0.58;
+  animation: ambient-wash-rise 24s ease-in-out -7s infinite;
+}
+
+.ambient-ribbons {
+  background:
+    linear-gradient(115deg, transparent 0 26%, var(--ambient-ribbon) 38%, transparent 50% 100%),
+    linear-gradient(64deg, transparent 0 48%, var(--ambient-ribbon-alt) 58%, transparent 72% 100%);
+  background-size: 160% 160%, 140% 140%;
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  animation: ambient-ribbon-slide 18s linear infinite;
+}
+
+.ambient-particle-field {
+  filter: saturate(115%);
+}
+
+.ambient-meteor-field {
+  display: none;
+  overflow: hidden;
+}
+
+.ambient-particle {
+  position: absolute;
+  left: var(--particle-x);
+  top: var(--particle-y);
+  width: var(--ambient-particle-width, var(--particle-size));
+  height: var(--ambient-particle-height, var(--particle-size));
+  border-radius: 999px;
+  background: var(--ambient-particle);
+  box-shadow: 0 0 18px var(--ambient-particle);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.74);
+  animation: ambient-particle-drift var(--particle-duration) linear var(--particle-delay) infinite;
+  will-change: transform, opacity;
+}
+
+.ambient-particle-1 {
+  background: var(--ambient-particle-alt);
+  box-shadow: 0 0 16px var(--ambient-particle-alt);
+}
+
+.ambient-particle-2 {
+  background: var(--ambient-particle-soft);
+  box-shadow: 0 0 14px var(--ambient-particle-soft);
+}
+
+.ambient-meteor {
+  position: absolute;
+  display: block;
+  width: 168px;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(197, 242, 255, 0.92), transparent);
+  opacity: 0;
+  transform: rotate(-22deg) translate3d(0, 0, 0);
+  filter: drop-shadow(0 0 8px rgba(119, 217, 255, 0.46));
+}
+
+.ambient-feedback-layer {
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-feedback-meteor,
+.ambient-feedback-grid-glow,
+.ambient-feedback-brown-sweep {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.ambient-feedback-meteor {
+  left: var(--feedback-x, 62%);
+  top: var(--feedback-y, 24%);
+  width: clamp(128px, 18vw, 224px);
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0, rgba(143, 229, 255, 0.22) 18%, rgba(224, 250, 255, 0.96) 56%, transparent 100%);
+  filter: drop-shadow(0 0 10px rgba(116, 219, 255, 0.54));
+  transform: rotate(var(--feedback-angle, -23deg)) translate3d(22vw, -8vh, 0);
+  will-change: transform, opacity;
+}
+
+.ambient-feedback-grid-glow {
+  left: var(--feedback-x, 50%);
+  top: var(--feedback-y, 68%);
+  width: min(44vmin, 360px);
+  height: min(44vmin, 360px);
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--ambient-feedback-soft) 0, rgba(7, 193, 96, 0.09) 28%, transparent 68%);
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  transform: translate(calc(-50% + var(--feedback-dx, 12vw)), calc(-50% + var(--feedback-dy, -6vh))) scale(0.68);
+  will-change: transform, opacity;
+}
+
+.ambient-feedback-brown-sweep {
+  top: -8vh;
+  left: -28vw;
+  width: 156vw;
+  height: 34vh;
+  background:
+    linear-gradient(102deg, transparent 0 22%, rgba(24, 12, 5, 0.2) 34%, rgba(255, 230, 184, 0.1) 48%, rgba(24, 12, 5, 0.16) 62%, transparent 80%),
+    linear-gradient(180deg, rgba(255, 233, 194, 0.08), rgba(26, 12, 5, 0.14) 72%, transparent 100%);
+  filter: blur(18px);
+  mix-blend-mode: multiply;
+  transform: translate3d(-28vw, 0, 0);
+  will-change: transform, opacity;
+}
+
+.ambient-figure {
+  opacity: 0.72;
+  mix-blend-mode: screen;
+  transform: translateZ(0);
+  animation: ambient-figure-drift 20s ease-in-out infinite;
+}
+
+.ambient-feedback {
+  inset: auto;
+  left: var(--feedback-x, 50%);
+  top: var(--feedback-y, 50%);
+  width: var(--feedback-size, min(78vmin, 560px));
+  height: var(--feedback-size, min(78vmin, 560px));
+  transform: translate(-50%, -50%);
+  mix-blend-mode: screen;
+}
+
+.ambient-feedback-ring,
+.ambient-feedback-glow,
+.ambient-feedback-spark {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ambient-feedback-ring {
+  inset: 12%;
+  border: 1px solid var(--ambient-feedback);
+  border-radius: 999px;
+  opacity: 0;
+  transform: scale(0.45);
+  animation: ambient-feedback-ring 1.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.ambient-feedback-glow {
+  inset: 22%;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--ambient-feedback-soft), transparent 68%);
+  filter: blur(20px);
+  opacity: 0;
+  animation: ambient-feedback-glow 1.2s ease-out both;
+}
+
+.ambient-feedback-spark {
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ambient-feedback);
+  box-shadow: 0 0 18px var(--ambient-feedback);
+  opacity: 0;
+  animation: ambient-feedback-spark 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.ambient-feedback-spark-a {
+  --spark-x: 120px;
+  --spark-y: -80px;
+}
+
+.ambient-feedback-spark-b {
+  --spark-x: -140px;
+  --spark-y: -34px;
+  animation-delay: 0.06s;
+}
+
+.ambient-feedback-spark-c {
+  --spark-x: 64px;
+  --spark-y: 116px;
+  animation-delay: 0.1s;
+}
+
+.ambient-feedback-generating .ambient-feedback-ring {
+  animation: ambient-feedback-ring 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both, ambient-feedback-breathe 0.72s ease-in-out 0.22s infinite;
+}
+
+.ambient-feedback-story .ambient-feedback-spark {
+  width: 9px;
+  height: 9px;
+  animation-duration: 1.28s;
+}
+
+.ambient-feedback-focus .ambient-feedback-ring {
+  inset: 24%;
+  animation-duration: 0.78s;
+}
+
+.ambient-feedback-queue .ambient-feedback-glow {
+  animation-duration: 1.42s;
+}
+
+.ambient-feedback-preset .ambient-feedback-ring {
+  inset: 6%;
+  border-style: dashed;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-texture {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.68) 0 1px, transparent 1.7px) 0 0 / 18px 18px,
+    radial-gradient(circle, rgba(45, 198, 229, 0.3) 0 1px, transparent 1.8px) 9px 9px / 18px 18px;
+  animation: ambient-dot-pan 18s linear infinite;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-lines {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 5px),
+    linear-gradient(90deg, transparent 0 62%, rgba(52, 218, 238, 0.32), transparent 92%);
+  opacity: 0.56;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-particle {
+  animation-name: ambient-dot-float;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-lines::before,
+.app-shell[data-ambient-skin="praha"] .ambient-lines::after {
+  display: block;
+  color: rgba(105, 105, 105, 0.32);
+  content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum tincidunt nulla, maecenas accumsan mattis neque, praesent tempor pretium ipsum. ";
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.7;
+  filter: blur(1.4px);
+  opacity: 0.36;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-lines::before {
+  top: 9%;
+  left: 9%;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-lines::after {
+  top: 11%;
+  right: 8%;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-figure {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(171, 255, 76, 0.18), transparent 18%),
+    radial-gradient(circle at 50% 54%, rgba(0, 0, 0, 0.08), transparent 28%);
+  filter: blur(8px);
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-particle {
+  animation-name: ambient-paper-dust;
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-texture {
+  background:
+    radial-gradient(circle, rgba(90, 111, 255, 0.42) 0 1px, transparent 1.6px) 0 0 / 15px 15px,
+    radial-gradient(circle, rgba(143, 246, 255, 0.24) 0 1px, transparent 1.6px) 7px 7px / 15px 15px;
+  mask-image: linear-gradient(180deg, transparent 0 42%, #000 70% 100%);
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-figure {
+  background:
+    radial-gradient(ellipse at 5% 100%, rgba(105, 242, 255, 0.56), transparent 36%),
+    radial-gradient(ellipse at 95% 100%, rgba(118, 248, 255, 0.5), transparent 34%),
+    radial-gradient(ellipse at 50% 100%, rgba(53, 63, 255, 0.46), transparent 46%);
+  opacity: 0.98;
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-particle {
+  animation-name: ambient-particle-twinkle;
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-lines {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.32) 0 1px, transparent 1px 72px),
+    linear-gradient(90deg, rgba(255, 180, 72, 0.18), transparent 34%, transparent 64%, rgba(135, 136, 255, 0.22));
+  opacity: 0.54;
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-figure {
+  background:
+    radial-gradient(circle at 8% 72%, rgba(255, 149, 38, 0.48), transparent 12%),
+    radial-gradient(circle at 92% 72%, rgba(128, 126, 255, 0.48), transparent 12%),
+    linear-gradient(180deg, transparent 0 58%, rgba(255, 255, 255, 0.36) 70%, transparent 100%);
+  filter: blur(3px);
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-particle {
+  animation-name: ambient-soft-spark;
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-texture {
+  background:
+    linear-gradient(90deg, transparent 0 3%, rgba(0, 0, 0, 0.06) 3.05% 3.12%, transparent 3.2% 96.8%, rgba(0, 0, 0, 0.06) 96.88% 96.95%, transparent 97%),
+    repeating-linear-gradient(135deg, transparent 0 4px, rgba(0, 0, 0, 0.045) 4px 5px, transparent 5px 9px);
+  opacity: 0.42;
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-lines {
+  background:
+    linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 100%);
+  background-size: 100% 38%, 9% 100%;
+  opacity: 0.3;
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-particle {
+  animation-name: ambient-paper-dust;
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-lines::before,
+.app-shell[data-ambient-skin="flowercode"] .ambient-lines::after {
+  display: block;
+  content: "display: grid; gap: clamp(1rem, 3vw, 4rem); const signal = await learn(patterns); if (deal.velocity > baseline) return insight;";
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 20px;
+  filter: blur(1.8px);
+  opacity: 0.44;
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-lines::before {
+  top: 18%;
+  left: -2%;
+  transform: rotate(-2deg);
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-lines::after {
+  top: 14%;
+  right: -1%;
+  transform: rotate(3deg);
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-figure {
+  background:
+    radial-gradient(ellipse at 13% 44%, rgba(255, 255, 255, 0.74), transparent 15%),
+    radial-gradient(ellipse at 20% 55%, rgba(255, 226, 82, 0.62), transparent 8%),
+    radial-gradient(ellipse at 82% 40%, rgba(255, 255, 255, 0.72), transparent 17%),
+    radial-gradient(ellipse at 75% 50%, rgba(255, 226, 82, 0.56), transparent 8%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent 64%);
+  filter: blur(8px);
+  opacity: 0.78;
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-particle {
+  animation-name: ambient-soft-spark;
+}
+
+.app-shell[data-ambient-skin="journey"] .ambient-texture {
+  background:
+    linear-gradient(90deg, rgba(157, 181, 255, 0.12) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(236, 123, 190, 0.11) 0 1px, transparent 1px 100%),
+    radial-gradient(circle, rgba(255, 135, 190, 0.22) 0 1px, transparent 1.8px) 0 0 / 16px 16px;
+  background-size: 76px 76px, 76px 76px, 16px 16px;
+  border-radius: 18px;
+  opacity: 0.34;
+  animation: ambient-grid-breathe 14s ease-in-out infinite;
+}
+
+.app-shell[data-ambient-skin="journey"] .ambient-particle {
+  animation-name: ambient-dot-float;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-texture {
+  background:
+    radial-gradient(circle, rgba(83, 58, 24, 0.18) 0 0.8px, transparent 1.4px) 0 0 / 9px 9px,
+    radial-gradient(circle, rgba(255, 245, 213, 0.18) 0 0.8px, transparent 1.4px) 3px 4px / 12px 12px,
+    repeating-linear-gradient(18deg, rgba(85, 56, 18, 0.04) 0 1px, transparent 1px 7px);
+  opacity: 0.72;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-lines {
+  background:
+    radial-gradient(ellipse at 50% 49%, transparent 0 4%, rgba(255, 255, 255, 0.28) 4.3% 4.8%, transparent 5.1%),
+    radial-gradient(ellipse at 50% 50%, rgba(95, 66, 24, 0.08), transparent 24%),
+    radial-gradient(ellipse at 32% 82%, rgba(82, 55, 21, 0.16), transparent 6%),
+    radial-gradient(ellipse at 25% 88%, rgba(82, 55, 21, 0.13), transparent 8%);
+  opacity: 0.58;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-particle {
+  animation-name: ambient-sand-fall;
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-figure {
+  background:
+    radial-gradient(ellipse at 20% 76%, rgba(101, 160, 64, 0.78), transparent 36%),
+    radial-gradient(ellipse at 68% 74%, rgba(136, 190, 86, 0.76), transparent 42%),
+    linear-gradient(180deg, transparent 0 50%, rgba(116, 177, 74, 0.62) 70%, rgba(84, 145, 55, 0.74) 100%);
+  opacity: 0.8;
+  filter: blur(2px);
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-texture {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.84) 0 1.5px, transparent 2.4px) 0 0 / 23px 23px,
+    radial-gradient(circle, rgba(255, 205, 227, 0.7) 0 1.4px, transparent 2.4px) 10px 12px / 31px 31px;
+  mask-image: linear-gradient(180deg, transparent 0 44%, #000 60% 100%);
+  opacity: 0.62;
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-particle {
+  animation-name: ambient-meadow-pollen;
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-ribbons {
+  background:
+    radial-gradient(ellipse at 50% 32%, rgba(255, 255, 255, 0.46), transparent 18%),
+    repeating-radial-gradient(ellipse at 50% 32%, transparent 0 36px, rgba(255, 255, 255, 0.22) 37px 39px, transparent 40px 74px),
+    linear-gradient(90deg, transparent 0 16%, rgba(255, 172, 39, 0.42) 22%, transparent 29% 71%, rgba(255, 172, 39, 0.42) 78%, transparent 84% 100%);
+  opacity: 0.72;
+  animation: ambient-wave-slide 8s ease-in-out infinite;
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-lines {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 28px, rgba(255, 255, 255, 0.38) 29px 31px, transparent 32px 56px);
+  mask-image: linear-gradient(180deg, transparent 0 20%, #000 24% 42%, transparent 48% 100%);
+  opacity: 0.55;
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-particle {
+  animation-name: ambient-wave-pulse;
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-feedback-ring,
+.app-shell[data-ambient-skin="waveform"] .ambient-feedback-ring {
+  border-radius: 18px;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-feedback-spark {
+  width: 3px;
+  height: 18px;
+  border-radius: 999px;
+  animation-name: ambient-sand-spark;
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-feedback-glow,
+.app-shell[data-ambient-skin="flowercode"] .ambient-feedback-glow,
+.app-shell[data-ambient-skin="waveform"] .ambient-feedback-glow {
+  filter: blur(28px);
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-feedback-spark {
+  width: 4px;
+  height: 34px;
+  border-radius: 999px;
+  animation-name: ambient-wave-spark;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-feedback-ring,
+.app-shell[data-ambient-skin="journey"] .ambient-feedback-ring {
+  box-shadow: inset 0 0 28px var(--ambient-feedback-soft), 0 0 18px var(--ambient-feedback-soft);
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-feedback-spark {
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.7), 0 0 22px var(--ambient-feedback);
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-layer {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0 18%, rgba(224, 250, 252, 0.72) 44%, rgba(173, 238, 247, 0.74) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(210, 246, 252, 0.72) 54%, rgba(180, 232, 255, 0.66));
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-layer::before {
+  background:
+    radial-gradient(ellipse at 86% 26%, rgba(68, 214, 234, 0.28), transparent 32%),
+    radial-gradient(ellipse at 50% 100%, rgba(38, 154, 255, 0.16), transparent 42%);
+  animation: ambient-surface-breathe 16s ease-in-out infinite;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-layer::after {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.96) 0 1px, transparent 1.75px) 0 0 / 16px 16px,
+    radial-gradient(circle, rgba(35, 188, 223, 0.36) 0 1px, transparent 1.8px) 8px 8px / 16px 16px;
+  opacity: 0.58;
+  animation: ambient-dot-grid-pan 26s linear infinite;
+  mask-image: linear-gradient(90deg, transparent 0 8%, #000 32% 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0 8%, #000 32% 100%);
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-wash {
+  opacity: 0.18;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-ribbons {
+  background: linear-gradient(180deg, transparent 0 64%, rgba(36, 170, 221, 0.12), transparent 100%);
+  opacity: 0.42;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .ambient-particle-field {
+  opacity: 0.14;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-layer {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.94), rgba(244, 244, 242, 0.92)),
+    #f3f3f1;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-layer::before {
+  background:
+    radial-gradient(ellipse at 50% 52%, rgba(118, 218, 64, 0.18), transparent 17%),
+    radial-gradient(ellipse at 50% 54%, rgba(8, 15, 18, 0.07), transparent 28%);
+  filter: blur(18px);
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-layer::after {
+  background:
+    linear-gradient(90deg, transparent 0 34%, rgba(255, 255, 255, 0.5) 44% 58%, transparent 68% 100%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.54), transparent 34%);
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-wash,
+.app-shell[data-ambient-skin="praha"] .ambient-ribbons {
+  opacity: 0.08;
+}
+
+.app-shell[data-ambient-skin="praha"] .ambient-particle-field {
+  opacity: 0.1;
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 8% 100%, rgba(67, 202, 255, 0.54), transparent 28%),
+    radial-gradient(ellipse at 92% 100%, rgba(71, 214, 255, 0.48), transparent 28%),
+    radial-gradient(ellipse at 50% 100%, rgba(43, 64, 255, 0.38), transparent 42%),
+    linear-gradient(180deg, #050507 0 58%, #070911 78%, #0b102a 100%);
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-layer::before {
+  background:
+    radial-gradient(circle, rgba(121, 152, 255, 0.45) 0 1px, transparent 1.8px) 0 0 / 14px 14px,
+    radial-gradient(circle, rgba(91, 232, 255, 0.22) 0 1px, transparent 1.8px) 7px 7px / 14px 14px;
+  opacity: 0.62;
+  animation: ambient-dot-grid-pan 34s linear infinite;
+  mask-image: linear-gradient(180deg, transparent 0 47%, #000 70% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 47%, #000 70% 100%);
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-layer::after {
+  background:
+    linear-gradient(180deg, transparent 0 62%, rgba(4, 8, 24, 0.06) 72%, rgba(170, 240, 255, 0.16) 100%),
+    linear-gradient(90deg, transparent 0 18%, rgba(65, 94, 255, 0.16), transparent 39% 61%, rgba(73, 221, 255, 0.14), transparent 82% 100%);
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-wash {
+  opacity: 0;
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-ribbons {
+  background:
+    linear-gradient(180deg, transparent 0 72%, rgba(63, 77, 255, 0.18) 84%, transparent 100%),
+    repeating-linear-gradient(90deg, transparent 0 22px, rgba(92, 216, 255, 0.08) 23px 24px, transparent 25px 46px);
+  opacity: 0.46;
+  mask-image: linear-gradient(180deg, transparent 0 58%, #000 76% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 58%, #000 76% 100%);
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-figure {
+  background:
+    radial-gradient(ellipse at 12% 100%, rgba(101, 225, 255, 0.68), transparent 24%),
+    radial-gradient(ellipse at 88% 100%, rgba(122, 240, 255, 0.58), transparent 24%),
+    radial-gradient(ellipse at 50% 100%, rgba(63, 77, 255, 0.36), transparent 38%);
+  filter: blur(2px);
+}
+
+.app-shell[data-ambient-skin="pricing"] .ambient-particle-field {
+  opacity: 0.34;
+  mask-image: linear-gradient(180deg, transparent 0 54%, #000 74% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 54%, #000 74% 100%);
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 0% 78%, rgba(255, 155, 52, 0.38), transparent 24%),
+    radial-gradient(ellipse at 100% 78%, rgba(71, 117, 255, 0.34), transparent 26%),
+    linear-gradient(90deg, rgba(248, 246, 232, 0.92), rgba(239, 245, 249, 0.9) 48%, rgba(235, 238, 255, 0.9));
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-layer::before {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 68px);
+  opacity: 0.8;
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-layer::after {
+  background:
+    linear-gradient(180deg, transparent 0 56%, rgba(255, 255, 255, 0.54) 70%, transparent 100%),
+    radial-gradient(circle at 8% 73%, rgba(255, 155, 52, 0.34), transparent 11%),
+    radial-gradient(circle at 92% 73%, rgba(71, 117, 255, 0.28), transparent 11%);
+  filter: blur(2px);
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-wash {
+  opacity: 0.12;
+}
+
+.app-shell[data-ambient-skin="workflow"] .ambient-particle-field {
+  opacity: 0.16;
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-layer {
+  background:
+    linear-gradient(90deg, transparent 0 6.2%, rgba(245, 245, 245, 0.88) 6.2% 8.8%, transparent 8.8% 91.2%, rgba(245, 245, 245, 0.88) 91.2% 93.8%, transparent 93.8% 100%),
+    linear-gradient(180deg, rgba(250, 250, 249, 0.96), rgba(242, 242, 240, 0.94)),
+    #f4f4f2;
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-layer::before {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 5px, rgba(0, 0, 0, 0.045) 5px 6px, transparent 6px 10px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.075) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.055) 0 1px, transparent 1px 100%);
+  background-size: auto, 72px 100%, 100% 34%;
+  opacity: 0.36;
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-layer::after {
+  background:
+    radial-gradient(ellipse at 24% 10%, rgba(0, 0, 0, 0.06), transparent 18%),
+    radial-gradient(ellipse at 76% 10%, rgba(0, 0, 0, 0.05), transparent 20%);
+  filter: blur(8px);
+}
+
+.app-shell[data-ambient-skin="testimonial"] .ambient-wash,
+.app-shell[data-ambient-skin="testimonial"] .ambient-ribbons,
+.app-shell[data-ambient-skin="testimonial"] .ambient-particle-field {
+  opacity: 0.08;
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 16% 50%, rgba(255, 255, 255, 0.55), transparent 28%),
+    radial-gradient(ellipse at 84% 48%, rgba(255, 255, 255, 0.48), transparent 30%),
+    linear-gradient(180deg, rgba(250, 225, 255, 0.96) 0, rgba(255, 242, 254, 0.9) 54%, rgba(255, 255, 255, 0.9) 100%);
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-layer::before {
+  background:
+    radial-gradient(ellipse at 8% 44%, rgba(255, 255, 255, 0.74), transparent 14%),
+    radial-gradient(ellipse at 18% 53%, rgba(255, 223, 82, 0.52), transparent 8%),
+    radial-gradient(ellipse at 86% 38%, rgba(255, 255, 255, 0.72), transparent 16%),
+    radial-gradient(ellipse at 76% 48%, rgba(255, 223, 82, 0.46), transparent 8%);
+  filter: blur(10px);
+  animation: ambient-surface-breathe 18s ease-in-out infinite;
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-layer::after {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.32), transparent 24% 76%, rgba(255, 255, 255, 0.28)),
+    radial-gradient(ellipse at 50% 58%, rgba(7, 193, 96, 0.07), transparent 22%),
+    radial-gradient(ellipse at 50% 54%, rgba(22, 119, 255, 0.06), transparent 32%);
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-wash {
+  opacity: 0.06;
+}
+
+.app-shell[data-ambient-skin="flowercode"] .ambient-particle-field {
+  opacity: 0.1;
+}
+
+.app-shell[data-ambient-skin="journey"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(22, 119, 255, 0.11), transparent 26%),
+    radial-gradient(ellipse at 100% 0%, rgba(7, 193, 96, 0.09), transparent 28%),
+    radial-gradient(ellipse at 50% 4%, rgba(255, 132, 188, 0.15), transparent 38%),
+    linear-gradient(180deg, #fbfbff 0, #f8fbfa 62%, #ffffff 100%);
+}
+
+.app-shell[data-ambient-skin="journey"] .ambient-layer::before {
+  background:
+    linear-gradient(90deg, rgba(145, 174, 255, 0.16) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(236, 123, 190, 0.12) 0 1px, transparent 1px 100%);
+  background-size: 76px 76px;
+  opacity: 0.45;
+  mask-image: linear-gradient(90deg, #000 0 16%, transparent 32% 68%, #000 84% 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0 16%, transparent 32% 68%, #000 84% 100%);
+}
+
+.app-shell[data-ambient-skin="journey"] .ambient-layer::after {
+  background:
+    radial-gradient(circle, rgba(255, 132, 188, 0.17) 0 1px, transparent 1.8px) 0 0 / 16px 16px,
+    linear-gradient(180deg, transparent 0 72%, rgba(7, 193, 96, 0.05), transparent 100%);
+  opacity: 0.28;
+}
+
+.app-shell[data-ambient-skin="journey"] .ambient-wash,
+.app-shell[data-ambient-skin="journey"] .ambient-ribbons,
+.app-shell[data-ambient-skin="journey"] .ambient-particle-field {
+  opacity: 0.08;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-layer {
+  background:
+    linear-gradient(180deg, rgba(241, 225, 181, 0.2), rgba(95, 67, 24, 0.12)),
+    radial-gradient(ellipse at 50% 53%, rgba(255, 247, 220, 0.36), transparent 25%),
+    #cbb78f;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-layer::before {
+  background:
+    radial-gradient(ellipse at 28% 78%, rgba(76, 55, 24, 0.14), transparent 7%),
+    radial-gradient(ellipse at 22% 86%, rgba(76, 55, 24, 0.12), transparent 8%),
+    radial-gradient(circle, rgba(255, 245, 213, 0.12) 0 0.8px, transparent 1.5px) 0 0 / 12px 12px;
+  opacity: 0.56;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-layer::after {
+  background: radial-gradient(ellipse at 50% 50%, transparent 0 5%, rgba(255, 255, 255, 0.24) 5.2% 5.8%, transparent 6.2%);
+  opacity: 0.28;
+  filter: blur(1px);
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-wash,
+.app-shell[data-ambient-skin="sandglass"] .ambient-ribbons {
+  opacity: 0.05;
+}
+
+.app-shell[data-ambient-skin="sandglass"] .ambient-particle-field {
+  opacity: 0.2;
+  mask-image: linear-gradient(180deg, #000 0 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 100%);
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-layer {
+  background:
+    linear-gradient(180deg, rgba(246, 253, 255, 0.5) 0, rgba(246, 253, 255, 0.28) 42%, rgba(6, 52, 28, 0.1) 100%),
+    #edf7f2;
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-layer::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0 21%, rgba(255, 255, 255, 0.16) 48%, rgba(7, 193, 96, 0.04) 100%),
+    radial-gradient(ellipse at 50% 50%, rgba(22, 119, 255, 0.07), transparent 42%);
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-layer::after {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.86) 0 1.4px, transparent 2.4px) 0 0 / 24px 24px,
+    radial-gradient(circle, rgba(255, 255, 255, 0.72) 0 1px, transparent 2px) 10px 12px / 31px 31px;
+  opacity: 0.36;
+  animation: ambient-dot-grid-pan 38s linear infinite;
+  mask-image: linear-gradient(180deg, transparent 0 54%, #000 68% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 54%, #000 68% 100%);
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-wash,
+.app-shell[data-ambient-skin="meadow"] .ambient-ribbons {
+  opacity: 0.04;
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-figure {
+  background: linear-gradient(180deg, transparent 0 64%, rgba(255, 255, 255, 0.24) 86%, rgba(255, 255, 255, 0.38) 100%);
+  filter: none;
+  opacity: 0.5;
+}
+
+.app-shell[data-ambient-skin="meadow"] .ambient-particle-field {
+  opacity: 0.18;
+  mask-image: linear-gradient(180deg, transparent 0 52%, #000 72% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 52%, #000 72% 100%);
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(255, 255, 255, 0.42), transparent 26%),
+    linear-gradient(90deg, rgba(246, 239, 213, 0.8), rgba(241, 248, 250, 0.9) 46%, rgba(234, 236, 255, 0.92)),
+    #f3ebdf;
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-layer::before {
+  background:
+    repeating-radial-gradient(ellipse at 50% 34%, transparent 0 34px, rgba(255, 255, 255, 0.5) 35px 37px, transparent 38px 72px),
+    linear-gradient(90deg, transparent 0 18%, rgba(22, 119, 255, 0.25) 23%, transparent 31% 69%, rgba(7, 193, 96, 0.2) 77%, transparent 84% 100%);
+  opacity: 0.58;
+  animation: ambient-wave-slide 8s ease-in-out infinite;
+  mask-image: linear-gradient(180deg, transparent 0 16%, #000 24% 46%, transparent 56% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 16%, #000 24% 46%, transparent 56% 100%);
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-layer::after {
+  background:
+    linear-gradient(90deg, transparent 0 16%, rgba(22, 119, 255, 0.34) 21%, transparent 28% 72%, rgba(7, 193, 96, 0.28) 79%, transparent 84% 100%),
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.66), transparent 7%);
+  opacity: 0.38;
+  filter: blur(4px);
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-wash {
+  opacity: 0.07;
+}
+
+.app-shell[data-ambient-skin="waveform"] .ambient-particle-field {
+  opacity: 0.1;
+}
+
+.app-shell[data-ambient-skin="brown"] {
+  --board-base: #4a321f;
+  --board-grid-fine: rgba(255, 229, 190, 0.035);
+  --board-grid-strong: rgba(255, 229, 190, 0.055);
+  --board-fiber: rgba(255, 255, 255, 0.018);
+  --board-vignette: rgba(22, 12, 6, 0.42);
+  --ambient-one: rgba(214, 158, 88, 0.14);
+  --ambient-two: rgba(7, 193, 96, 0.08);
+  --ambient-three: rgba(22, 119, 255, 0.05);
+  --ambient-particle: rgba(255, 230, 185, 0.36);
+  --ambient-particle-alt: rgba(92, 58, 31, 0.42);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.18);
+  --ambient-ribbon: rgba(255, 226, 180, 0.07);
+  --ambient-ribbon-alt: rgba(24, 13, 7, 0.08);
+  --ambient-feedback: rgba(235, 177, 96, 0.88);
+  --ambient-feedback-soft: rgba(235, 177, 96, 0.18);
+  --ambient-opacity: 0.95;
+}
+
+.app-shell[data-ambient-skin="grid"] {
+  --board-base: #030813;
+  --board-grid-fine: rgba(54, 177, 255, 0.055);
+  --board-grid-strong: rgba(7, 193, 96, 0.085);
+  --board-fiber: rgba(255, 255, 255, 0.012);
+  --board-vignette: rgba(0, 0, 0, 0.6);
+  --ambient-one: rgba(22, 119, 255, 0.2);
+  --ambient-two: rgba(7, 193, 96, 0.18);
+  --ambient-three: rgba(82, 231, 255, 0.16);
+  --ambient-particle: rgba(0, 8, 16, 0.64);
+  --ambient-particle-alt: rgba(0, 22, 18, 0.5);
+  --ambient-particle-soft: rgba(0, 6, 12, 0.38);
+  --ambient-ribbon: rgba(22, 119, 255, 0.1);
+  --ambient-ribbon-alt: rgba(7, 193, 96, 0.1);
+  --ambient-feedback: rgba(67, 180, 255, 0.95);
+  --ambient-feedback-soft: rgba(7, 193, 96, 0.18);
+  --ambient-opacity: 0.97;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] {
+  --board-base: #03111d;
+  --board-grid-fine: rgba(7, 193, 96, 0.035);
+  --board-grid-strong: rgba(22, 119, 255, 0.055);
+  --board-fiber: rgba(255, 255, 255, 0.012);
+  --board-vignette: rgba(0, 0, 0, 0.56);
+  --ambient-one: rgba(7, 193, 96, 0.18);
+  --ambient-two: rgba(22, 119, 255, 0.24);
+  --ambient-three: rgba(118, 236, 255, 0.14);
+  --ambient-particle: rgba(172, 240, 255, 0.58);
+  --ambient-particle-alt: rgba(7, 193, 96, 0.42);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.34);
+  --ambient-ribbon: rgba(7, 193, 96, 0.08);
+  --ambient-ribbon-alt: rgba(22, 119, 255, 0.1);
+  --ambient-feedback: rgba(126, 230, 255, 0.92);
+  --ambient-feedback-soft: rgba(7, 193, 96, 0.18);
+  --ambient-opacity: 0.98;
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 52% 42%, rgba(204, 149, 83, 0.18), transparent 34%),
+    radial-gradient(ellipse at 16% 95%, rgba(30, 16, 8, 0.22), transparent 28%),
+    linear-gradient(145deg, #664528 0, #4e341f 44%, #3d2819 100%);
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-layer::before {
+  background:
+    url("/ambient/brown-grain.svg") 0 0 / 128px 128px repeat,
+    repeating-linear-gradient(22deg, transparent 0 6px, rgba(255, 255, 255, 0.018) 6px 7px, transparent 7px 13px);
+  opacity: 0.58;
+  animation: ambient-material-grain 22s steps(3, end) infinite;
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-layer::after {
+  background:
+    linear-gradient(90deg, rgba(255, 230, 184, 0.06), transparent 18% 82%, rgba(24, 12, 6, 0.14)),
+    radial-gradient(ellipse at 50% 50%, transparent 0 56%, rgba(20, 10, 5, 0.22) 100%);
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-wash,
+.app-shell[data-ambient-skin="brown"] .ambient-ribbons {
+  opacity: 0.04;
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-particle-field {
+  opacity: 0.16;
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-particle {
+  width: 1.4px;
+  height: 1.4px;
+  box-shadow: none;
+  animation-name: ambient-brown-grain;
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(7, 193, 96, 0.24), transparent 42%),
+    radial-gradient(ellipse at 50% 48%, rgba(7, 193, 96, 0.05), transparent 54%),
+    linear-gradient(180deg, #050b16 0, #07111b 58%, #07181b 100%);
+}
+
+.app-shell-jojo[data-ambient-skin="grid"] .ambient-layer {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(22, 119, 255, 0.26), transparent 42%),
+    radial-gradient(ellipse at 50% 48%, rgba(22, 119, 255, 0.06), transparent 54%),
+    linear-gradient(180deg, #050b16 0, #07111b 58%, #07131d 100%);
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-layer::before {
+  background:
+    linear-gradient(90deg, rgba(7, 193, 96, 0.08) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(7, 193, 96, 0.06) 0 1px, transparent 1px 100%);
+  background-size: 42px 42px;
+  opacity: 0.34;
+  mask-image: radial-gradient(ellipse at 50% 54%, #000 0 58%, transparent 86%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 54%, #000 0 58%, transparent 86%);
+}
+
+.app-shell-jojo[data-ambient-skin="grid"] .ambient-layer::before {
+  background:
+    linear-gradient(90deg, rgba(22, 119, 255, 0.09) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(22, 119, 255, 0.065) 0 1px, transparent 1px 100%);
+  background-size: 42px 42px;
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-layer::after {
+  background:
+    linear-gradient(180deg, transparent 0 66%, rgba(7, 193, 96, 0.12), transparent 100%),
+    radial-gradient(ellipse at 50% 82%, rgba(7, 193, 96, 0.18), transparent 48%);
+  opacity: 0.68;
+}
+
+.app-shell-jojo[data-ambient-skin="grid"] .ambient-layer::after {
+  background:
+    linear-gradient(180deg, transparent 0 66%, rgba(22, 119, 255, 0.14), transparent 100%),
+    radial-gradient(ellipse at 50% 82%, rgba(22, 119, 255, 0.2), transparent 48%);
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-wash {
+  opacity: 0.06;
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-ribbons {
+  background:
+    linear-gradient(180deg, transparent 0 70%, rgba(7, 193, 96, 0.14), transparent 100%);
+  opacity: 0.28;
+}
+
+.app-shell-jojo[data-ambient-skin="grid"] .ambient-ribbons {
+  background:
+    linear-gradient(180deg, transparent 0 70%, rgba(22, 119, 255, 0.16), transparent 100%);
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-particle-field {
+  opacity: 0;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer {
+  background:
+    linear-gradient(180deg, rgba(2, 8, 15, 0.18) 0, rgba(2, 8, 15, 0.1) 42%, rgba(3, 17, 29, 0.16) 100%),
+    url("/ambient/night-meadow.webp") center / cover no-repeat,
+    #03111d;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::before {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0, transparent 34%, rgba(0, 0, 0, 0.14) 100%),
+    radial-gradient(ellipse at 50% 50%, rgba(22, 119, 255, 0.08), transparent 42%);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::after {
+  background:
+    radial-gradient(ellipse at 52% 54%, rgba(42, 135, 214, 0.11), transparent 38%),
+    linear-gradient(180deg, rgba(1, 8, 15, 0.08) 0, transparent 48%, rgba(0, 0, 0, 0.18) 100%);
+  opacity: 0.68;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-wash,
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-ribbons {
+  opacity: 0.05;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-figure {
+  background: linear-gradient(180deg, transparent 0 64%, rgba(0, 0, 0, 0.12) 100%);
+  filter: none;
+  opacity: 0.48;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-particle-field {
+  opacity: 1;
+  mask-image: linear-gradient(180deg, #000 0 54%, transparent 72% 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 54%, transparent 72% 100%);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-particle {
+  width: calc(var(--particle-size) * 0.28);
+  height: calc(var(--particle-size) * 0.28);
+  min-width: 1px;
+  min-height: 1px;
+  background: rgba(190, 239, 255, 0.86);
+  box-shadow: 0 0 8px rgba(139, 219, 255, 0.58);
+  opacity: 0;
+  animation-name: ambient-star-twinkle;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-particle-1 {
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.44);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-particle-2 {
+  background: rgba(120, 214, 255, 0.72);
+  box-shadow: 0 0 8px rgba(120, 214, 255, 0.42);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-meteor-field {
+  display: block;
+  mask-image: linear-gradient(180deg, #000 0 48%, transparent 66% 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 48%, transparent 66% 100%);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-meteor-a {
+  left: 68%;
+  top: 18%;
+  animation: ambient-meteor-fall 11s linear 2.2s infinite;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-meteor-b {
+  left: 32%;
+  top: 26%;
+  width: 120px;
+  animation: ambient-meteor-fall 15s linear 8.5s infinite;
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-feedback-layer,
+.app-shell[data-ambient-skin="grid"] .ambient-feedback-layer,
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-layer {
+  display: block;
+}
+
+.app-shell[data-ambient-skin="brown"] .ambient-feedback-brown-sweep {
+  animation: ambient-feedback-brown-sweep 2.45s cubic-bezier(0.2, 0.72, 0.18, 1) both;
+}
+
+.app-shell[data-ambient-skin="grid"] .ambient-feedback-grid-glow {
+  animation: ambient-feedback-grid-shift 1.42s cubic-bezier(0.2, 0.82, 0.2, 1) both;
+}
+
+.app-shell-jojo[data-ambient-skin="grid"] .ambient-feedback-grid-glow {
+  background: radial-gradient(circle, rgba(22, 119, 255, 0.22) 0, rgba(22, 119, 255, 0.1) 28%, transparent 68%);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-layer {
+  mask-image: linear-gradient(180deg, #000 0 50%, transparent 72% 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 50%, transparent 72% 100%);
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-meteor {
+  animation: ambient-feedback-meteor 1.5s cubic-bezier(0.18, 0.86, 0.18, 1) both;
+}
+
+@keyframes ambient-surface-breathe {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.98;
+    transform: scale(1.018);
+  }
+}
+
+@keyframes ambient-dot-grid-pan {
+  from {
+    background-position: 0 0, 8px 8px, 0 0;
+  }
+  to {
+    background-position: 32px 24px, 40px 32px, 0 0;
+  }
+}
+
+@keyframes ambient-material-grain {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  33% {
+    transform: translate3d(1px, -1px, 0);
+  }
+  66% {
+    transform: translate3d(-1px, 1px, 0);
+  }
+}
+
+@keyframes ambient-brown-grain {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  45% {
+    opacity: 0.34;
+    transform: translate3d(3px, 6px, 0);
+  }
+}
+
+@keyframes ambient-star-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: translate3d(0, 0, 0) scale(0.72);
+  }
+  18% {
+    opacity: 0.86;
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  34% {
+    opacity: 0.22;
+    transform: translate3d(0, 0, 0) scale(0.82);
+  }
+  62% {
+    opacity: 0.68;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ambient-meteor-fall {
+  0%,
+  72% {
+    opacity: 0;
+    transform: rotate(-22deg) translate3d(0, 0, 0);
+  }
+  76% {
+    opacity: 0.88;
+  }
+  86% {
+    opacity: 0;
+    transform: rotate(-22deg) translate3d(-36vw, 18vh, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-22deg) translate3d(-36vw, 18vh, 0);
+  }
+}
+
+@keyframes ambient-feedback-meteor {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--feedback-angle, -23deg)) translate3d(18vw, -8vh, 0);
+  }
+  12% {
+    opacity: 0.92;
+  }
+  84%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--feedback-angle, -23deg)) translate3d(-42vw, 20vh, 0);
+  }
+}
+
+@keyframes ambient-feedback-grid-shift {
+  0% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--feedback-dx, 12vw)), calc(-50% + var(--feedback-dy, -6vh))) scale(0.58);
+  }
+  34% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
+
+@keyframes ambient-feedback-brown-sweep {
+  0% {
+    opacity: 0;
+    transform: translate3d(-32vw, -2vh, 0);
+  }
+  22% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(30vw, 4vh, 0);
+  }
+}
+
+@keyframes ambient-wash-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(5vw, 4vh, 0) scale(1.08);
+  }
+}
+
+@keyframes ambient-wash-rise {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.46;
+  }
+  50% {
+    transform: translate3d(-3vw, -5vh, 0) scale(1.08);
+    opacity: 0.68;
+  }
+}
+
+@keyframes ambient-ribbon-slide {
+  from {
+    background-position: 0% 50%, 100% 50%;
+  }
+  to {
+    background-position: 100% 50%, 0% 50%;
+  }
+}
+
+@keyframes ambient-figure-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -1.6vh, 0) scale(1.015);
+  }
+}
+
+@keyframes ambient-dot-pan {
+  from {
+    background-position: 0 0, 9px 9px;
+  }
+  to {
+    background-position: 36px 28px, 45px 37px;
+  }
+}
+
+@keyframes ambient-particle-drift {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.62);
+  }
+  16%,
+  72% {
+    opacity: 0.76;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--particle-drift-x), var(--particle-drift-y), 0) scale(1.05);
+  }
+}
+
+@keyframes ambient-dot-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.65);
+  }
+  20%,
+  76% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--particle-drift-x), var(--particle-drift-y), 0) scale(1.08);
+  }
+}
+
+@keyframes ambient-particle-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.4);
+  }
+  34% {
+    opacity: 0.9;
+    transform: translate3d(10px, -10px, 0) scale(1.2);
+  }
+  70% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes ambient-paper-dust {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  35%,
+  72% {
+    opacity: 0.34;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--particle-drift-x), 16px, 0) scale(1.1);
+  }
+}
+
+@keyframes ambient-soft-spark {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.45);
+  }
+  34% {
+    opacity: 0.76;
+    transform: translate3d(8px, -10px, 0) scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--particle-drift-x), var(--particle-drift-y), 0) scale(0.82);
+  }
+}
+
+@keyframes ambient-grid-breathe {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.48;
+    transform: scale(1.012);
+  }
+}
+
+@keyframes ambient-sand-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12vh, 0) scale(0.75);
+  }
+  18%,
+  80% {
+    opacity: 0.52;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(7px, 34vh, 0) scale(0.9);
+  }
+}
+
+@keyframes ambient-meadow-pollen {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+  }
+  25%,
+  72% {
+    opacity: 0.74;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--particle-drift-x), -38px, 0) scale(1.35);
+  }
+}
+
+@keyframes ambient-wave-slide {
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  50% {
+    background-position: 0 0, 18px -6px, 36px 0;
+  }
+}
+
+@keyframes ambient-wave-pulse {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: translate3d(0, 0, 0) scaleY(0.6);
+  }
+  50% {
+    opacity: 0.62;
+    transform: translate3d(0, -8px, 0) scaleY(1.28);
+  }
+}
+
+@keyframes ambient-feedback-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.42);
+  }
+  18% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+@keyframes ambient-feedback-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.42);
+  }
+  38% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.42);
+  }
+}
+
+@keyframes ambient-feedback-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  18% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y))) scale(0.8);
+  }
+}
+
+@keyframes ambient-sand-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-28px);
+  }
+  16% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y) + 96px));
+  }
+}
+
+@keyframes ambient-wave-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleY(0.35);
+  }
+  22% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y))) scaleY(1.4);
+  }
+}
+
+@keyframes ambient-feedback-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-wash,
+  .ambient-ribbons,
+  .ambient-texture,
+  .ambient-lines,
+  .ambient-figure,
+  .ambient-particle,
+  .ambient-meteor,
+  .ambient-feedback-meteor,
+  .ambient-feedback-grid-glow,
+  .ambient-feedback-brown-sweep,
+  .ambient-feedback-ring,
+  .ambient-feedback-glow,
+  .ambient-feedback-spark {
+    animation: none !important;
+  }
+
+  .ambient-particle {
+    opacity: 0.22;
+  }
+
+  .ambient-feedback,
+  .ambient-feedback-layer {
+    display: none;
+  }
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -244,6 +2066,56 @@ button[disabled],
   padding: 14px 18px;
   background: transparent;
   backdrop-filter: none;
+}
+
+.app-shell[data-ambient-skin="vaultline"] .brand-block h1,
+.app-shell[data-ambient-skin="praha"] .brand-block h1,
+.app-shell[data-ambient-skin="workflow"] .brand-block h1,
+.app-shell[data-ambient-skin="testimonial"] .brand-block h1,
+.app-shell[data-ambient-skin="flowercode"] .brand-block h1,
+.app-shell[data-ambient-skin="journey"] .brand-block h1,
+.app-shell[data-ambient-skin="sandglass"] .brand-block h1,
+.app-shell[data-ambient-skin="meadow"] .brand-block h1,
+.app-shell[data-ambient-skin="waveform"] .brand-block h1 {
+  color: rgba(7, 16, 24, 0.9);
+  text-shadow: 0 1px 18px rgba(255, 255, 255, 0.64);
+}
+
+.app-shell[data-ambient-skin="vaultline"] .title-menu-button,
+.app-shell[data-ambient-skin="praha"] .title-menu-button,
+.app-shell[data-ambient-skin="workflow"] .title-menu-button,
+.app-shell[data-ambient-skin="testimonial"] .title-menu-button,
+.app-shell[data-ambient-skin="flowercode"] .title-menu-button,
+.app-shell[data-ambient-skin="journey"] .title-menu-button,
+.app-shell[data-ambient-skin="sandglass"] .title-menu-button,
+.app-shell[data-ambient-skin="meadow"] .title-menu-button,
+.app-shell[data-ambient-skin="waveform"] .title-menu-button {
+  border-color: rgba(7, 16, 24, 0.08);
+  background: rgba(255, 255, 255, 0.28);
+  color: rgba(7, 16, 24, 0.64);
+  box-shadow: 0 8px 20px rgba(7, 16, 24, 0.08);
+}
+
+.app-shell[data-ambient-skin="vaultline"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="vaultline"] .title-menu-button-open,
+.app-shell[data-ambient-skin="praha"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="praha"] .title-menu-button-open,
+.app-shell[data-ambient-skin="workflow"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="workflow"] .title-menu-button-open,
+.app-shell[data-ambient-skin="testimonial"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="testimonial"] .title-menu-button-open,
+.app-shell[data-ambient-skin="flowercode"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="flowercode"] .title-menu-button-open,
+.app-shell[data-ambient-skin="journey"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="journey"] .title-menu-button-open,
+.app-shell[data-ambient-skin="sandglass"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="sandglass"] .title-menu-button-open,
+.app-shell[data-ambient-skin="meadow"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="meadow"] .title-menu-button-open,
+.app-shell[data-ambient-skin="waveform"] .title-menu-button:hover,
+.app-shell[data-ambient-skin="waveform"] .title-menu-button-open {
+  background: rgba(255, 255, 255, 0.44);
+  color: rgba(7, 16, 24, 0.86);
 }
 
 .brand-logo {
@@ -312,7 +2184,9 @@ button[disabled],
   top: calc(100% + 8px);
   left: 0;
   display: grid;
-  width: min(286px, calc(100vw - 24px));
+  width: min(326px, calc(100vw - 24px));
+  max-height: calc(100dvh - 84px);
+  overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 14px;
   background: rgba(9, 22, 36, 0.92);
@@ -370,6 +2244,201 @@ button[disabled],
 
 .title-menu-panel {
   margin-bottom: 8px;
+}
+
+.title-menu-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 4px 7px;
+  color: var(--app-text-muted);
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.title-ambient-panel {
+  margin-top: 2px;
+}
+
+.title-ambient-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.title-ambient-option {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--app-text-muted);
+  cursor: pointer;
+  padding: 7px 9px;
+  text-align: left;
+  font: inherit;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.title-ambient-option:hover,
+.title-ambient-option:focus-visible {
+  border-color: var(--wechat-green-border);
+  background: rgba(255, 255, 255, 0.065);
+  color: var(--app-text);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.title-ambient-option-active {
+  border-color: var(--wechat-green-border);
+  background: var(--wechat-green-soft);
+  color: var(--app-accent-readable);
+}
+
+.title-ambient-option span:not(.title-ambient-swatch),
+.title-ambient-option small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-ambient-option span:not(.title-ambient-swatch) {
+  font-size: 11px;
+  font-weight: 780;
+  line-height: 1.1;
+}
+
+.title-ambient-option small {
+  display: none;
+  grid-column: 2;
+  color: var(--app-text-subtle);
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.title-ambient-swatch {
+  position: relative;
+  display: block;
+  width: 8px;
+  height: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.title-ambient-swatch i {
+  display: none;
+}
+
+.title-ambient-swatch-vaultline {
+  color: #35d1ea;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.78) 0 1px, transparent 1.8px) 0 0 / 6px 6px,
+    radial-gradient(circle at 72% 68%, rgba(68, 184, 255, 0.7), transparent 44%),
+    #dff9fb;
+}
+
+.title-ambient-swatch-praha {
+  color: #8ee34f;
+  background:
+    linear-gradient(90deg, rgba(80, 80, 80, 0.14) 0 2px, transparent 2px 100%) 0 0 / 7px 6px,
+    radial-gradient(circle at 52% 45%, rgba(126, 224, 58, 0.45), transparent 30%),
+    #f3f3f1;
+}
+
+.title-ambient-swatch-pricing {
+  color: #5867ff;
+  background:
+    radial-gradient(circle, rgba(133, 156, 255, 0.75) 0 1px, transparent 1.8px) 0 0 / 6px 6px,
+    radial-gradient(circle at 12% 100%, rgba(91, 220, 255, 0.82), transparent 36%),
+    radial-gradient(circle at 88% 100%, rgba(91, 220, 255, 0.68), transparent 36%),
+    #050507;
+}
+
+.title-ambient-swatch-workflow {
+  color: #ffb952;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.32) 0 1px, transparent 1px 7px),
+    radial-gradient(circle at 10% 80%, rgba(255, 149, 38, 0.76), transparent 36%),
+    radial-gradient(circle at 90% 80%, rgba(128, 126, 255, 0.72), transparent 36%),
+    #f3f0f7;
+}
+
+.title-ambient-swatch-testimonial {
+  color: #24b4d3;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 4px, rgba(0, 0, 0, 0.08) 4px 5px, transparent 5px 9px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 91%, rgba(0, 0, 0, 0.08) 91% 92%, transparent 92%),
+    #f4f4f2;
+}
+
+.title-ambient-swatch-flowercode {
+  color: #ec41a2;
+  background:
+    radial-gradient(circle at 18% 44%, rgba(255, 255, 255, 0.9), transparent 24%),
+    radial-gradient(circle at 28% 58%, rgba(255, 226, 82, 0.78), transparent 18%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.62) 0 2px, transparent 2px 100%) 0 0 / 8px 7px,
+    #f8e4fb;
+}
+
+.title-ambient-swatch-journey {
+  color: #ff84bc;
+  background:
+    linear-gradient(90deg, rgba(157, 181, 255, 0.32) 0 1px, transparent 1px 100%),
+    linear-gradient(0deg, rgba(236, 123, 190, 0.28) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 70% 20%, rgba(225, 101, 190, 0.56), transparent 32%),
+    #f7f7fb;
+  background-size: 10px 10px, 10px 10px, 100% 100%, 100% 100%;
+}
+
+.title-ambient-swatch-sandglass {
+  color: #ffe8b5;
+  background:
+    radial-gradient(circle, rgba(83, 58, 24, 0.22) 0 1px, transparent 1.7px) 0 0 / 5px 5px,
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.34), transparent 24%),
+    #cbb78f;
+}
+
+.title-ambient-swatch-meadow {
+  color: #7ebc41;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px) 0 0 / 7px 7px,
+    radial-gradient(ellipse at 26% 88%, rgba(84, 145, 55, 0.82), transparent 42%),
+    radial-gradient(ellipse at 78% 82%, rgba(136, 190, 86, 0.76), transparent 48%),
+    #edf7f2;
+}
+
+.title-ambient-swatch-waveform {
+  color: #ffac27;
+  background:
+    repeating-radial-gradient(ellipse at 50% 48%, transparent 0 6px, rgba(255, 255, 255, 0.58) 7px 8px, transparent 9px 14px),
+    linear-gradient(90deg, transparent 0 18%, rgba(255, 172, 39, 0.58) 24%, transparent 32% 68%, rgba(255, 172, 39, 0.58) 76%, transparent 82%),
+    #f3ebdf;
+}
+
+.title-ambient-swatch-brown {
+  color: #ebb160;
+  background: currentColor;
+}
+
+.title-ambient-swatch-grid {
+  color: #07c160;
+  background: currentColor;
+}
+
+.app-shell-jojo .title-ambient-swatch-grid {
+  color: #1677ff;
+}
+
+.title-ambient-swatch-nightmeadow {
+  color: #7ee6ff;
+  background: currentColor;
 }
 
 .title-role-avatar {
