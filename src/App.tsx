@@ -99,6 +99,8 @@ const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
 const generationProgressCap = 99;
 const generationProgressLoadingCap = 96;
+const ambientThemeFadeMs = 1180;
+const ambientThemeApplyDelayMs = 520;
 
 const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = [
   { id: "brown", label: "棕砂", hint: "扫光" },
@@ -826,6 +828,7 @@ export default function App({ storyPackage }: AppProps) {
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
+  const [visibleAmbientSkin, setVisibleAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [ambientFeedback, setAmbientFeedback] = useState<AmbientFeedback | null>(null);
   const [ambientTransition, setAmbientTransition] = useState<AmbientSkinTransition | null>(null);
   const [promptSuggestionActive, setPromptSuggestionActive] = useState(false);
@@ -861,6 +864,7 @@ export default function App({ storyPackage }: AppProps) {
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
   const ambientFeedbackTimerRef = useRef<number | undefined>(undefined);
   const ambientTransitionTimerRef = useRef<number | undefined>(undefined);
+  const ambientSkinApplyTimerRef = useRef<number | undefined>(undefined);
   const promptSuggestionTimerRef = useRef<number | undefined>(undefined);
   const leftPanelScrollTimerRef = useRef<number | undefined>(undefined);
   const toastTimerRef = useRef<number | undefined>(undefined);
@@ -991,7 +995,7 @@ export default function App({ storyPackage }: AppProps) {
     };
 
     setAmbientFeedback(nextFeedback);
-    const feedbackDuration = feedbackSkin === "brown" ? 3600 : feedbackSkin === "nightdaisy" ? 2300 : 1800;
+    const feedbackDuration = feedbackSkin === "brown" ? 3600 : feedbackSkin === "nightdaisy" ? 7600 : 1800;
     ambientFeedbackTimerRef.current = window.setTimeout(() => {
       setAmbientFeedback(null);
       ambientFeedbackTimerRef.current = undefined;
@@ -999,23 +1003,38 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function selectAmbientSkin(nextSkin: AmbientSkinId) {
-    if (nextSkin !== ambientSkin) {
+    if (nextSkin !== visibleAmbientSkin) {
       if (ambientTransitionTimerRef.current) {
         window.clearTimeout(ambientTransitionTimerRef.current);
         ambientTransitionTimerRef.current = undefined;
       }
-      const currentIndex = ambientSkins.findIndex((skin) => skin.id === ambientSkin);
+      if (ambientSkinApplyTimerRef.current) {
+        window.clearTimeout(ambientSkinApplyTimerRef.current);
+        ambientSkinApplyTimerRef.current = undefined;
+      }
+      const currentIndex = ambientSkins.findIndex((skin) => skin.id === visibleAmbientSkin);
       const nextIndex = ambientSkins.findIndex((skin) => skin.id === nextSkin);
+      setAmbientSkin(nextSkin);
       setAmbientTransition({
         id: Date.now(),
         direction: nextIndex >= currentIndex ? "right" : "left"
       });
+      ambientSkinApplyTimerRef.current = window.setTimeout(() => {
+        setVisibleAmbientSkin(nextSkin);
+        window.localStorage.setItem(ambientSkinStorageKey(storyPackage), nextSkin);
+        triggerAmbientFeedback("skin", nextSkin);
+        setStatus("done");
+        setStatusText(`背景已切换：${ambientSkinLabel(nextSkin)}`);
+        ambientSkinApplyTimerRef.current = undefined;
+      }, ambientThemeApplyDelayMs);
       ambientTransitionTimerRef.current = window.setTimeout(() => {
         setAmbientTransition(null);
         ambientTransitionTimerRef.current = undefined;
-      }, 1180);
+      }, ambientThemeFadeMs);
+      return;
     }
     setAmbientSkin(nextSkin);
+    setVisibleAmbientSkin(nextSkin);
     window.localStorage.setItem(ambientSkinStorageKey(storyPackage), nextSkin);
     triggerAmbientFeedback("skin", nextSkin);
     setStatus("done");
@@ -1039,6 +1058,7 @@ export default function App({ storyPackage }: AppProps) {
     if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
     if (ambientFeedbackTimerRef.current) window.clearTimeout(ambientFeedbackTimerRef.current);
     if (ambientTransitionTimerRef.current) window.clearTimeout(ambientTransitionTimerRef.current);
+    if (ambientSkinApplyTimerRef.current) window.clearTimeout(ambientSkinApplyTimerRef.current);
     if (promptSuggestionTimerRef.current) window.clearTimeout(promptSuggestionTimerRef.current);
     if (leftPanelScrollTimerRef.current) window.clearTimeout(leftPanelScrollTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -2635,7 +2655,7 @@ export default function App({ storyPackage }: AppProps) {
       className={`app-shell dark ${storyPackage === "jojo" ? "app-shell-jojo" : ""}`}
       data-theme="dark"
       data-vibrant-palette="true"
-      data-ambient-skin={ambientSkin}
+      data-ambient-skin={visibleAmbientSkin}
     >
       <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
       <header className="topbar motion-in">
