@@ -484,7 +484,7 @@ function AmbientLayer({
         <span className="ambient-meteor ambient-meteor-b" />
       </div>
       <div key={`ambient-daisy-${feedback?.id ?? "idle"}`} className={daisyFieldClassName}>
-        <img className="ambient-daisy ambient-daisy-a" src="/ambient/night-daisy-a.png" alt="" />
+        <img className="ambient-daisy ambient-daisy-a" src="/ambient/night-daisy-b.png" alt="" />
         <img className="ambient-daisy ambient-daisy-b" src="/ambient/night-daisy-b.png" alt="" />
       </div>
       {feedback ? (

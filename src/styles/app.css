@@ -639,6 +639,10 @@ button[disabled],
   bottom: -186vh;
   width: auto;
   height: min(310vh, 3160px);
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 488 / 805;
+  object-fit: contain;
   opacity: 0;
   transform-origin: 50% 100%;
   filter: blur(9.2px) saturate(0.6) brightness(0.68) drop-shadow(0 42px 78px rgba(0, 0, 0, 0.4));
@@ -648,7 +652,7 @@ button[disabled],
 }
 
 .ambient-daisy-a {
-  left: max(-31vw, -490px);
+  left: max(-53vw, -680px);
   transform: scaleX(-1) rotate(-8deg);
 }
 
@@ -1494,11 +1498,11 @@ button[disabled],
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] {
-  --board-base: #110b10;
+  --board-base: #170d13;
   --board-grid-fine: rgba(255, 205, 222, 0.012);
   --board-grid-strong: rgba(214, 84, 132, 0.02);
   --board-fiber: rgba(255, 255, 255, 0.012);
-  --board-vignette: rgba(11, 4, 9, 0.58);
+  --board-vignette: rgba(18, 7, 13, 0.48);
   --ambient-one: rgba(196, 67, 113, 0.24);
   --ambient-two: rgba(255, 190, 214, 0.13);
   --ambient-three: rgba(94, 52, 68, 0.1);
@@ -1691,16 +1695,16 @@ button[disabled],
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer {
   background:
-    radial-gradient(ellipse at 50% -10%, rgba(222, 92, 140, 0.28), transparent 43%),
-    radial-gradient(ellipse at 16% 0%, rgba(255, 188, 214, 0.12), transparent 34%),
-    linear-gradient(180deg, #21131b 0, #140d13 43%, #0b080c 100%);
+    radial-gradient(ellipse at 50% -10%, rgba(232, 98, 148, 0.3), transparent 43%),
+    radial-gradient(ellipse at 16% 0%, rgba(255, 188, 214, 0.14), transparent 34%),
+    linear-gradient(180deg, #2a1722 0, #191017 43%, #120b11 100%);
 }
 
 .app-shell-jojo[data-ambient-skin="nightdaisy"] .ambient-layer {
   background:
-    radial-gradient(ellipse at 50% -10%, rgba(222, 92, 140, 0.28), transparent 43%),
-    radial-gradient(ellipse at 16% 0%, rgba(255, 188, 214, 0.12), transparent 34%),
-    linear-gradient(180deg, #21131b 0, #140d13 43%, #0b080c 100%);
+    radial-gradient(ellipse at 50% -10%, rgba(232, 98, 148, 0.3), transparent 43%),
+    radial-gradient(ellipse at 16% 0%, rgba(255, 188, 214, 0.14), transparent 34%),
+    linear-gradient(180deg, #2a1722 0, #191017 43%, #120b11 100%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::before {
@@ -1751,7 +1755,7 @@ button[disabled],
   height: 48vh;
   content: "";
   background:
-    linear-gradient(180deg, transparent 0, rgba(13, 9, 13, 0.34) 36%, rgba(8, 7, 10, 0.88) 100%);
+    linear-gradient(180deg, transparent 0, rgba(22, 12, 18, 0.28) 36%, rgba(15, 10, 14, 0.78) 100%);
   backdrop-filter: blur(12px) saturate(102%);
   -webkit-backdrop-filter: blur(12px) saturate(102%);
   mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
