@@ -1013,7 +1013,7 @@ export default function App({ storyPackage }: AppProps) {
       ambientTransitionTimerRef.current = window.setTimeout(() => {
         setAmbientTransition(null);
         ambientTransitionTimerRef.current = undefined;
-      }, 920);
+      }, 1180);
     }
     setAmbientSkin(nextSkin);
     window.localStorage.setItem(ambientSkinStorageKey(storyPackage), nextSkin);

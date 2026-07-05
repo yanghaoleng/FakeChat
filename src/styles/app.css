@@ -636,23 +636,25 @@ button[disabled],
 
 .ambient-daisy {
   position: absolute;
-  bottom: -5vh;
+  bottom: -13vh;
   width: auto;
-  height: min(46vh, 430px);
+  height: min(72vh, 760px);
   opacity: 0;
   transform-origin: 50% 100%;
-  filter: saturate(0.88) brightness(0.86) drop-shadow(0 24px 38px rgba(0, 0, 0, 0.42));
-  will-change: transform;
+  filter: saturate(0.92) brightness(0.92) drop-shadow(0 34px 56px rgba(0, 0, 0, 0.52));
+  mask-image: linear-gradient(180deg, #000 0 58%, rgba(0, 0, 0, 0.82) 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 58%, rgba(0, 0, 0, 0.82) 72%, transparent 100%);
+  will-change: transform, filter;
 }
 
 .ambient-daisy-a {
-  left: max(-28px, 4vw);
-  transform: rotate(-7deg);
+  left: max(-8vw, -96px);
+  transform: scaleX(-1) rotate(-8deg);
 }
 
 .ambient-daisy-b {
-  right: max(-34px, 5vw);
-  height: min(42vh, 390px);
+  right: max(-7vw, -84px);
+  height: min(68vh, 720px);
   transform: rotate(8deg);
 }
 
@@ -711,34 +713,58 @@ button[disabled],
 
 .ambient-theme-swipe {
   position: absolute;
-  inset: -10%;
+  inset: -8%;
   overflow: hidden;
   pointer-events: none;
-  mix-blend-mode: screen;
+  mix-blend-mode: normal;
+}
+
+.ambient-theme-swipe::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: rgba(2, 4, 12, 0.2);
+  opacity: 0;
+  backdrop-filter: blur(1.4px) saturate(112%);
+  -webkit-backdrop-filter: blur(1.4px) saturate(112%);
+  animation: ambient-theme-exposure 1.12s cubic-bezier(0.2, 0.78, 0.24, 1) both;
 }
 
 .ambient-theme-swipe span {
   position: absolute;
-  top: -16%;
-  bottom: -16%;
-  width: min(46vw, 520px);
-  border-radius: 999px;
+  top: -18%;
+  bottom: -18%;
+  width: min(118vw, 1320px);
+  border-radius: 0;
   background:
-    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.08) 22%, var(--ambient-one) 44%, rgba(255, 255, 255, 0.12) 58%, transparent 100%);
-  filter: blur(18px) saturate(130%);
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.16), transparent 62%),
+    linear-gradient(90deg, rgba(2, 5, 14, 0.14), rgba(255, 255, 255, 0.18) 44%, var(--ambient-one) 58%, rgba(2, 5, 14, 0.18));
   opacity: 0;
-  transform: translate3d(-120%, 0, 0) skewX(-12deg);
+  backdrop-filter: blur(7px) saturate(138%) brightness(1.06);
+  -webkit-backdrop-filter: blur(7px) saturate(138%) brightness(1.06);
+  mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.18) 14%, #000 34%, #000 66%, rgba(0, 0, 0, 0.18) 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.18) 14%, #000 34%, #000 66%, rgba(0, 0, 0, 0.18) 86%, transparent 100%);
+  filter: saturate(120%);
+  transform: translate3d(-120%, 0, 0) skewX(-8deg);
   will-change: transform, opacity;
 }
 
+.ambient-theme-swipe span::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, transparent 0 42%, rgba(255, 255, 255, 0.16) 50%, transparent 62% 100%);
+  opacity: 0.58;
+}
+
 .ambient-theme-swipe-right span {
-  left: -24vw;
-  animation: ambient-theme-swipe-right 0.86s cubic-bezier(0.22, 1, 0.36, 1) both;
+  left: -86vw;
+  animation: ambient-theme-swipe-right 1.12s cubic-bezier(0.18, 0.88, 0.24, 1) both;
 }
 
 .ambient-theme-swipe-left span {
-  right: -24vw;
-  animation: ambient-theme-swipe-left 0.86s cubic-bezier(0.22, 1, 0.36, 1) both;
+  right: -86vw;
+  animation: ambient-theme-swipe-left 1.12s cubic-bezier(0.18, 0.88, 0.24, 1) both;
 }
 
 .ambient-figure {
@@ -1492,21 +1518,21 @@ button[disabled],
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] {
-  --board-base: #050817;
-  --board-grid-fine: rgba(7, 193, 96, 0.028);
-  --board-grid-strong: rgba(122, 211, 255, 0.042);
+  --board-base: #12081a;
+  --board-grid-fine: rgba(255, 205, 235, 0.018);
+  --board-grid-strong: rgba(255, 128, 196, 0.032);
   --board-fiber: rgba(255, 255, 255, 0.012);
-  --board-vignette: rgba(0, 0, 0, 0.58);
-  --ambient-one: rgba(236, 65, 162, 0.12);
-  --ambient-two: rgba(7, 193, 96, 0.17);
-  --ambient-three: rgba(126, 230, 255, 0.12);
-  --ambient-particle: rgba(226, 250, 255, 0.58);
-  --ambient-particle-alt: rgba(255, 255, 255, 0.48);
-  --ambient-particle-soft: rgba(7, 193, 96, 0.32);
-  --ambient-ribbon: rgba(255, 255, 255, 0.06);
-  --ambient-ribbon-alt: rgba(7, 193, 96, 0.08);
-  --ambient-feedback: rgba(245, 252, 255, 0.9);
-  --ambient-feedback-soft: rgba(7, 193, 96, 0.16);
+  --board-vignette: rgba(13, 4, 20, 0.62);
+  --ambient-one: rgba(236, 65, 162, 0.28);
+  --ambient-two: rgba(255, 194, 225, 0.22);
+  --ambient-three: rgba(178, 126, 255, 0.16);
+  --ambient-particle: rgba(255, 235, 248, 0.68);
+  --ambient-particle-alt: rgba(255, 180, 222, 0.5);
+  --ambient-particle-soft: rgba(185, 132, 255, 0.28);
+  --ambient-ribbon: rgba(255, 206, 235, 0.08);
+  --ambient-ribbon-alt: rgba(185, 132, 255, 0.08);
+  --ambient-feedback: rgba(255, 228, 244, 0.92);
+  --ambient-feedback-soft: rgba(236, 65, 162, 0.2);
   --ambient-opacity: 0.98;
 }
 
@@ -1689,35 +1715,34 @@ button[disabled],
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer {
   background:
-    radial-gradient(ellipse at 50% 100%, rgba(7, 193, 96, 0.2), transparent 42%),
-    radial-gradient(ellipse at 18% 0%, rgba(236, 65, 162, 0.11), transparent 36%),
-    radial-gradient(ellipse at 82% 8%, rgba(122, 211, 255, 0.1), transparent 38%),
-    linear-gradient(180deg, #09071a 0, #050b18 58%, #061915 100%);
+    radial-gradient(ellipse at 18% 10%, rgba(255, 170, 222, 0.22), transparent 40%),
+    radial-gradient(ellipse at 82% 12%, rgba(191, 151, 255, 0.16), transparent 42%),
+    radial-gradient(ellipse at 50% 100%, rgba(236, 65, 162, 0.2), transparent 56%),
+    linear-gradient(180deg, #1b0c26 0, #12091d 54%, #080711 100%);
 }
 
 .app-shell-jojo[data-ambient-skin="nightdaisy"] .ambient-layer {
   background:
-    radial-gradient(ellipse at 50% 100%, rgba(22, 119, 255, 0.22), transparent 42%),
-    radial-gradient(ellipse at 18% 0%, rgba(236, 65, 162, 0.11), transparent 36%),
-    radial-gradient(ellipse at 82% 8%, rgba(122, 211, 255, 0.1), transparent 38%),
-    linear-gradient(180deg, #09071a 0, #050b18 58%, #06121d 100%);
+    radial-gradient(ellipse at 18% 10%, rgba(255, 170, 222, 0.22), transparent 40%),
+    radial-gradient(ellipse at 82% 12%, rgba(191, 151, 255, 0.16), transparent 42%),
+    radial-gradient(ellipse at 50% 100%, rgba(236, 65, 162, 0.2), transparent 56%),
+    linear-gradient(180deg, #1b0c26 0, #12091d 54%, #080711 100%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::before {
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 100%),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 100%);
-  background-size: 64px 64px;
-  opacity: 0.18;
-  mask-image: radial-gradient(ellipse at 50% 56%, #000 0 52%, transparent 82%);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 56%, #000 0 52%, transparent 82%);
+    radial-gradient(ellipse at 50% 28%, rgba(255, 226, 244, 0.08), transparent 44%),
+    linear-gradient(90deg, transparent 0 18%, rgba(255, 206, 235, 0.035) 42%, transparent 76% 100%);
+  opacity: 0.62;
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 0 56%, transparent 88%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 0 56%, transparent 88%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::after {
   background:
-    radial-gradient(ellipse at 50% 76%, rgba(255, 255, 255, 0.08), transparent 44%),
-    linear-gradient(180deg, rgba(1, 4, 12, 0.08) 0, transparent 48%, rgba(0, 0, 0, 0.2) 100%);
-  opacity: 0.72;
+    radial-gradient(ellipse at 50% 72%, rgba(255, 197, 231, 0.14), transparent 48%),
+    linear-gradient(180deg, rgba(255, 214, 240, 0.06) 0, transparent 42%, rgba(11, 5, 17, 0.34) 100%);
+  opacity: 0.78;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-wash,
@@ -1726,9 +1751,9 @@ button[disabled],
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-particle-field {
-  opacity: 0.44;
-  mask-image: linear-gradient(180deg, #000 0 58%, transparent 82% 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0 58%, transparent 82% 100%);
+  opacity: 0.38;
+  mask-image: linear-gradient(180deg, #000 0 54%, transparent 78% 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 54%, transparent 78% 100%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-particle {
@@ -1736,8 +1761,8 @@ button[disabled],
   height: calc(var(--particle-size) * 0.22);
   min-width: 1px;
   min-height: 1px;
-  background: rgba(230, 250, 255, 0.72);
-  box-shadow: 0 0 8px rgba(206, 245, 255, 0.42);
+  background: rgba(255, 236, 248, 0.74);
+  box-shadow: 0 0 8px rgba(255, 184, 226, 0.4);
   animation-name: ambient-star-twinkle;
 }
 
@@ -1745,16 +1770,40 @@ button[disabled],
   display: block;
 }
 
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field::after {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8vh;
+  height: 42vh;
+  content: "";
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 203, 235, 0.18), transparent 48%),
+    linear-gradient(180deg, transparent 0, rgba(21, 8, 28, 0.48) 38%, rgba(8, 6, 14, 0.94) 100%);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
+}
+
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy {
-  opacity: 0.74;
+  opacity: 0.84;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-a {
+  animation: ambient-daisy-idle-a 9.6s ease-in-out infinite;
+}
+
+.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-b {
+  animation: ambient-daisy-idle-b 10.4s ease-in-out 0.8s infinite;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-a {
-  animation: ambient-daisy-wind-a 2.28s cubic-bezier(0.2, 0.72, 0.22, 1) both;
+  animation: ambient-daisy-wind-a 3.65s cubic-bezier(0.18, 1.42, 0.32, 1) both;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-b {
-  animation: ambient-daisy-wind-b 2.38s cubic-bezier(0.2, 0.72, 0.22, 1) both;
+  animation: ambient-daisy-wind-b 3.82s cubic-bezier(0.18, 1.42, 0.32, 1) both;
 }
 
 .app-shell[data-ambient-skin="brown"] .ambient-feedback-layer,
@@ -1917,56 +1966,105 @@ button[disabled],
 }
 
 @keyframes ambient-daisy-wind-a {
-  0%,
+  0% {
+    transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
+  }
+  24% {
+    transform: scaleX(-1) rotate(2deg) translate3d(1.1vw, -0.55vh, 0);
+  }
+  48% {
+    transform: scaleX(-1) rotate(-12deg) translate3d(-0.5vw, 0.1vh, 0);
+  }
+  68% {
+    transform: scaleX(-1) rotate(-4deg) translate3d(0.32vw, -0.22vh, 0);
+  }
+  84% {
+    transform: scaleX(-1) rotate(-9deg) translate3d(-0.12vw, 0.06vh, 0);
+  }
   100% {
-    transform: rotate(-7deg) translate3d(0, 0, 0);
-  }
-  28% {
-    transform: rotate(-1.5deg) translate3d(0.8vw, -0.5vh, 0);
-  }
-  62% {
-    transform: rotate(-10deg) translate3d(-0.5vw, 0, 0);
+    transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
   }
 }
 
 @keyframes ambient-daisy-wind-b {
+  0% {
+    transform: rotate(8deg) translate3d(0, 0, 0);
+  }
+  24% {
+    transform: rotate(-1deg) translate3d(-1.05vw, -0.5vh, 0);
+  }
+  48% {
+    transform: rotate(13deg) translate3d(0.46vw, 0.08vh, 0);
+  }
+  68% {
+    transform: rotate(5deg) translate3d(-0.28vw, -0.18vh, 0);
+  }
+  84% {
+    transform: rotate(9.5deg) translate3d(0.1vw, 0.04vh, 0);
+  }
+  100% {
+    transform: rotate(8deg) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ambient-daisy-idle-a {
+  0%,
+  100% {
+    transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scaleX(-1) rotate(-5.5deg) translate3d(0.35vw, -0.16vh, 0);
+  }
+}
+
+@keyframes ambient-daisy-idle-b {
   0%,
   100% {
     transform: rotate(8deg) translate3d(0, 0, 0);
   }
-  34% {
-    transform: rotate(13deg) translate3d(-0.8vw, -0.4vh, 0);
+  50% {
+    transform: rotate(5.8deg) translate3d(-0.32vw, -0.14vh, 0);
   }
-  68% {
-    transform: rotate(4deg) translate3d(0.5vw, 0, 0);
+}
+
+@keyframes ambient-theme-exposure {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  32%,
+  72% {
+    opacity: 1;
   }
 }
 
 @keyframes ambient-theme-swipe-right {
   0% {
     opacity: 0;
-    transform: translate3d(-120%, 0, 0) skewX(-12deg);
+    transform: translate3d(-16vw, 0, 0) skewX(-8deg);
   }
-  18% {
-    opacity: 0.85;
+  18%,
+  64% {
+    opacity: 0.92;
   }
   100% {
     opacity: 0;
-    transform: translate3d(240%, 0, 0) skewX(-12deg);
+    transform: translate3d(148vw, 0, 0) skewX(-8deg);
   }
 }
 
 @keyframes ambient-theme-swipe-left {
   0% {
     opacity: 0;
-    transform: translate3d(120%, 0, 0) skewX(12deg);
+    transform: translate3d(16vw, 0, 0) skewX(8deg);
   }
-  18% {
-    opacity: 0.85;
+  18%,
+  64% {
+    opacity: 0.92;
   }
   100% {
     opacity: 0;
-    transform: translate3d(-240%, 0, 0) skewX(12deg);
+    transform: translate3d(-148vw, 0, 0) skewX(8deg);
   }
 }
 
