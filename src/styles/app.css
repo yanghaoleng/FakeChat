@@ -636,25 +636,25 @@ button[disabled],
 
 .ambient-daisy {
   position: absolute;
-  bottom: -13vh;
+  bottom: -104vh;
   width: auto;
-  height: min(72vh, 760px);
+  height: min(238vh, 2420px);
   opacity: 0;
   transform-origin: 50% 100%;
-  filter: saturate(0.92) brightness(0.92) drop-shadow(0 34px 56px rgba(0, 0, 0, 0.52));
-  mask-image: linear-gradient(180deg, #000 0 58%, rgba(0, 0, 0, 0.82) 72%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0 58%, rgba(0, 0, 0, 0.82) 72%, transparent 100%);
+  filter: blur(4.2px) saturate(0.76) brightness(0.82) drop-shadow(0 44px 72px rgba(0, 0, 0, 0.58));
+  mask-image: linear-gradient(180deg, #000 0 50%, rgba(0, 0, 0, 0.62) 67%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 50%, rgba(0, 0, 0, 0.62) 67%, transparent 100%);
   will-change: transform, filter;
 }
 
 .ambient-daisy-a {
-  left: max(-8vw, -96px);
+  left: max(-44vw, -560px);
   transform: scaleX(-1) rotate(-8deg);
 }
 
 .ambient-daisy-b {
-  right: max(-7vw, -84px);
-  height: min(68vh, 720px);
+  right: max(-43vw, -540px);
+  height: min(228vh, 2320px);
   transform: rotate(8deg);
 }
 
@@ -713,58 +713,33 @@ button[disabled],
 
 .ambient-theme-swipe {
   position: absolute;
-  inset: -8%;
+  inset: 0;
   overflow: hidden;
   pointer-events: none;
+  background: #000;
   mix-blend-mode: normal;
+  opacity: 0;
+  animation: ambient-theme-fade-black 1.18s ease-in-out both;
 }
 
 .ambient-theme-swipe::before {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background: rgba(2, 4, 12, 0.2);
-  opacity: 0;
-  backdrop-filter: blur(1.4px) saturate(112%);
-  -webkit-backdrop-filter: blur(1.4px) saturate(112%);
-  animation: ambient-theme-exposure 1.12s cubic-bezier(0.2, 0.78, 0.24, 1) both;
+  display: none;
 }
 
 .ambient-theme-swipe span {
-  position: absolute;
-  top: -18%;
-  bottom: -18%;
-  width: min(118vw, 1320px);
-  border-radius: 0;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.16), transparent 62%),
-    linear-gradient(90deg, rgba(2, 5, 14, 0.14), rgba(255, 255, 255, 0.18) 44%, var(--ambient-one) 58%, rgba(2, 5, 14, 0.18));
-  opacity: 0;
-  backdrop-filter: blur(7px) saturate(138%) brightness(1.06);
-  -webkit-backdrop-filter: blur(7px) saturate(138%) brightness(1.06);
-  mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.18) 14%, #000 34%, #000 66%, rgba(0, 0, 0, 0.18) 86%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0, 0, 0, 0.18) 14%, #000 34%, #000 66%, rgba(0, 0, 0, 0.18) 86%, transparent 100%);
-  filter: saturate(120%);
-  transform: translate3d(-120%, 0, 0) skewX(-8deg);
-  will-change: transform, opacity;
+  display: none;
 }
 
 .ambient-theme-swipe span::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background: linear-gradient(90deg, transparent 0 42%, rgba(255, 255, 255, 0.16) 50%, transparent 62% 100%);
-  opacity: 0.58;
+  display: none;
 }
 
 .ambient-theme-swipe-right span {
-  left: -86vw;
-  animation: ambient-theme-swipe-right 1.12s cubic-bezier(0.18, 0.88, 0.24, 1) both;
+  animation: none;
 }
 
 .ambient-theme-swipe-left span {
-  right: -86vw;
-  animation: ambient-theme-swipe-left 1.12s cubic-bezier(0.18, 0.88, 0.24, 1) both;
+  animation: none;
 }
 
 .ambient-figure {
@@ -1518,21 +1493,21 @@ button[disabled],
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] {
-  --board-base: #12081a;
-  --board-grid-fine: rgba(255, 205, 235, 0.018);
-  --board-grid-strong: rgba(255, 128, 196, 0.032);
+  --board-base: #09080c;
+  --board-grid-fine: rgba(255, 205, 222, 0.014);
+  --board-grid-strong: rgba(214, 84, 132, 0.022);
   --board-fiber: rgba(255, 255, 255, 0.012);
-  --board-vignette: rgba(13, 4, 20, 0.62);
-  --ambient-one: rgba(236, 65, 162, 0.28);
-  --ambient-two: rgba(255, 194, 225, 0.22);
-  --ambient-three: rgba(178, 126, 255, 0.16);
-  --ambient-particle: rgba(255, 235, 248, 0.68);
-  --ambient-particle-alt: rgba(255, 180, 222, 0.5);
-  --ambient-particle-soft: rgba(185, 132, 255, 0.28);
-  --ambient-ribbon: rgba(255, 206, 235, 0.08);
-  --ambient-ribbon-alt: rgba(185, 132, 255, 0.08);
-  --ambient-feedback: rgba(255, 228, 244, 0.92);
-  --ambient-feedback-soft: rgba(236, 65, 162, 0.2);
+  --board-vignette: rgba(0, 0, 0, 0.66);
+  --ambient-one: rgba(188, 54, 104, 0.22);
+  --ambient-two: rgba(255, 190, 214, 0.12);
+  --ambient-three: rgba(80, 48, 64, 0.08);
+  --ambient-particle: rgba(255, 229, 239, 0.46);
+  --ambient-particle-alt: rgba(255, 180, 205, 0.3);
+  --ambient-particle-soft: rgba(255, 255, 255, 0.18);
+  --ambient-ribbon: rgba(255, 190, 214, 0.045);
+  --ambient-ribbon-alt: rgba(120, 72, 92, 0.04);
+  --ambient-feedback: rgba(255, 224, 236, 0.86);
+  --ambient-feedback-soft: rgba(188, 54, 104, 0.16);
   --ambient-opacity: 0.98;
 }
 
@@ -1715,34 +1690,31 @@ button[disabled],
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer {
   background:
-    radial-gradient(ellipse at 18% 10%, rgba(255, 170, 222, 0.22), transparent 40%),
-    radial-gradient(ellipse at 82% 12%, rgba(191, 151, 255, 0.16), transparent 42%),
-    radial-gradient(ellipse at 50% 100%, rgba(236, 65, 162, 0.2), transparent 56%),
-    linear-gradient(180deg, #1b0c26 0, #12091d 54%, #080711 100%);
+    radial-gradient(ellipse at 50% -8%, rgba(182, 56, 104, 0.24), transparent 42%),
+    radial-gradient(ellipse at 16% 2%, rgba(255, 181, 207, 0.1), transparent 34%),
+    linear-gradient(180deg, #151015 0, #0b0a0e 48%, #040509 100%);
 }
 
 .app-shell-jojo[data-ambient-skin="nightdaisy"] .ambient-layer {
   background:
-    radial-gradient(ellipse at 18% 10%, rgba(255, 170, 222, 0.22), transparent 40%),
-    radial-gradient(ellipse at 82% 12%, rgba(191, 151, 255, 0.16), transparent 42%),
-    radial-gradient(ellipse at 50% 100%, rgba(236, 65, 162, 0.2), transparent 56%),
-    linear-gradient(180deg, #1b0c26 0, #12091d 54%, #080711 100%);
+    radial-gradient(ellipse at 50% -8%, rgba(182, 56, 104, 0.24), transparent 42%),
+    radial-gradient(ellipse at 16% 2%, rgba(255, 181, 207, 0.1), transparent 34%),
+    linear-gradient(180deg, #151015 0, #0b0a0e 48%, #040509 100%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::before {
   background:
-    radial-gradient(ellipse at 50% 28%, rgba(255, 226, 244, 0.08), transparent 44%),
-    linear-gradient(90deg, transparent 0 18%, rgba(255, 206, 235, 0.035) 42%, transparent 76% 100%);
-  opacity: 0.62;
+    radial-gradient(ellipse at 50% 0%, rgba(255, 197, 220, 0.08), transparent 48%),
+    linear-gradient(180deg, rgba(190, 66, 112, 0.06) 0, transparent 34% 100%);
+  opacity: 0.7;
   mask-image: radial-gradient(ellipse at 50% 50%, #000 0 56%, transparent 88%);
   -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 0 56%, transparent 88%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::after {
   background:
-    radial-gradient(ellipse at 50% 72%, rgba(255, 197, 231, 0.14), transparent 48%),
-    linear-gradient(180deg, rgba(255, 214, 240, 0.06) 0, transparent 42%, rgba(11, 5, 17, 0.34) 100%);
-  opacity: 0.78;
+    linear-gradient(180deg, rgba(255, 210, 226, 0.035) 0, transparent 26%, rgba(0, 0, 0, 0.12) 100%);
+  opacity: 0.72;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-wash,
@@ -1774,36 +1746,35 @@ button[disabled],
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -8vh;
-  height: 42vh;
+  bottom: -10vh;
+  height: 48vh;
   content: "";
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(255, 203, 235, 0.18), transparent 48%),
-    linear-gradient(180deg, transparent 0, rgba(21, 8, 28, 0.48) 38%, rgba(8, 6, 14, 0.94) 100%);
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
+    linear-gradient(180deg, transparent 0, rgba(5, 5, 8, 0.48) 38%, rgba(3, 4, 7, 0.96) 100%);
+  backdrop-filter: blur(12px) saturate(102%);
+  -webkit-backdrop-filter: blur(12px) saturate(102%);
   mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy {
-  opacity: 0.84;
+  opacity: 0.78;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-a {
-  animation: ambient-daisy-idle-a 9.6s ease-in-out infinite;
+  animation: ambient-daisy-idle-a 20s ease-in-out infinite;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-b {
-  animation: ambient-daisy-idle-b 10.4s ease-in-out 0.8s infinite;
+  animation: ambient-daisy-idle-b 21.4s ease-in-out 1.2s infinite;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-a {
-  animation: ambient-daisy-wind-a 3.65s cubic-bezier(0.18, 1.42, 0.32, 1) both;
+  animation: ambient-daisy-wind-a 2.05s cubic-bezier(0.18, 1.28, 0.32, 1) both;
 }
 
 .app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-b {
-  animation: ambient-daisy-wind-b 3.82s cubic-bezier(0.18, 1.42, 0.32, 1) both;
+  animation: ambient-daisy-wind-b 2.12s cubic-bezier(0.18, 1.28, 0.32, 1) both;
 }
 
 .app-shell[data-ambient-skin="brown"] .ambient-feedback-layer,
@@ -1969,17 +1940,11 @@ button[disabled],
   0% {
     transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
   }
-  24% {
-    transform: scaleX(-1) rotate(2deg) translate3d(1.1vw, -0.55vh, 0);
+  34% {
+    transform: scaleX(-1) rotate(-4.4deg) translate3d(0.36vw, -0.18vh, 0);
   }
-  48% {
-    transform: scaleX(-1) rotate(-12deg) translate3d(-0.5vw, 0.1vh, 0);
-  }
-  68% {
-    transform: scaleX(-1) rotate(-4deg) translate3d(0.32vw, -0.22vh, 0);
-  }
-  84% {
-    transform: scaleX(-1) rotate(-9deg) translate3d(-0.12vw, 0.06vh, 0);
+  64% {
+    transform: scaleX(-1) rotate(-9.4deg) translate3d(-0.12vw, 0.04vh, 0);
   }
   100% {
     transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
@@ -1990,17 +1955,11 @@ button[disabled],
   0% {
     transform: rotate(8deg) translate3d(0, 0, 0);
   }
-  24% {
-    transform: rotate(-1deg) translate3d(-1.05vw, -0.5vh, 0);
+  34% {
+    transform: rotate(4.8deg) translate3d(-0.34vw, -0.16vh, 0);
   }
-  48% {
-    transform: rotate(13deg) translate3d(0.46vw, 0.08vh, 0);
-  }
-  68% {
-    transform: rotate(5deg) translate3d(-0.28vw, -0.18vh, 0);
-  }
-  84% {
-    transform: rotate(9.5deg) translate3d(0.1vw, 0.04vh, 0);
+  64% {
+    transform: rotate(9.3deg) translate3d(0.1vw, 0.04vh, 0);
   }
   100% {
     transform: rotate(8deg) translate3d(0, 0, 0);
@@ -2035,6 +1994,19 @@ button[disabled],
   32%,
   72% {
     opacity: 1;
+  }
+}
+
+@keyframes ambient-theme-fade-black {
+  0% {
+    opacity: 0;
+  }
+  36%,
+  58% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 0;
   }
 }
 

@@ -991,7 +991,7 @@ export default function App({ storyPackage }: AppProps) {
     };
 
     setAmbientFeedback(nextFeedback);
-    const feedbackDuration = feedbackSkin === "brown" ? 3600 : feedbackSkin === "nightdaisy" ? 2400 : 1800;
+    const feedbackDuration = feedbackSkin === "brown" ? 3600 : feedbackSkin === "nightdaisy" ? 2300 : 1800;
     ambientFeedbackTimerRef.current = window.setTimeout(() => {
       setAmbientFeedback(null);
       ambientFeedbackTimerRef.current = undefined;
