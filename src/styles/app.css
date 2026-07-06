@@ -501,7 +501,6 @@ button[disabled],
 .ambient-ribbons,
 .ambient-particle-field,
 .ambient-meteor-field,
-.ambient-daisy-field,
 .ambient-figure,
 .ambient-feedback-layer,
 .ambient-feedback {
@@ -626,41 +625,6 @@ button[disabled],
   opacity: 0;
   transform: rotate(-22deg) translate3d(0, 0, 0);
   filter: drop-shadow(0 0 8px rgba(119, 217, 255, 0.46));
-}
-
-.ambient-daisy-field {
-  display: none;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.ambient-daisy {
-  position: absolute;
-  bottom: -186vh;
-  width: auto;
-  height: min(310vh, 3160px);
-  max-width: none;
-  max-height: none;
-  aspect-ratio: 488 / 805;
-  object-fit: contain;
-  opacity: 0;
-  transform-origin: 50% 100%;
-  filter: blur(9.2px) saturate(0.6) brightness(0.68) drop-shadow(0 42px 78px rgba(0, 0, 0, 0.4));
-  mask-image: linear-gradient(180deg, #000 0 50%, rgba(0, 0, 0, 0.62) 67%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0 50%, rgba(0, 0, 0, 0.62) 67%, transparent 100%);
-  will-change: transform, filter;
-}
-
-.ambient-daisy-a {
-  left: max(-53vw, -680px);
-  transform: scaleX(-1) rotate(-8deg);
-}
-
-.ambient-daisy-b {
-  right: max(-31vw, -480px);
-  bottom: -174vh;
-  height: min(300vh, 3060px);
-  transform: rotate(8deg);
 }
 
 .ambient-feedback-layer {
@@ -1497,25 +1461,6 @@ button[disabled],
   --ambient-opacity: 0.98;
 }
 
-.app-shell[data-ambient-skin="nightdaisy"] {
-  --board-base: #170d13;
-  --board-grid-fine: rgba(255, 205, 222, 0.012);
-  --board-grid-strong: rgba(214, 84, 132, 0.02);
-  --board-fiber: rgba(255, 255, 255, 0.012);
-  --board-vignette: rgba(18, 7, 13, 0.48);
-  --ambient-one: rgba(196, 67, 113, 0.24);
-  --ambient-two: rgba(255, 190, 214, 0.13);
-  --ambient-three: rgba(94, 52, 68, 0.1);
-  --ambient-particle: rgba(255, 229, 239, 0.42);
-  --ambient-particle-alt: rgba(255, 180, 205, 0.26);
-  --ambient-particle-soft: rgba(255, 255, 255, 0.16);
-  --ambient-ribbon: rgba(255, 190, 214, 0.04);
-  --ambient-ribbon-alt: rgba(120, 72, 92, 0.045);
-  --ambient-feedback: rgba(255, 224, 236, 0.78);
-  --ambient-feedback-soft: rgba(196, 67, 113, 0.16);
-  --ambient-opacity: 0.98;
-}
-
 .app-shell[data-ambient-skin="brown"] .ambient-layer {
   background:
     radial-gradient(ellipse at 52% 42%, rgba(204, 149, 83, 0.18), transparent 34%),
@@ -1693,99 +1638,9 @@ button[disabled],
   animation: ambient-meteor-fall 15s linear 8.5s infinite;
 }
 
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-layer {
-  background:
-    radial-gradient(ellipse at 50% -10%, rgba(232, 98, 148, 0.3), transparent 43%),
-    radial-gradient(ellipse at 16% 0%, rgba(255, 188, 214, 0.14), transparent 34%),
-    linear-gradient(180deg, #2a1722 0, #191017 43%, #120b11 100%);
-}
-
-.app-shell-jojo[data-ambient-skin="nightdaisy"] .ambient-layer {
-  background:
-    radial-gradient(ellipse at 50% -10%, rgba(232, 98, 148, 0.3), transparent 43%),
-    radial-gradient(ellipse at 16% 0%, rgba(255, 188, 214, 0.14), transparent 34%),
-    linear-gradient(180deg, #2a1722 0, #191017 43%, #120b11 100%);
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::before {
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(255, 200, 220, 0.11), transparent 48%),
-    linear-gradient(180deg, rgba(205, 76, 122, 0.08) 0, transparent 36% 100%);
-  opacity: 0.76;
-  mask-image: radial-gradient(ellipse at 50% 50%, #000 0 56%, transparent 88%);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 0 56%, transparent 88%);
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-layer::after {
-  background:
-    linear-gradient(180deg, rgba(255, 210, 226, 0.045) 0, transparent 28%, rgba(8, 5, 8, 0.08) 100%);
-  opacity: 0.78;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-wash,
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-ribbons {
-  opacity: 0.05;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-particle-field {
-  opacity: 0.38;
-  mask-image: linear-gradient(180deg, #000 0 54%, transparent 78% 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0 54%, transparent 78% 100%);
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-particle {
-  width: calc(var(--particle-size) * 0.22);
-  height: calc(var(--particle-size) * 0.22);
-  min-width: 1px;
-  min-height: 1px;
-  background: rgba(255, 236, 248, 0.74);
-  box-shadow: 0 0 8px rgba(255, 184, 226, 0.4);
-  animation-name: ambient-star-twinkle;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field {
-  display: block;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field::after {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -10vh;
-  height: 48vh;
-  content: "";
-  background:
-    linear-gradient(180deg, transparent 0, rgba(22, 12, 18, 0.28) 36%, rgba(15, 10, 14, 0.78) 100%);
-  backdrop-filter: blur(12px) saturate(102%);
-  -webkit-backdrop-filter: blur(12px) saturate(102%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 32% 100%);
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy {
-  opacity: 0.44;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-a {
-  animation: ambient-daisy-idle-a 42s ease-in-out infinite;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-b {
-  animation: ambient-daisy-idle-b 45s ease-in-out 1.7s infinite;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-a {
-  animation: ambient-daisy-wind-a 7.1s ease-in-out both;
-}
-
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-daisy-field-feedback .ambient-daisy-b {
-  animation: ambient-daisy-wind-b 7.35s ease-in-out both;
-}
-
 .app-shell[data-ambient-skin="brown"] .ambient-feedback-layer,
 .app-shell[data-ambient-skin="grid"] .ambient-feedback-layer,
-.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-layer,
-.app-shell[data-ambient-skin="nightdaisy"] .ambient-feedback-layer {
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-feedback-layer {
   display: block;
 }
 
@@ -1938,56 +1793,6 @@ button[disabled],
   100% {
     opacity: 0;
     transform: translate3d(42vw, 34vh, 0) rotate(-7deg);
-  }
-}
-
-@keyframes ambient-daisy-wind-a {
-  0% {
-    transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
-  }
-  42% {
-    transform: scaleX(-1) rotate(-6.6deg) translate3d(0.16vw, -0.06vh, 0);
-  }
-  72% {
-    transform: scaleX(-1) rotate(-8.7deg) translate3d(-0.05vw, 0.02vh, 0);
-  }
-  100% {
-    transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
-  }
-}
-
-@keyframes ambient-daisy-wind-b {
-  0% {
-    transform: rotate(8deg) translate3d(0, 0, 0);
-  }
-  42% {
-    transform: rotate(6.7deg) translate3d(-0.15vw, -0.05vh, 0);
-  }
-  72% {
-    transform: rotate(8.6deg) translate3d(0.05vw, 0.02vh, 0);
-  }
-  100% {
-    transform: rotate(8deg) translate3d(0, 0, 0);
-  }
-}
-
-@keyframes ambient-daisy-idle-a {
-  0%,
-  100% {
-    transform: scaleX(-1) rotate(-8deg) translate3d(0, 0, 0);
-  }
-  50% {
-    transform: scaleX(-1) rotate(-6.9deg) translate3d(0.14vw, -0.05vh, 0);
-  }
-}
-
-@keyframes ambient-daisy-idle-b {
-  0%,
-  100% {
-    transform: rotate(8deg) translate3d(0, 0, 0);
-  }
-  50% {
-    transform: rotate(6.95deg) translate3d(-0.13vw, -0.05vh, 0);
   }
 }
 
@@ -2322,7 +2127,6 @@ button[disabled],
   .ambient-figure,
   .ambient-particle,
   .ambient-meteor,
-  .ambient-daisy,
   .ambient-feedback-meteor,
   .ambient-feedback-grid-glow,
   .ambient-feedback-brown-sweep,

@@ -66,7 +66,7 @@ type PreviewTransition = {
   exiting: PreviewMode;
   id: number;
 };
-type AmbientSkinId = "brown" | "grid" | "nightmeadow" | "nightdaisy";
+type AmbientSkinId = "brown" | "grid" | "nightmeadow";
 type AmbientFeedbackType = "idle" | "skin" | "queue" | "generating" | "story" | "preset" | "focus";
 type AmbientFeedback = {
   id: number;
@@ -105,8 +105,7 @@ const ambientThemeApplyDelayMs = 520;
 const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = [
   { id: "brown", label: "棕砂", hint: "扫光" },
   { id: "grid", label: "暗网格", hint: "移光" },
-  { id: "nightmeadow", label: "夜草地", hint: "流星" },
-  { id: "nightdaisy", label: "夜雏菊", hint: "摇曳" }
+  { id: "nightmeadow", label: "夜草地", hint: "流星" }
 ];
 
 const defaultAmbientSkinByPackage: Record<StoryPackage, AmbientSkinId> = {
@@ -459,9 +458,6 @@ function AmbientLayer({
   feedback: AmbientFeedback | null;
   transition: AmbientSkinTransition | null;
 }) {
-  const daisyFieldClassName = feedback
-    ? "ambient-daisy-field ambient-daisy-field-feedback"
-    : "ambient-daisy-field";
   return (
     <div className="ambient-layer" aria-hidden="true">
       <div className="ambient-texture" />
@@ -482,10 +478,6 @@ function AmbientLayer({
       <div className="ambient-meteor-field">
         <span className="ambient-meteor ambient-meteor-a" />
         <span className="ambient-meteor ambient-meteor-b" />
-      </div>
-      <div key={`ambient-daisy-${feedback?.id ?? "idle"}`} className={daisyFieldClassName}>
-        <img className="ambient-daisy ambient-daisy-a" src="/ambient/night-daisy-b.png" alt="" />
-        <img className="ambient-daisy ambient-daisy-b" src="/ambient/night-daisy-b.png" alt="" />
       </div>
       {feedback ? (
         <div key={feedback.id} className={`ambient-feedback-layer ambient-feedback-${feedback.type}`} style={feedback.style}>
@@ -995,7 +987,7 @@ export default function App({ storyPackage }: AppProps) {
     };
 
     setAmbientFeedback(nextFeedback);
-    const feedbackDuration = feedbackSkin === "brown" ? 3600 : feedbackSkin === "nightdaisy" ? 7600 : 1800;
+    const feedbackDuration = feedbackSkin === "brown" ? 3600 : 1800;
     ambientFeedbackTimerRef.current = window.setTimeout(() => {
       setAmbientFeedback(null);
       ambientFeedbackTimerRef.current = undefined;
