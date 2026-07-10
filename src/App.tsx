@@ -598,6 +598,16 @@ function shouldUseStoryModal() {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 1079px)").matches;
 }
 
+function resizeTextareaToContent(textarea: HTMLTextAreaElement | null) {
+  if (!textarea) return;
+  textarea.style.height = "auto";
+  const styles = window.getComputedStyle(textarea);
+  const borderHeight = Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
+  const minHeight = Number.parseFloat(styles.minHeight) || 0;
+  const contentHeight = textarea.value ? textarea.scrollHeight + borderHeight : minHeight;
+  textarea.style.height = `${Math.max(minHeight, contentHeight)}px`;
+}
+
 type ViewTransitionDocument = Document & {
   startViewTransition?: (updateCallback: () => void) => {
     finished?: Promise<void>;
@@ -2496,6 +2506,26 @@ export default function App({ storyPackage }: AppProps) {
   ].filter(Boolean).join(" ");
 
   useLayoutEffect(() => {
+    resizeTextareaToContent(promptTextareaRef.current);
+  }, [canSwitchInitialPreset, deferredSuggestionText, draftPrompt, storyPanelOpen]);
+
+  useEffect(() => {
+    let resizeFrame: number | undefined;
+    const handleResize = () => {
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeTextareaToContent(promptTextareaRef.current);
+        resizeFrame = undefined;
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
     if (!rootRef.current) return;
     const root = rootRef.current;
     const panelVisibilityChanged = previousStoryPanelOpenRef.current !== storyPanelOpen;
@@ -2873,7 +2903,7 @@ export default function App({ storyPackage }: AppProps) {
                     onChange={(event) => handleDraftPromptChange(event.target.value)}
                     onFocus={handlePromptTextareaFocus}
                     placeholder="输入下一段要推进的剧情。它会结合此前故事卡和现有对话继续往后写。"
-                    rows={5}
+                    rows={1}
                   />
                   {promptSuggestionActive ? (
                     <div key={promptSuggestionKey} className="prompt-suggestion-overlay" aria-hidden="true">

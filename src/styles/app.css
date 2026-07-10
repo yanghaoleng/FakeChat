@@ -2974,6 +2974,8 @@ button[disabled],
 .prompt-textarea {
   height: 132px;
   min-height: 132px;
+  overflow-y: hidden;
+  resize: none;
 }
 
 .prompt-textarea-shell {

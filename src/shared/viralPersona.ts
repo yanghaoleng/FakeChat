@@ -11,8 +11,6 @@ type ViralRegion = {
   aside: string;
 };
 
-type ViralRegions = Record<DefaultAvatarGender, ViralRegion>;
-
 const boyNames = [
   "张伟",
   "王磊",
@@ -149,7 +147,7 @@ function stripRegionalMarker(value: string) {
   return value
     .replace(new RegExp(`\\s*${regionMarker}[^。\\n]*。?`, "g"), "")
     .replace(new RegExp(`\\s*${regionBriefMarker}[^。\\n]*。?`, "g"), "")
-    .replace(new RegExp(`\\s*${regionPromptMarker}男主来自[^。\\n]*。?`, "g"), "")
+    .replace(new RegExp(`\\s*${regionPromptMarker}(?:男主来自|故事发生在)[^。\\n]*。?`, "g"), "")
     .trim();
 }
 
@@ -165,43 +163,37 @@ function replaceKnownNames(value: string | undefined, names: Record<DefaultAvata
     .replace(/林夏/g, names.girl);
 }
 
-function regionalBrief(brief: string, regions: ViralRegions) {
+function regionalBrief(brief: string, region: ViralRegion) {
   const clean = stripRegionalMarker(brief);
-  return `${clean}\n${regionBriefMarker}男主来自${regions.boy.label}，可自然带${regions.boy.terms.slice(0, 3).join("、")}；女主来自${regions.girl.label}，可自然带${regions.girl.terms.slice(0, 3).join("、")}。`;
-}
-
-function regionForCharacter(project: DramaProject, gender: DefaultAvatarGender, fallback: ViralRegion) {
-  const character = project.characters.find((item) => genderForCharacter(item) === gender);
-  const characterRegion = viralRegions.find((region) => character?.voiceDescription.includes(`${regionMarker}${region.label}`));
-  if (characterRegion) return characterRegion;
-  const roleLabel = gender === "boy" ? "男主" : "女主";
-  return viralRegions.find((region) => project.brief.includes(`${roleLabel}来自${region.label}`)) || fallback;
-}
-
-function viralRegionsFromProject(project: DramaProject): ViralRegions {
-  return {
-    boy: regionForCharacter(project, "boy", viralRegions[0]),
-    girl: regionForCharacter(project, "girl", viralRegions[1])
-  };
+  return `${clean}\n${regionBriefMarker}故事发生在${region.label}，男女主都可自然带${region.terms.slice(0, 3).join("、")}。`;
 }
 
 export function viralRegionFromProject(project: DramaProject): ViralRegion {
-  return viralRegionsFromProject(project).boy;
+  const corpus = [
+    project.brief,
+    ...project.characters.map((character) => character.voiceDescription)
+  ].join("\n");
+  return viralRegions.find((region) => (
+    corpus.includes(`${regionMarker}${region.label}`)
+    || corpus.includes(`故事发生在${region.label}`)
+    || corpus.includes(`男主来自${region.label}`)
+    || corpus.includes(`女主来自${region.label}`)
+  )) || viralRegions[0];
 }
 
 export function viralRegionalInstruction(project: DramaProject) {
-  const regions = viralRegionsFromProject(project);
+  const region = viralRegionFromProject(project);
   return [
-    `男主来自${regions.boy.label}，可偶尔自然使用：${regions.boy.terms.join("、")}。`,
-    `女主来自${regions.girl.label}，可偶尔自然使用：${regions.girl.terms.join("、")}。`,
-    "必须按角色分别使用地域口吻；频率要克制，约每人 4-6 条消息点一下即可，不要整句硬写方言。"
+    `故事发生在${region.label}，男女主共用同一套地域口吻，可偶尔自然使用：${region.terms.join("、")}。`,
+    "频率要克制，约每 4-6 条消息点一下即可，不要整句硬写方言。"
   ].join("");
 }
 
 export function withViralRegionalPrompt(prompt: string, project: DramaProject) {
-  if (prompt.includes(`${regionPromptMarker}男主来自`) || prompt.includes(regionBriefMarker)) return prompt;
-  const regions = viralRegionsFromProject(project);
-  return `${prompt} ${regionPromptMarker}男主来自${regions.boy.label}，可带“${regions.boy.terms.slice(0, 3).join("、")}”；女主来自${regions.girl.label}，可带“${regions.girl.terms.slice(0, 3).join("、")}”。`;
+  if (prompt.includes(`${regionPromptMarker}故事发生在`)) return prompt;
+  const region = viralRegionFromProject(project);
+  const clean = stripRegionalMarker(prompt);
+  return `${clean} ${regionPromptMarker}故事发生在${region.label}，男女主都可带“${region.terms.slice(0, 3).join("、")}”。`;
 }
 
 function hasRegionalTerm(text: string, region: ViralRegion) {
@@ -225,22 +217,16 @@ function regionalizeLine(text: string, region: ViralRegion, index: number) {
 }
 
 export function applyViralRegionalFlavorToMessages(messages: ChatMessage[], project: DramaProject): ChatMessage[] {
-  const regions = viralRegionsFromProject(project);
-  const textCounts: Record<DefaultAvatarGender, number> = { boy: 0, girl: 0 };
-  const flavoredCounts: Record<DefaultAvatarGender, number> = { boy: 0, girl: 0 };
+  const region = viralRegionFromProject(project);
+  let textCount = 0;
+  let flavoredCount = 0;
   return messages.map((message) => {
     if (message.type !== "text") return message;
-    const character = message.roleId
-      ? project.characters.find((item) => item.id === message.roleId)
-      : project.characters.find((item) => item.side === message.side);
-    if (!character) return message;
-    const gender = genderForCharacter(character);
-    const region = regions[gender];
-    const textIndex = textCounts[gender];
-    textCounts[gender] += 1;
+    const textIndex = textCount;
+    textCount += 1;
     if ((textIndex + region.id.length) % 4 !== 0) return message;
-    const regionalIndex = flavoredCounts[gender];
-    flavoredCounts[gender] += 1;
+    const regionalIndex = flavoredCount;
+    flavoredCount += 1;
     return {
       ...message,
       text: regionalizeLine(message.text, region, regionalIndex),
@@ -250,13 +236,7 @@ export function applyViralRegionalFlavorToMessages(messages: ChatMessage[], proj
 }
 
 export function randomizeViralCharacterProfiles(project: DramaProject): DramaProject {
-  const boyRegion = rememberDistinct("ququ:last-viral-boy-region", viralRegions, (item) => item.id);
-  const girlRegion = rememberDistinct(
-    "ququ:last-viral-girl-region",
-    viralRegions.filter((region) => region.id !== boyRegion.id),
-    (item) => item.id
-  );
-  const regions: ViralRegions = { boy: boyRegion, girl: girlRegion };
+  const region = rememberDistinct("ququ:last-viral-region", viralRegions, (item) => item.id);
   const names: Record<DefaultAvatarGender, string> = {
     boy: rememberDistinct("ququ:last-viral-boy-name", boyNames, (item) => item),
     girl: rememberDistinct("ququ:last-viral-girl-name", girlNames, (item) => item)
@@ -265,7 +245,7 @@ export function randomizeViralCharacterProfiles(project: DramaProject): DramaPro
 
   return {
     ...projectWithAvatars,
-    brief: regionalBrief(projectWithAvatars.brief, regions),
+    brief: regionalBrief(projectWithAvatars.brief, region),
     characters: projectWithAvatars.characters.map((character) => {
       const gender = genderForCharacter(character);
       const name = names[gender];
@@ -273,7 +253,7 @@ export function randomizeViralCharacterProfiles(project: DramaProject): DramaPro
         ...character,
         name,
         avatarInitial: initialsForName(name),
-        voiceDescription: withRegionalVoice(character.voiceDescription, regions[gender])
+        voiceDescription: withRegionalVoice(character.voiceDescription, region)
       };
     }),
     messages: projectWithAvatars.messages.map((message) => ({
