@@ -8,6 +8,7 @@ import {
   randomizeViralCharacterProfiles,
   withViralRegionalPrompt
 } from "./viralPersona.js";
+import { viralPresetStories } from "./viralPresetStories.js";
 
 type PresetMessageSpec = {
   roleId: string;
@@ -1001,7 +1002,15 @@ function cloneBaseProject(project: DramaProject): DramaProject {
 function presetStoriesFor(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
   const role = normalizePresetRoleSelection(roleSelection);
   if (packageId === "jojo") return role.jojoRole === "npc" ? jojoNpcPresetStories : jojoPresetStories;
-  return role.viralRole === "female" ? viralFemalePresetStories : viralMalePresetStories;
+  return viralPresetStories;
+}
+
+function withViralCharacterNames(prompt: string, project: DramaProject) {
+  const boyName = project.characters.find((character) => character.id === "boy")?.name;
+  const girlName = project.characters.find((character) => character.id === "girl")?.name;
+  return prompt
+    .replace(/男主(?=是)/g, boyName ? `男主${boyName}` : "男主")
+    .replace(/女主(?=是)/g, girlName ? `女主${girlName}` : "女主");
 }
 
 function applyViralRole(project: DramaProject, viralRole: ViralPresetRole): DramaProject {
@@ -1141,7 +1150,7 @@ export function createPresetInitialArchive(
     ? rawPreset
     : {
         ...rawPreset,
-        prompt: withViralRegionalPrompt(rawPreset.prompt, baseProject),
+        prompt: withViralRegionalPrompt(withViralCharacterNames(rawPreset.prompt, baseProject), baseProject),
         nextPrompt: withViralRegionalPrompt(rawPreset.nextPrompt, baseProject)
       };
   const messages = buildPresetMessages(baseProject, preset);

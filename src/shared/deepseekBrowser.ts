@@ -413,6 +413,7 @@ function systemPrompt(project: DramaProject) {
     "消息必须短，单条中文尽量 4-18 字；偶尔可到 24 字，但不能写小说旁白。",
     "每一句都要有信息量：试探、隐瞒、证据、反问、误会、旧称呼、金额、截图、沉默、钩子。不要写寒暄废话。",
     "网红版要更暧昧、更情绪化：多写拉扯、吃醋、克制、欲言又止、嘴硬心软、旧关系刺痛；情绪要递进，不要只靠大吵。",
+    "当前新 Prompt 的明确修改优先级最高。用户如果更改名字、职业、性格、关系、性别、前史或世界设定，立即以新设定为准；默认用秘密、误会或身份揭露自然承接，不要反驳前后矛盾。只有用户明确说从头重写或重新开始时，才把修改视为硬重置。",
     viralRegionalInstruction(project),
     "第一条消息不得是问候，必须直接进入事件：下单、账单备注、现场照片、误会、旧称呼、截图、备注。",
     "如果 Prompt 里有陪聊/旧关系：第一屏必须出现下单、订单备注、只有两人知道的具体细节、现场照片或备注，不许从陌生人闲聊开始。",
@@ -458,7 +459,7 @@ function userPrompt(project: DramaProject, prompt: string, promptCards: PromptCa
     "目前已经生成的所有对话：",
     project.messages.length ? project.messages.map((message, index) => serializeMessage(project, message, index)).join("\n") : "无",
     "",
-    "上面的历史只用于承接人物关系和已发生事实，不要复用上一轮图片文案或固定例子。",
+    "上面的历史只用于承接人物关系和已发生事实；如果当前新 Prompt 明确修改旧设定，以当前新 Prompt 为准，把旧设定视为被覆盖或可解释的误会。不要复用上一轮图片文案或固定例子。",
     "请只续写下一段，不要重写整条线。输出严格 JSON。"
   ].join("\n");
 }

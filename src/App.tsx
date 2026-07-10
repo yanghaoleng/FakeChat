@@ -88,6 +88,7 @@ type PromptRestoreUndo = {
   before: string;
   after: string;
 };
+type MobileStoryCoachPhase = "idle" | "press" | "start";
 
 type AppProps = {
   storyPackage: StoryPackage;
@@ -817,6 +818,7 @@ export default function App({ storyPackage }: AppProps) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [visibleMessageCount, setVisibleMessageCount] = useState(0);
   const [storyPanelOpen, setStoryPanelOpen] = useState(() => !shouldUseStoryModal());
+  const [mobileStoryCoachPhase, setMobileStoryCoachPhase] = useState<MobileStoryCoachPhase>("idle");
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
@@ -846,6 +848,8 @@ export default function App({ storyPackage }: AppProps) {
   const pendingPromptCardLayoutSnapshotRef = useRef<LayoutSnapshot | null>(null);
   const storyLayoutSnapshotLockedRef = useRef(false);
   const storyLayoutUnlockTimerRef = useRef<number | undefined>(undefined);
+  const mobileStoryCoachTimersRef = useRef<number[]>([]);
+  const mobileStoryCoachInteractedRef = useRef(false);
   const settledPromptCardIdsRef = useRef<Set<string>>(new Set());
   const completedPromptCardLayoutKeysRef = useRef<Map<string, string>>(new Map());
   const previousStoryPanelOpenRef = useRef(storyPanelOpen);
@@ -1056,6 +1060,8 @@ export default function App({ storyPackage }: AppProps) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     if (generationProgressTimerRef.current) window.clearInterval(generationProgressTimerRef.current);
     if (storyLayoutUnlockTimerRef.current) window.clearTimeout(storyLayoutUnlockTimerRef.current);
+    mobileStoryCoachTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    mobileStoryCoachTimersRef.current = [];
     clearPendingPromptRemovalTimers();
     generationAbortRef.current?.abort();
   }, []);
@@ -1106,6 +1112,27 @@ export default function App({ storyPackage }: AppProps) {
       setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "预设提示词已载入" : current);
     }, 260);
     return () => window.clearTimeout(timer);
+  }, [storyPackage]);
+
+  useEffect(() => {
+    if (!shouldUseStoryModal() || projectRef.current.messages.length || promptCardsRef.current.length) return undefined;
+    mobileStoryCoachInteractedRef.current = false;
+    const pressTimer = window.setTimeout(() => {
+      if (!mobileStoryCoachInteractedRef.current) setMobileStoryCoachPhase("press");
+    }, 760);
+    const openTimer = window.setTimeout(() => {
+      if (mobileStoryCoachInteractedRef.current) return;
+      setMobileStoryCoachPhase("start");
+      setStoryPanelOpenWithContinuity(true);
+    }, 1320);
+    const finishTimer = window.setTimeout(() => {
+      setMobileStoryCoachPhase("idle");
+    }, 4600);
+    mobileStoryCoachTimersRef.current = [pressTimer, openTimer, finishTimer];
+    return () => {
+      mobileStoryCoachTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      mobileStoryCoachTimersRef.current = [];
+    };
   }, [storyPackage]);
 
   useEffect(() => {
@@ -1664,6 +1691,13 @@ export default function App({ storyPackage }: AppProps) {
       return;
     }
     doc.startViewTransition(() => flushSync(update));
+  }
+
+  function completeMobileStoryCoach() {
+    mobileStoryCoachInteractedRef.current = true;
+    mobileStoryCoachTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    mobileStoryCoachTimersRef.current = [];
+    setMobileStoryCoachPhase("idle");
   }
 
   async function generateStoryForPrompt({
@@ -2441,7 +2475,8 @@ export default function App({ storyPackage }: AppProps) {
   const storyActionButtonClassName = [
     "button button--full-width button--md button--primary story-action-button",
     "story-action-button-visible",
-    canSubmitStory && status !== "loading" ? "story-action-button-ready" : ""
+    canSubmitStory && status !== "loading" ? "story-action-button-ready" : "",
+    mobileStoryCoachPhase === "start" ? "story-action-button-coach" : ""
   ].filter(Boolean).join(" ");
 
   useEffect(() => {
@@ -2795,7 +2830,10 @@ export default function App({ storyPackage }: AppProps) {
             className="story-panel-backdrop"
             type="button"
             aria-label="收起编故事"
-            onClick={() => setStoryPanelOpenWithContinuity(false)}
+            onClick={() => {
+              completeMobileStoryCoach();
+              setStoryPanelOpenWithContinuity(false);
+            }}
           />
         ) : null}
         <div className={`left-panel ${storyPanelOpen ? "story-panel-open" : ""}`}>
@@ -2804,10 +2842,13 @@ export default function App({ storyPackage }: AppProps) {
             onScroll={handleLeftPanelScroll}
           >
             <button
-              className="story-panel-status"
+              className={mobileStoryCoachPhase === "press" ? "story-panel-status story-panel-status-coach" : "story-panel-status"}
               style={jojoMode ? jojoStoryToggleGlassStyle : undefined}
               type="button"
-              onClick={() => setStoryPanelOpenWithContinuity((current) => !current)}
+              onClick={() => {
+                completeMobileStoryCoach();
+                setStoryPanelOpenWithContinuity((current) => !current);
+              }}
               aria-expanded={storyPanelOpen}
               aria-label={storyPanelOpen ? "收起编故事" : "展开编故事"}
             >
@@ -2886,7 +2927,10 @@ export default function App({ storyPackage }: AppProps) {
                 <button
                   className={storyActionButtonClassName}
                   type="button"
-                  onClick={continueStory}
+                  onClick={() => {
+                    completeMobileStoryCoach();
+                    continueStory();
+                  }}
                   disabled={!canSubmitStory}
                 >
                   {status === "loading" ? <MessageSquarePlus size={17} /> : <MessageSquarePlus size={17} />}
