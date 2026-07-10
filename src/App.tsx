@@ -600,7 +600,7 @@ function shouldUseStoryModal() {
 
 function resizeTextareaToContent(textarea: HTMLTextAreaElement | null) {
   if (!textarea) return;
-  textarea.style.height = "auto";
+  textarea.style.height = "0px";
   const styles = window.getComputedStyle(textarea);
   const borderHeight = Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
   const minHeight = Number.parseFloat(styles.minHeight) || 0;
@@ -2511,16 +2511,29 @@ export default function App({ storyPackage }: AppProps) {
 
   useEffect(() => {
     let resizeFrame: number | undefined;
-    const handleResize = () => {
+    const textarea = promptTextareaRef.current;
+    const shell = textarea?.parentElement;
+    let shellWidth = shell?.getBoundingClientRect().width ?? 0;
+    const scheduleResize = () => {
       if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
       resizeFrame = window.requestAnimationFrame(() => {
         resizeTextareaToContent(promptTextareaRef.current);
         resizeFrame = undefined;
       });
     };
-    window.addEventListener("resize", handleResize);
+    const resizeObserver = shell && typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(([entry]) => {
+          const nextWidth = entry?.contentRect.width ?? shell.getBoundingClientRect().width;
+          if (Math.abs(nextWidth - shellWidth) < 0.5) return;
+          shellWidth = nextWidth;
+          scheduleResize();
+        })
+      : null;
+    if (shell && resizeObserver) resizeObserver.observe(shell);
+    window.addEventListener("resize", scheduleResize);
     return () => {
-      window.removeEventListener("resize", handleResize);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleResize);
       if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
     };
   }, []);
