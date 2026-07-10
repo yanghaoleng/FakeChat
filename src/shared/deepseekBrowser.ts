@@ -11,6 +11,7 @@ import {
 } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject, type ScriptGenerateRequest } from "./schema.js";
 import type { PromptCard } from "./linearStory.js";
+import { viralRegionalInstruction } from "./viralPersona.js";
 
 declare const __DEEPSEEK_BROWSER_CONFIG__: {
   apiKey?: string;
@@ -412,6 +413,7 @@ function systemPrompt(project: DramaProject) {
     "消息必须短，单条中文尽量 4-18 字；偶尔可到 24 字，但不能写小说旁白。",
     "每一句都要有信息量：试探、隐瞒、证据、反问、误会、旧称呼、金额、截图、沉默、钩子。不要写寒暄废话。",
     "网红版要更暧昧、更情绪化：多写拉扯、吃醋、克制、欲言又止、嘴硬心软、旧关系刺痛；情绪要递进，不要只靠大吵。",
+    viralRegionalInstruction(project),
     "第一条消息不得是问候，必须直接进入事件：下单、账单备注、现场照片、误会、旧称呼、截图、备注。",
     "如果 Prompt 里有陪聊/旧关系：第一屏必须出现下单、订单备注、只有两人知道的具体细节、现场照片或备注，不许从陌生人闲聊开始。",
     viralInstruction.sideRule,

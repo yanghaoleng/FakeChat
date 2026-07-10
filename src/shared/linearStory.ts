@@ -1,10 +1,15 @@
 import { sampleProject } from "./sampleProject.js";
-import { defaultAvatars } from "./avatarLibrary.js";
 import { imageHintFromContext } from "./imageNarrative.js";
 import { normalizeMemeMessage } from "./memeLibrary.js";
 import { isJojoProject, jojoCompanyAssets, jojoProject } from "./jojoProject.js";
+import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { pickJojoPhotoAssetId, pickViralPhotoAssetId } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
+import {
+  applyViralRegionalFlavorToMessages,
+  randomizeViralCharacterProfiles,
+  withViralRegionalPrompt
+} from "./viralPersona.js";
 
 export type PromptCard = {
   id: string;
@@ -42,30 +47,30 @@ const jojoBeatTemplates = [
 export type StoryPackage = "viral" | "jojo";
 
 const seededPick = <T>(items: T[], seed: number) => items[Math.abs(seed) % items.length];
-const girlAvatars = defaultAvatars.filter((avatar) => avatar.id.startsWith("girl"));
-const boyAvatars = defaultAvatars.filter((avatar) => avatar.id.startsWith("boy"));
-const viralGirlNames = ["Ovilia", "南枝", "鹿眠", "温乔", "许愿", "林雾", "小满", "安夏", "Mia", "Nora", "Iris", "Luna"];
 
 function makeId(prefix: string) {
   return `${prefix}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
 }
 
-function randomItem<T>(items: T[]): T | undefined {
-  return items[Math.floor(Math.random() * items.length)];
+function randomizeCharacterAvatars(project: DramaProject): DramaProject {
+  return randomizeViralCharacterProfiles(project);
 }
 
-function randomizeCharacterAvatars(project: DramaProject): DramaProject {
-  const girlAvatar = randomItem(girlAvatars);
-  const boyAvatar = randomItem(boyAvatars);
-  const girlName = randomItem(viralGirlNames) || "Ovilia";
+function randomizeJojoNpcAvatar(project: DramaProject): DramaProject {
+  const npc = randomJojoNpcProfile();
   return {
     ...project,
     characters: project.characters.map((character) => {
-      const avatar = character.side === "left" ? girlAvatar : boyAvatar;
-      const namePatch = project.stylePreset === "kuaishou-horizontal-chat" && character.side === "left"
-        ? { name: girlName, avatarInitial: [...girlName].slice(0, 2).join("") }
-        : {};
-      return { ...character, ...namePatch, ...(avatar ? { avatarUrl: avatar.url } : {}) };
+      if (character.id !== "npc") return character;
+      return {
+        ...character,
+        name: npc.name,
+        avatarInitial: npc.avatarInitial,
+        avatarUrl: npc.avatarUrl,
+        avatarGradient: npc.avatarGradient,
+        voicePreset: npc.voicePreset,
+        voiceDescription: npc.voiceDescription
+      };
     })
   };
 }
@@ -199,7 +204,7 @@ function makeMessage(project: DramaProject, index: number, type: ChatMessage["ty
 }
 
 export function createInitialStaticProject(packageId: StoryPackage = "viral"): DramaProject {
-  if (packageId === "jojo") return cloneProject(jojoProject);
+  if (packageId === "jojo") return randomizeJojoNpcAvatar(cloneProject(jojoProject));
   return randomizeCharacterAvatars({
     ...sampleProject,
     id: "static-linear-chat",
@@ -211,7 +216,7 @@ export function createInitialStaticProject(packageId: StoryPackage = "viral"): D
 }
 
 export function createInitialPlaybackProject(packageId: StoryPackage = "viral"): DramaProject {
-  if (packageId === "jojo") return cloneProject(jojoProject);
+  if (packageId === "jojo") return randomizeJojoNpcAvatar(cloneProject(jojoProject));
   return randomizeCharacterAvatars({
     ...sampleProject,
     id: "static-linear-chat",
@@ -278,7 +283,7 @@ export function generateStorySegment({
         `${premise.slice(0, 10) || "这件事"}不是结束`
       ];
 
-  const messages: ChatMessage[] = texts.map((text, index) => makeMessage(project, project.messages.length + index, "text", text));
+  let messages: ChatMessage[] = texts.map((text, index) => makeMessage(project, project.messages.length + index, "text", text));
 
   if (shouldAddTransfer) {
     const transferText = /账单|差额|订单/.test(premise) ? "我先把差额补给你" : /道歉|赔/.test(premise) ? "我赔你这一单" : "我先转你一笔";
@@ -300,6 +305,7 @@ export function generateStorySegment({
     const rawMeme = makeMessage(project, project.messages.length + messages.length, "meme", jojoMode ? "公司群表情包" : "表情包");
     messages.push(jojoMode ? rawMeme : normalizeMemeMessage(rawMeme, [premise, contextHook].join(" ")));
   }
+  if (!jojoMode) messages = applyViralRegionalFlavorToMessages(messages, project);
 
   const card: PromptCard = {
     id: makeId("prompt"),
@@ -380,7 +386,7 @@ export function suggestNextStoryPrompt({
       "男主想把话题拉回相亲标准，女生反问他现在还会不会躲在小卖部门口，旧绰号让暧昧升级。",
       "女生发来一张旧同学录截图，里面有男主当年没送出去的话，男主装作不记得，最后被张阿姨的备注反杀。"
     ];
-    return blindDateRoutes[index % blindDateRoutes.length];
+    return withViralRegionalPrompt(blindDateRoutes[index % blindDateRoutes.length], project);
   }
 
   const viralRoutes = [
@@ -388,7 +394,7 @@ export function suggestNextStoryPrompt({
     "接着写女生发来一张截图或照片，把前面的误会翻深一层，男主先解释，最后发现她其实早就知道真相。",
     "接着写男主想转移话题，女生用一个只有两个人知道的旧细节逼他承认，结尾留下下一段钩子。"
   ];
-  return viralRoutes[index % viralRoutes.length];
+  return withViralRegionalPrompt(viralRoutes[index % viralRoutes.length], project);
 }
 
 export function makeStoryArchive(project: DramaProject, promptCards: PromptCard[]): StoryArchive {

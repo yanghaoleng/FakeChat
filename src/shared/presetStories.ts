@@ -3,6 +3,11 @@ import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { sampleProject } from "./sampleProject.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
+import {
+  applyViralRegionalFlavorToMessages,
+  randomizeViralCharacterProfiles,
+  withViralRegionalPrompt
+} from "./viralPersona.js";
 
 type PresetMessageSpec = {
   roleId: string;
@@ -1038,7 +1043,7 @@ function withRandomJojoNpc(project: DramaProject): DramaProject {
 }
 
 function applyJojoRole(project: DramaProject, jojoRole: JojoPresetRole): DramaProject {
-  const projectWithNpc = jojoRole === "npc" ? withRandomJojoNpc(project) : project;
+  const projectWithNpc = withRandomJojoNpc(project);
   const selectedCharacter = projectWithNpc.characters.find((character) => character.id === jojoRole);
   return parseProject({
     ...projectWithNpc,
@@ -1061,7 +1066,7 @@ function baseProjectFor(packageId: StoryPackage, roleSelection: PresetRoleSelect
   const baseProject = cloneBaseProject(packageId === "jojo" ? jojoProject : sampleProject);
   return packageId === "jojo"
     ? applyJojoRole(baseProject, roleSelection.jojoRole)
-    : applyViralRole(baseProject, roleSelection.viralRole);
+    : randomizeViralCharacterProfiles(applyViralRole(baseProject, roleSelection.viralRole));
 }
 
 function messageSide(project: DramaProject, roleId: string): ChatMessage["side"] {
@@ -1081,7 +1086,7 @@ function holdMsFor(text: string, type: ChatMessage["type"]) {
 }
 
 function buildPresetMessages(project: DramaProject, preset: PresetStory): ChatMessage[] {
-  return preset.messages.map((message, index) => {
+  const messages = preset.messages.map((message, index) => {
     const type = message.type ?? "text";
     const side = type === "system" ? "center" : messageSide(project, message.roleId);
     return {
@@ -1100,6 +1105,9 @@ function buildPresetMessages(project: DramaProject, preset: PresetStory): ChatMe
       transferNote: message.transferNote
     };
   });
+  return project.stylePreset === "kuaishou-horizontal-chat"
+    ? applyViralRegionalFlavorToMessages(messages, project)
+    : messages;
 }
 
 export function presetStoryCount(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
@@ -1127,8 +1135,15 @@ export function createPresetInitialArchive(
   const stories = presetStoriesFor(packageId, resolvedRoleSelection);
   const selectedIndex = requestedIndex ?? randomPresetStoryIndex(packageId, resolvedRoleSelection);
   const presetIndex = ((selectedIndex % stories.length) + stories.length) % stories.length;
-  const preset = stories[presetIndex];
   const baseProject = baseProjectFor(packageId, resolvedRoleSelection);
+  const rawPreset = stories[presetIndex];
+  const preset = packageId === "jojo"
+    ? rawPreset
+    : {
+        ...rawPreset,
+        prompt: withViralRegionalPrompt(rawPreset.prompt, baseProject),
+        nextPrompt: withViralRegionalPrompt(rawPreset.nextPrompt, baseProject)
+      };
   const messages = buildPresetMessages(baseProject, preset);
   const project = parseProject({
     ...baseProject,

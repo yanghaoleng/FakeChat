@@ -1,4 +1,5 @@
 import { defaultAvatars } from "./avatarLibrary";
+import { jojoNpcProfiles } from "./jojoNpcProfiles";
 import { jojoProject } from "./jojoProject";
 import { localMemeAssets } from "./memeLibrary";
 import { jojoPhotoAssets, viralPhotoAssets } from "./photoLibrary";
@@ -45,6 +46,7 @@ export const staticVisualAssetPaths = unique([
   ...localMemeAssets.map((asset) => asset.localPath).filter(isLocalPublicPath),
   ...viralPhotoAssets.map((asset) => asset.localPath).filter(isLocalPublicPath),
   ...jojoPhotoAssets.map((asset) => asset.localPath).filter(isLocalPublicPath),
+  ...jojoNpcProfiles.map((profile) => profile.avatarUrl).filter(isLocalPublicPath),
   ...projectAssetPaths(sampleProject),
   ...projectAssetPaths(jojoProject)
 ]);
