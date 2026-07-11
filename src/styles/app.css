@@ -488,13 +488,17 @@ button[disabled],
 }
 
 .ambient-layer::before,
-.ambient-layer::after {
+.ambient-layer::after,
+.ambient-backdrop::before,
+.ambient-backdrop::after {
   position: absolute;
   inset: 0;
   content: "";
   pointer-events: none;
 }
 
+.ambient-backdrop,
+.ambient-entry-blackout,
 .ambient-texture,
 .ambient-lines,
 .ambient-wash,
@@ -506,6 +510,16 @@ button[disabled],
 .ambient-feedback {
   position: absolute;
   inset: 0;
+}
+
+.ambient-backdrop {
+  display: none;
+}
+
+.ambient-entry-blackout {
+  z-index: 30;
+  background: #000;
+  opacity: 0;
 }
 
 .ambient-texture {
@@ -1458,7 +1472,7 @@ button[disabled],
   --ambient-ribbon-alt: rgba(22, 119, 255, 0.1);
   --ambient-feedback: rgba(126, 230, 255, 0.92);
   --ambient-feedback-soft: rgba(7, 193, 96, 0.18);
-  --ambient-opacity: 0.98;
+  --ambient-opacity: 1;
 }
 
 .app-shell[data-ambient-skin="brown"] .ambient-layer {
@@ -1562,23 +1576,99 @@ button[disabled],
 }
 
 .app-shell[data-ambient-skin="nightmeadow"] .ambient-layer {
+  background: #000;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-backdrop {
+  display: block;
   background:
     linear-gradient(180deg, rgba(2, 8, 15, 0.18) 0, rgba(2, 8, 15, 0.1) 42%, rgba(3, 17, 29, 0.16) 100%),
     url("/ambient/night-meadow.webp") center / cover no-repeat,
     #03111d;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  animation: ambient-nightmeadow-entry-spring-slow 2s linear both;
 }
 
-.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::before {
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::before,
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::after {
+  background: none;
+  opacity: 0;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-backdrop::before {
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0, transparent 34%, rgba(0, 0, 0, 0.14) 100%),
     radial-gradient(ellipse at 50% 50%, rgba(22, 119, 255, 0.08), transparent 42%);
 }
 
-.app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::after {
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-backdrop::after {
   background:
     radial-gradient(ellipse at 52% 54%, rgba(42, 135, 214, 0.11), transparent 38%),
     linear-gradient(180deg, rgba(1, 8, 15, 0.08) 0, transparent 48%, rgba(0, 0, 0, 0.18) 100%);
   opacity: 0.68;
+}
+
+.app-shell[data-ambient-skin="nightmeadow"] .ambient-entry-blackout {
+  animation: ambient-nightmeadow-black-reveal 2s ease-out both;
+}
+
+@keyframes ambient-nightmeadow-entry-spring-slow {
+  0% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.008);
+  }
+  24% {
+    transform: scale(1.034);
+  }
+  38% {
+    transform: scale(1.082);
+  }
+  52% {
+    transform: scale(1.145);
+  }
+  64% {
+    transform: scale(1.205);
+  }
+  74% {
+    transform: scale(1.245);
+  }
+  81% {
+    transform: scale(1.265);
+  }
+  87% {
+    transform: scale(1.258);
+  }
+  92% {
+    transform: scale(1.246);
+  }
+  96% {
+    transform: scale(1.2485);
+  }
+  100% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes ambient-nightmeadow-black-reveal {
+  0%,
+  8% {
+    opacity: 1;
+  }
+  28% {
+    opacity: 0.86;
+  }
+  52% {
+    opacity: 0.48;
+  }
+  78% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .app-shell[data-ambient-skin="nightmeadow"] .ambient-wash,
@@ -2120,6 +2210,8 @@ button[disabled],
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ambient-backdrop,
+  .ambient-entry-blackout,
   .ambient-wash,
   .ambient-ribbons,
   .ambient-texture,

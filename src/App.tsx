@@ -110,7 +110,7 @@ const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = 
 ];
 
 const defaultAmbientSkinByPackage: Record<StoryPackage, AmbientSkinId> = {
-  viral: "grid",
+  viral: "nightmeadow",
   jojo: "grid"
 };
 
@@ -175,7 +175,8 @@ function packageSwitchLink(packageId: StoryPackage) {
 }
 
 function ambientSkinStorageKey(packageId: StoryPackage) {
-  return `ququ-ambient-skin-v2-${packageId}`;
+  const version = packageId === "viral" ? "v3" : "v2";
+  return `ququ-ambient-skin-${version}-${packageId}`;
 }
 
 function isAmbientSkinId(value: string | null): value is AmbientSkinId {
@@ -461,6 +462,7 @@ function AmbientLayer({
 }) {
   return (
     <div className="ambient-layer" aria-hidden="true">
+      <div className="ambient-backdrop" />
       <div className="ambient-texture" />
       <div className="ambient-lines" />
       <div className="ambient-wash ambient-wash-primary" />
@@ -493,6 +495,7 @@ function AmbientLayer({
         </div>
       ) : null}
       <div className="ambient-figure" />
+      <div className="ambient-entry-blackout" />
     </div>
   );
 }
