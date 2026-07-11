@@ -2805,6 +2805,332 @@ button[disabled],
   animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.about-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.about-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(2, 8, 15, 0.72);
+  cursor: default;
+  padding: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: about-backdrop-in 0.18s ease both;
+}
+
+.about-dialog {
+  position: relative;
+  width: min(390px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(9, 22, 36, 0.96);
+  color: var(--app-text);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px) saturate(122%);
+  -webkit-backdrop-filter: blur(24px) saturate(122%);
+  animation: about-dialog-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.about-dialog-header {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 11px 14px;
+}
+
+.about-dialog-header h2,
+.about-dialog-header p {
+  margin: 0;
+}
+
+.about-dialog-header h2 {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.about-dialog-header p {
+  margin-top: 2px;
+  color: var(--app-text-subtle);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.about-dialog-heading-icon,
+.about-dialog-icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--app-accent-readable);
+  padding: 0;
+}
+
+.about-dialog-icon-button {
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.about-dialog-icon-button:hover,
+.about-dialog-icon-button:focus-visible {
+  border-color: var(--wechat-green-border);
+  background: var(--wechat-green-soft);
+  color: var(--app-text);
+  outline: none;
+}
+
+.about-dialog-icon-button:active {
+  transform: scale(0.97);
+}
+
+.about-dialog-close {
+  color: var(--app-text-muted);
+}
+
+.about-dialog-list {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+}
+
+.about-dialog-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.about-dialog-item:hover,
+.about-dialog-item:focus-visible {
+  background: rgba(255, 255, 255, 0.065);
+  color: var(--app-text);
+  outline: none;
+}
+
+.about-dialog-item:focus-visible {
+  box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+.about-dialog-item:active {
+  transform: scale(0.985);
+}
+
+.about-dialog-item > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+}
+
+.about-dialog-item strong,
+.about-dialog-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-dialog-item strong {
+  font-size: 13px;
+  font-weight: 780;
+  line-height: 1.4;
+}
+
+.about-dialog-item small {
+  margin-top: 2px;
+  color: var(--app-text-subtle);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.about-dialog-item > svg {
+  justify-self: end;
+  color: var(--app-text-subtle);
+}
+
+.about-dialog-item-chevron {
+  transform: rotate(-90deg);
+}
+
+.about-dialog-item-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--app-accent-readable);
+}
+
+.about-dialog-content {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.about-dialog-content > p {
+  margin: 0;
+  color: var(--app-text-subtle);
+  font-size: 12px;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.about-support-content {
+  justify-items: center;
+}
+
+.about-support-qr,
+.about-support-placeholder {
+  width: 210px;
+  aspect-ratio: 1;
+  border-radius: 14px;
+}
+
+.about-support-qr {
+  display: block;
+  border: 8px solid rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.94);
+  object-fit: contain;
+}
+
+.about-support-placeholder {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--app-text-muted);
+  padding: 22px;
+  text-align: center;
+}
+
+.about-support-placeholder strong {
+  color: var(--app-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.about-support-placeholder small {
+  color: var(--app-text-subtle);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.about-feedback-content {
+  gap: 12px;
+}
+
+.about-feedback-wechat {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px 16px;
+}
+
+.about-feedback-wechat span {
+  color: var(--app-text-subtle);
+  font-size: 11px;
+}
+
+.about-feedback-wechat strong {
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  font-weight: 760;
+  line-height: 1.4;
+}
+
+.about-feedback-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--wechat-green-border);
+  border-radius: 11px;
+  background: var(--wechat-green-soft);
+  color: var(--app-accent-readable);
+  cursor: pointer;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 780;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.about-feedback-copy:hover,
+.about-feedback-copy:focus-visible {
+  background: var(--app-accent-hover-soft);
+  color: var(--app-text);
+  outline: none;
+}
+
+.about-feedback-copy:focus-visible {
+  box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+.about-feedback-copy:active {
+  transform: scale(0.985);
+}
+
+.about-feedback-copy:disabled {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--app-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.76;
+}
+
+@keyframes about-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes about-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -4563,10 +4889,20 @@ button[disabled],
   white-space: nowrap;
 }
 
+.wechat-chat-viewport {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: #ededed;
+}
+
+.dingtalk-chat-viewport {
+  background: #f1f2f3;
+}
+
 .wechat-chat-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: block;
+  height: 100%;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -4577,9 +4913,27 @@ button[disabled],
 }
 
 .dingtalk-chat-scroll {
-  gap: 11px;
   padding: 12px 12px 16px;
   background: #f1f2f3;
+}
+
+.wechat-chat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dingtalk-chat-scroll .wechat-chat-content {
+  gap: 11px;
+}
+
+.archive-capture-target *,
+.archive-capture-target *::before,
+.archive-capture-target *::after {
+  animation: none !important;
+  caret-color: transparent !important;
+  transition: none !important;
 }
 
 .chat-replay-button {
@@ -4610,6 +4964,11 @@ button[disabled],
 
 .wechat-chat-scroll::-webkit-scrollbar {
   width: 0;
+}
+
+.wechat-chat-scroll:focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.7);
+  outline-offset: -2px;
 }
 
 .wechat-chat-date,
@@ -4768,10 +5127,319 @@ button[disabled],
 
 .wechat-transfer,
 .wechat-image-card,
-.wechat-meme-card {
+.wechat-meme-card,
+.wechat-music-card {
   max-width: 236px;
   overflow: hidden;
   border-radius: 5px;
+}
+
+.wechat-music-card {
+  --music-progress: 0%;
+  position: relative;
+  display: block;
+  width: 236px;
+  border: 0;
+  background: #ffffff;
+  color: #111111;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.16s ease, transform 0.16s ease;
+}
+
+.wechat-music-card:hover {
+  filter: brightness(0.985);
+}
+
+.wechat-music-card:active {
+  transform: scale(0.985);
+}
+
+.wechat-music-card:focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.82);
+  outline-offset: 2px;
+}
+
+.wechat-music-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  gap: 10px;
+  min-height: 105px;
+  padding: 12px 11px 10px 13px;
+}
+
+.wechat-music-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wechat-music-copy strong,
+.wechat-music-artist,
+.wechat-music-lyric {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wechat-music-copy strong {
+  color: #111111;
+  font-size: 15px;
+  font-weight: 620;
+  line-height: 1.35;
+}
+
+.wechat-music-artist {
+  margin-top: 3px;
+  color: #707070;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.wechat-music-lyric {
+  margin-top: auto;
+  color: #9a9a9a;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.wechat-music-cover-wrap {
+  position: relative;
+  display: block;
+  width: 82px;
+  height: 82px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #e9e9e9;
+}
+
+.wechat-music-cover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wechat-music-cover-wrap::after {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.14);
+  content: "";
+}
+
+.wechat-music-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  transform: translate(-50%, -50%);
+}
+
+.wechat-music-play-icon {
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid #ffffff;
+}
+
+.wechat-music-card-playing .wechat-music-play-icon {
+  width: 10px;
+  height: 12px;
+  margin-left: 0;
+  border: 0;
+  background: linear-gradient(90deg, #ffffff 0 3px, transparent 3px 7px, #ffffff 7px 10px);
+}
+
+.wechat-music-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 31px;
+  border-top: 1px solid #eeeeee;
+  padding: 6px 11px 6px 12px;
+  color: #999999;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.wechat-music-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wechat-music-source i {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #e83835;
+  color: #ffffff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.wechat-music-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #e83835 0 var(--music-progress), transparent var(--music-progress) 100%);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.wechat-music-card-playing .wechat-music-progress {
+  opacity: 1;
+}
+
+.wechat-music-card-error .wechat-music-play {
+  opacity: 0.46;
+}
+
+.wechat-music-card-active .wechat-music-progress {
+  opacity: 1;
+}
+
+.wechat-music-dock {
+  --music-progress: 0%;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  left: 10px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  padding: 7px 8px;
+  color: #111111;
+  animation: wechat-music-dock-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
+  backdrop-filter: blur(12px) saturate(1.08);
+}
+
+.wechat-music-dock > img {
+  display: block;
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  background: #e7e7e7;
+  object-fit: cover;
+}
+
+.wechat-music-dock-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wechat-music-dock-copy strong,
+.wechat-music-dock-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wechat-music-dock-copy strong {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.wechat-music-dock-copy small {
+  margin-top: 2px;
+  color: #7f7f7f;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.wechat-music-dock-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.wechat-music-dock-controls button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #303030;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wechat-music-dock-controls button:hover {
+  background: rgba(0, 0, 0, 0.055);
+}
+
+.wechat-music-dock-controls button:focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.78);
+  outline-offset: 0;
+}
+
+.wechat-music-dock-controls button:disabled {
+  color: #b9b9b9;
+  cursor: default;
+}
+
+.wechat-music-dock-controls button:disabled:hover {
+  background: transparent;
+}
+
+.wechat-music-dock-toggle svg {
+  transform: translateX(0.5px);
+}
+
+.wechat-music-dock-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #e83835 0 var(--music-progress), transparent var(--music-progress) 100%);
+}
+
+.wechat-music-dock-error .wechat-music-dock-copy small {
+  color: #c64c49;
+}
+
+@keyframes wechat-music-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .wechat-transfer {
@@ -5717,6 +6385,10 @@ button[disabled],
 @media (pointer: coarse), (prefers-reduced-motion: reduce) {
   .preview-tilt-target {
     transform: none !important;
+  }
+
+  .wechat-music-dock {
+    animation: none !important;
   }
 
   .static-workspace .left-panel-scroll > .surface-card {

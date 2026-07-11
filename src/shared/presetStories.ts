@@ -1,6 +1,7 @@
 import { jojoProject } from "./jojoProject.js";
 import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { sampleProject } from "./sampleProject.js";
+import { injectRomanticMusicMessage } from "./musicLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
 import {
@@ -1090,6 +1091,7 @@ function sendSfxFor(type: ChatMessage["type"]): ChatMessage["sendSfx"] {
 function holdMsFor(text: string, type: ChatMessage["type"]) {
   if (type === "image") return 2500;
   if (type === "meme") return 2100;
+  if (type === "music") return 2600;
   if (type === "transfer") return 1700;
   return Math.min(2400, Math.max(1050, text.length * 96));
 }
@@ -1114,9 +1116,10 @@ function buildPresetMessages(project: DramaProject, preset: PresetStory): ChatMe
       transferNote: message.transferNote
     };
   });
-  return project.stylePreset === "kuaishou-horizontal-chat"
+  const flavoredMessages = project.stylePreset === "kuaishou-horizontal-chat"
     ? applyViralRegionalFlavorToMessages(messages, project)
     : messages;
+  return injectRomanticMusicMessage(flavoredMessages, project, preset.prompt, preset.id);
 }
 
 export function presetStoryCount(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {

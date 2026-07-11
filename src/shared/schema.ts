@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const messageTypes = ["text", "image", "meme", "transfer", "system"] as const;
+export const messageTypes = ["text", "image", "meme", "music", "transfer", "system"] as const;
 export const sides = ["left", "right", "center"] as const;
 export const riskLevels = ["safe", "unknown_or_restricted", "restricted"] as const;
 export const stylePresets = ["kuaishou-horizontal-chat", "jojo-company-chat"] as const;
@@ -57,6 +57,14 @@ export const chatMessageSchema = z.object({
   imageUrl: mediaUrlSchema.optional(),
   amount: z.number().min(0).optional(),
   transferNote: z.string().optional(),
+  musicId: z.string().optional(),
+  musicTitle: z.string().optional(),
+  musicArtist: z.string().optional(),
+  musicLyric: z.string().optional(),
+  musicCoverUrl: mediaUrlSchema.optional(),
+  musicPreviewUrl: mediaUrlSchema.optional(),
+  musicShareUrl: z.string().url().optional(),
+  musicCommentCount: z.number().int().min(0).optional(),
   audioUrl: z.string().optional(),
   audioPath: z.string().optional(),
   durationMs: z.number().int().positive().optional()

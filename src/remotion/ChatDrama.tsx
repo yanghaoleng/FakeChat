@@ -2,6 +2,7 @@ import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, useCurrentFram
 import { imageNarrativeCopy, imageSourceForMessage } from "../shared/imageNarrative";
 import { jojoCssMemeCardForMessage, type JojoCssMemeCard } from "../shared/jojoMemeCards";
 import { isJojoProject } from "../shared/jojoProject";
+import { musicTrackForMessage } from "../shared/musicLibrary";
 import { resolvePublicAssetPath } from "../shared/publicPath";
 import { getCharacter, type ChatMessage, type DramaProject } from "../shared/schema";
 import { buildTimeline, getDurationInFrames, type TimelineEntry } from "../shared/timing";
@@ -107,11 +108,33 @@ function MemeBubble({ project, message }: { project: DramaProject; message: Chat
   );
 }
 
+function MusicBubble({ message }: { message: ChatMessage }) {
+  const track = musicTrackForMessage(message);
+  const title = message.musicTitle || track.title;
+  return (
+    <div className="music-card">
+      <div className="music-card-main">
+        <div className="music-card-copy">
+          <strong>{title}</strong>
+          <span>{message.musicArtist || track.artist}</span>
+          <small>{message.musicLyric || track.lyric}</small>
+        </div>
+        <div className="music-card-cover-wrap">
+          <Img className="music-card-cover" src={message.musicCoverUrl || track.coverUrl} />
+          <div className="music-card-play">▶</div>
+        </div>
+      </div>
+      <div className="music-card-footer"><i>♪</i>网易云音乐</div>
+    </div>
+  );
+}
+
 function MessageBody({ project, message }: { project: DramaProject; message: ChatMessage }) {
   const visualSide = visualSideFor(project, message);
   if (message.type === "transfer") return <TransferBubble message={message} />;
   if (message.type === "image") return <ImageBubble project={project} message={message} />;
   if (message.type === "meme") return <MemeBubble project={project} message={message} />;
+  if (message.type === "music") return <MusicBubble message={message} />;
   if (message.type === "system") return <div className="system-message">{message.text}</div>;
   return <TextBubble message={message} visualSide={visualSide} />;
 }

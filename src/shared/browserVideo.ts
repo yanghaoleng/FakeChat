@@ -1,6 +1,7 @@
 import { getCharacter, messageVoiceText, type ChatMessage, type DramaProject } from "./schema";
 import { imageNarrativeCopy, imageSourceForMessage } from "./imageNarrative";
 import { jojoCssMemeCardForMessage, type JojoCssMemeCard, type JojoCssMemeTone } from "./jojoMemeCards";
+import { musicTrackForMessage } from "./musicLibrary";
 import { isJojoProject } from "./jojoProject";
 import { resolvePublicAssetPath } from "./publicPath";
 import { buildTimeline, getDurationInFrames, getScrollY, type TimelineEntry } from "./timing";
@@ -115,8 +116,9 @@ async function preloadRenderImages(project: DramaProject) {
   }));
 
   await Promise.all(project.messages.map(async (message) => {
-    if (message.type !== "image" && message.type !== "meme") return;
-    const src = resolvePublicAssetPath(imageSourceForMessage(project, message));
+    if (message.type !== "image" && message.type !== "meme" && message.type !== "music") return;
+    const track = message.type === "music" ? musicTrackForMessage(message) : undefined;
+    const src = resolvePublicAssetPath(message.type === "music" ? message.musicCoverUrl || track?.coverUrl : imageSourceForMessage(project, message));
     if (!src) return;
     const image = await loadCanvasImage(src);
     if (image) cache.media.set(message.id, image);
@@ -339,6 +341,64 @@ function drawMeme(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number
   return { width: 520, height: 360 };
 }
 
+function drawMusic(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
+  const track = musicTrackForMessage(message);
+  const cover = imageCache.media.get(message.id);
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, x, y, 700, 360, 10);
+  ctx.fill();
+
+  if (cover) drawImageCover(ctx, cover, x + 440, y + 28, 230, 230);
+  else {
+    ctx.fillStyle = "#dedede";
+    ctx.fillRect(x + 440, y + 28, 230, 230);
+  }
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.beginPath();
+  ctx.arc(x + 555, y + 143, 44, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(x + 544, y + 121);
+  ctx.lineTo(x + 582, y + 143);
+  ctx.lineTo(x + 544, y + 165);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#111111";
+  ctx.font = "650 46px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText((message.musicTitle || track.title).slice(0, 18), x + 38, y + 38);
+  ctx.fillStyle = "#707070";
+  ctx.font = "31px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText((message.musicArtist || track.artist).slice(0, 22), x + 38, y + 108);
+  ctx.fillStyle = "#929292";
+  ctx.font = "27px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText((message.musicLyric || track.lyric).slice(0, 27), x + 38, y + 218);
+
+  ctx.strokeStyle = "#eeeeee";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 286);
+  ctx.lineTo(x + 700, y + 286);
+  ctx.stroke();
+  ctx.fillStyle = "#e83835";
+  ctx.beginPath();
+  ctx.arc(x + 52, y + 323, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 22px sans-serif";
+  ctx.fillText("♪", x + 44, y + 310);
+  ctx.fillStyle = "#999999";
+  ctx.font = "25px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText("网易云音乐", x + 82, y + 308);
+}
+
 function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry: TimelineEntry, y: number, imageCache: ImageCache) {
   const message = entry.message;
   const opacity = 1;
@@ -368,6 +428,7 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
     if (message.type === "transfer") drawTransfer(ctx, message, leftBubbleX, bubbleY);
     else if (message.type === "image") drawImageCard(ctx, project, message, leftBubbleX, bubbleY, imageCache);
     else if (message.type === "meme") drawMeme(ctx, message, leftBubbleX, bubbleY, imageCache);
+    else if (message.type === "music") drawMusic(ctx, message, leftBubbleX, bubbleY, imageCache);
     else drawTextBubble(ctx, project, message, visualSide, leftBubbleX, bubbleY, 980);
   } else {
     const maxBubbleWidth = 980;
@@ -376,6 +437,7 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
     if (message.type === "transfer") size = { width: 700, height: 228 };
     else if (message.type === "image") size = { width: 700, height: 430 };
     else if (message.type === "meme") size = { width: 520, height: 360 };
+    else if (message.type === "music") size = { width: 700, height: 360 };
     else {
       ctx.font = "500 62px PingFang SC, Microsoft YaHei, sans-serif";
       const lines = wrapText(ctx, message.text || messageVoiceText(message), maxBubbleWidth - 112);
@@ -388,6 +450,7 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
     if (message.type === "transfer") drawTransfer(ctx, message, bubbleX, bubbleY);
     else if (message.type === "image") drawImageCard(ctx, project, message, bubbleX, bubbleY, imageCache);
     else if (message.type === "meme") drawMeme(ctx, message, bubbleX, bubbleY, imageCache);
+    else if (message.type === "music") drawMusic(ctx, message, bubbleX, bubbleY, imageCache);
     else drawTextBubble(ctx, project, message, visualSide, bubbleX || probeX, bubbleY, maxBubbleWidth);
     drawAvatar(ctx, project, message, rightAvatarX, avatarY, imageCache);
   }

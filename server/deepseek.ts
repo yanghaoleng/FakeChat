@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { sampleProject } from "../src/shared/sampleProject.js";
+import { hydrateMusicMessage, injectRomanticMusicMessage } from "../src/shared/musicLibrary.js";
 import {
   messageTypes,
   chatMessageSchema,
@@ -90,12 +91,14 @@ function normalizeMessageType(value: unknown, text: string): ChatMessage["type"]
     if (["转账", "红包", "付款"].includes(normalized)) return "transfer";
     if (["图片", "照片"].includes(normalized)) return "image";
     if (["表情", "表情包", "gif"].includes(normalized)) return "meme";
+    if (["音乐", "歌曲", "网易云音乐", "网易云"].includes(normalized)) return "music";
     if (["系统", "旁白"].includes(normalized)) return "system";
   }
 
   if (/转账|红包|付款|¥|￥/.test(text)) return "transfer";
   if (/照片|图片|合照|截图/.test(text)) return "image";
   if (/表情包|表情|破防|狗头/.test(text)) return "meme";
+  if (/分享(?:一首|歌曲|音乐)|网易云音乐|网易云歌曲/.test(text)) return "music";
   return "text";
 }
 
@@ -162,7 +165,7 @@ function normalizeMessage(
   const rawSfx = stringValue(record.sendSfx) || stringValue(record.sfx);
   const sendSfx = enumValue(rawSfx, ["none", "send", "image", "transfer", "meme"] as const, type === "image" || type === "transfer" || type === "meme" ? type : "send");
 
-  return {
+  const message: ChatMessage = {
     id: stringValue(record.id) || `msg-${index + 1}`,
     roleId: stringValue(record.roleId) || stringValue(record.characterId) || (side === "center" ? undefined : roleForSide?.id),
     side,
@@ -176,8 +179,17 @@ function normalizeMessage(
     assetId: stringValue(record.assetId),
     imageUrl: stringValue(record.imageUrl) || stringValue(record.url),
     amount: type === "transfer" ? numberValue(record.amount, 200) : undefined,
-    transferNote: stringValue(record.transferNote)
+    transferNote: stringValue(record.transferNote),
+    musicId: stringValue(record.musicId) || stringValue(record.songId),
+    musicTitle: stringValue(record.musicTitle) || (type === "music" ? stringValue(record.title) : undefined),
+    musicArtist: stringValue(record.musicArtist) || stringValue(record.artist),
+    musicLyric: stringValue(record.musicLyric) || stringValue(record.lyric),
+    musicCoverUrl: stringValue(record.musicCoverUrl) || stringValue(record.coverUrl),
+    musicPreviewUrl: stringValue(record.musicPreviewUrl) || stringValue(record.previewUrl),
+    musicShareUrl: stringValue(record.musicShareUrl) || stringValue(record.shareUrl),
+    musicCommentCount: numberValue(record.musicCommentCount ?? record.commentCount, 0) || undefined
   };
+  return hydrateMusicMessage(message, text);
 }
 
 function normalizeSfx(value: unknown): DramaProject["sfx"] {
@@ -192,11 +204,11 @@ function normalizeSfx(value: unknown): DramaProject["sfx"] {
 }
 
 function replacementIndexFor(messages: ChatMessage[], preferredIndex: number): number {
-  if (!["transfer", "image", "meme"].includes(messages[preferredIndex]?.type)) {
+  if (!["transfer", "image", "meme", "music"].includes(messages[preferredIndex]?.type)) {
     return preferredIndex;
   }
 
-  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme"].includes(message.type));
+  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme", "music"].includes(message.type));
   return fallbackIndex === -1 ? preferredIndex : fallbackIndex;
 }
 
@@ -225,7 +237,12 @@ export function normalizeDeepSeekProject(value: unknown, request: ScriptGenerate
     throw new Error("DeepSeek JSON did not include a messages array");
   }
 
-  const messages = limitMessages(rawMessages.map((message, index) => normalizeMessage(message, index, characters)));
+  const messages = injectRomanticMusicMessage(
+    limitMessages(rawMessages.map((message, index) => normalizeMessage(message, index, characters))),
+    fallback,
+    request.brief,
+    "deepseek"
+  );
 
   return parseProject({
     ...fallback,
@@ -253,10 +270,11 @@ function systemPrompt() {
     `剧情节拍必须包含：${storyBeats.join(" -> ")}。`,
     "消息必须短，单条中文尽量 4-18 字；不要写小说旁白。",
     "总消息数控制在 48-68 条之间，绝对不要超过 72 条。",
-    "transfer、image、meme 都是可选类型，只在当前剧情自然需要时出现；不要硬塞固定金额、固定照片或固定表情梗。transfer 要明显降频，本段最多 1 条，只在付款纠纷、补偿、订单、押金、红包是核心冲突时出现。",
+    "transfer、image、meme、music 都是可选类型，只在当前剧情自然需要时出现；不要硬塞固定金额、固定照片、固定表情梗或音乐。transfer 要明显降频，本段最多 1 条，只在付款纠纷、补偿、订单、押金、红包是核心冲突时出现。",
+    "music 只在两个人感情明显升温、暧昧确认或分享心情时出现，text 写分享这首歌的自然聊天语气；具体曲目由系统从网易云欧美经典情歌池匹配。",
     "image 类型只用 text 一个字段描述图片内容，写清这张图里具体有什么；不要拆成 label/title/detail。",
     "网红版多写暧昧、拉扯、吃醋、克制和情绪反复；不要套高中重逢或固定旧照片梗。",
-    "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme。",
+    "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme；music 使用 send。",
     "角色默认是右侧男主、左侧女主；语音描述要利于 TTS 表演。",
     "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
     "assets 必须是数组；messages 必须是数组；sfx 必须是对象，不要输出数组。",

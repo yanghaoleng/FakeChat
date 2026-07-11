@@ -4,6 +4,7 @@ import { Player, type PlayerRef } from "@remotion/player";
 import { Calligraph } from "calligraph";
 import gsap from "gsap";
 import {
+  ArrowLeft,
   ArrowUpRight,
   Check,
   ChevronDown,
@@ -13,19 +14,27 @@ import {
   FileDown,
   FileUp,
   Film,
+  GitBranch,
+  Heart,
+  Info,
   Lightbulb,
+  MessageCircle,
   MessageSquarePlus,
   MoreHorizontal,
+  Pause,
   PenLine,
   Play,
+  QrCode,
   RefreshCcw,
   Save,
+  SkipBack,
+  SkipForward,
   Smartphone,
   Sparkles,
   Video,
   X
 } from "lucide-react";
-import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type Ref, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { exportBrowserVideo, type VideoExportResult } from "./shared/browserVideo";
 import { generateBackendStorySegment } from "./shared/deepseekBackend";
@@ -54,9 +63,11 @@ import { defaultAvatars } from "./shared/avatarLibrary";
 import { imageNarrativeCopy, imageSourceForMessage } from "./shared/imageNarrative";
 import { jojoCssMemeCardForMessage, type JojoCssMemeCard } from "./shared/jojoMemeCards";
 import { isJojoProject } from "./shared/jojoProject";
+import { musicTrackForMessage } from "./shared/musicLibrary";
 import { publicAsset, resolvePublicAssetPath } from "./shared/publicPath";
 import { getCharacter, isVoiceMessage, type ChatMessage, type DramaProject } from "./shared/schema";
-import { buildTimeline, getDurationInFrames } from "./shared/timing";
+import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
+import { buildTimeline, getDurationInFrames, messageRevealDelayMs } from "./shared/timing";
 
 type ApiState = "idle" | "loading" | "error" | "done";
 type PreviewMode = "wechat" | "video";
@@ -89,6 +100,7 @@ type PromptRestoreUndo = {
   after: string;
 };
 type MobileStoryCoachPhase = "idle" | "press" | "start";
+type AboutDialogView = "main" | "support" | "feedback";
 
 type AppProps = {
   storyPackage: StoryPackage;
@@ -98,6 +110,7 @@ const deepSeekServiceToast = "DeepSeek 服务暂时连不上，已停止生成";
 const defaultJojoAppUrl = "https://ququ.mikeywa.icu/ding/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
+const feedbackWechatPlaceholder = "微信号待补充";
 const generationProgressCap = 99;
 const generationProgressLoadingCap = 96;
 const ambientThemeFadeMs = 1180;
@@ -632,7 +645,7 @@ function archiveTimestamp(date = new Date()) {
 }
 
 function archiveFilename(date = new Date()) {
-  return `存档-ququ-${archiveTimestamp(date)}.json`;
+  return `存档-ququ-${archiveTimestamp(date)}.png`;
 }
 
 function videoFilename(extension: VideoExportResult["extension"], date = new Date()) {
@@ -708,7 +721,122 @@ function JojoCssMemeCardView({ card }: { card: JojoCssMemeCard }) {
   );
 }
 
-function WechatMessageContent({ project, message }: { project: DramaProject; message: ChatMessage }) {
+function formatMusicCommentCount(value?: number) {
+  if (!value) return "很多人听过";
+  if (value >= 10000) return `${(value / 10000).toFixed(value >= 100000 ? 0 : 1)}万热评`;
+  return `${value.toLocaleString("zh-CN")} 条热评`;
+}
+
+function musicDetails(message: ChatMessage) {
+  const track = musicTrackForMessage(message);
+  return {
+    artist: message.musicArtist || track.artist,
+    commentCount: message.musicCommentCount || track.commentCount,
+    coverUrl: message.musicCoverUrl || track.coverUrl,
+    lyric: message.musicLyric || track.lyric,
+    previewUrl: message.musicPreviewUrl || track.previewUrl,
+    title: message.musicTitle || track.title
+  };
+}
+
+type MusicPlaybackController = {
+  activeMessageId: string | null;
+  audioError: boolean;
+  playing: boolean;
+  progress: number;
+  toggle: (message: ChatMessage) => void;
+};
+
+function WechatMusicBubble({ message, playback }: { message: ChatMessage; playback: MusicPlaybackController }) {
+  const details = musicDetails(message);
+  const active = playback.activeMessageId === message.id;
+  const playing = active && playback.playing;
+  const audioError = active && playback.audioError;
+  const progress = active ? playback.progress : 0;
+
+  return (
+    <button
+      className={`wechat-music-card ${active ? "wechat-music-card-active" : ""} ${playing ? "wechat-music-card-playing" : ""} ${audioError ? "wechat-music-card-error" : ""}`}
+      type="button"
+      data-music-message-id={message.id}
+      onClick={() => playback.toggle(message)}
+      aria-label={audioError ? `${details.title} 试听暂时不可用` : `${playing ? "暂停" : "播放"} ${details.title}`}
+      aria-pressed={playing}
+      style={{ "--music-progress": `${progress * 100}%` } as CSSProperties}
+    >
+      <span className="wechat-music-main">
+        <span className="wechat-music-copy">
+          <strong>{details.title}</strong>
+          <span className="wechat-music-artist">{details.artist}</span>
+          <span className="wechat-music-lyric">{details.lyric}</span>
+        </span>
+        <span className="wechat-music-cover-wrap">
+          <img className="wechat-music-cover" src={details.coverUrl} alt={`${details.title} 专辑封面`} />
+          <span className="wechat-music-play" aria-hidden="true">
+            <span className="wechat-music-play-icon" />
+          </span>
+        </span>
+      </span>
+      <span className="wechat-music-footer">
+        <span className="wechat-music-source"><i aria-hidden="true">♪</i>网易云音乐</span>
+        <span>{audioError ? "试听暂时不可用" : formatMusicCommentCount(details.commentCount)}</span>
+      </span>
+      <span className="wechat-music-progress" aria-hidden="true" />
+    </button>
+  );
+}
+
+function WechatMusicDock({
+  message,
+  playing,
+  progress,
+  audioError,
+  canGoPrevious,
+  canGoNext,
+  onToggle,
+  onPrevious,
+  onNext
+}: {
+  message: ChatMessage;
+  playing: boolean;
+  progress: number;
+  audioError: boolean;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  onToggle: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  const details = musicDetails(message);
+  return (
+    <div
+      className={`wechat-music-dock ${audioError ? "wechat-music-dock-error" : ""}`}
+      role="region"
+      aria-label={`正在播放 ${details.title}`}
+      style={{ "--music-progress": `${progress * 100}%` } as CSSProperties}
+    >
+      <img src={details.coverUrl} alt="" />
+      <span className="wechat-music-dock-copy">
+        <strong>{details.title}</strong>
+        <small>{audioError ? "试听暂时不可用" : details.artist}</small>
+      </span>
+      <span className="wechat-music-dock-controls">
+        <button type="button" onClick={onPrevious} disabled={!canGoPrevious} aria-label="上一首">
+          <SkipBack size={15} fill="currentColor" />
+        </button>
+        <button type="button" className="wechat-music-dock-toggle" onClick={onToggle} aria-label={playing ? "暂停" : "继续播放"} disabled={audioError}>
+          {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+        </button>
+        <button type="button" onClick={onNext} disabled={!canGoNext} aria-label="下一首">
+          <SkipForward size={15} fill="currentColor" />
+        </button>
+      </span>
+      <span className="wechat-music-dock-progress" aria-hidden="true" />
+    </div>
+  );
+}
+
+function WechatMessageContent({ project, message, musicPlayback }: { project: DramaProject; message: ChatMessage; musicPlayback: MusicPlaybackController }) {
   const jojoMode = isJojoProject(project);
   if (message.type === "transfer") {
     return (
@@ -747,6 +875,7 @@ function WechatMessageContent({ project, message }: { project: DramaProject; mes
       </div>
     );
   }
+  if (message.type === "music" && !jojoMode) return <WechatMusicBubble message={message} playback={musicPlayback} />;
   return <div className="wechat-bubble">{message.text || message.ttsText || " "}</div>;
 }
 
@@ -760,52 +889,198 @@ function visualSideFor(project: DramaProject, message: ChatMessage) {
 function WechatStoryPreview({
   project,
   onReplay,
-  showReplay
+  showReplay,
+  phoneRef
 }: {
   project: DramaProject;
   onReplay?: () => void;
   showReplay?: boolean;
+  phoneRef?: Ref<HTMLDivElement>;
 }) {
   const jojoMode = isJojoProject(project);
   const peer = project.characters.find((character) => character.side === "left") ?? project.characters[0];
+  const musicMessages = useMemo(() => project.messages.filter((message) => message.type === "music" && !jojoMode), [jojoMode, project.messages]);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [activeMusicMessageId, setActiveMusicMessageId] = useState<string | null>(null);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicProgress, setMusicProgress] = useState(0);
+  const [musicAudioError, setMusicAudioError] = useState(false);
+  const [showMusicDock, setShowMusicDock] = useState(false);
+  const activeMusicMessage = musicMessages.find((message) => message.id === activeMusicMessageId);
+  const activeMusicIndex = activeMusicMessage ? musicMessages.findIndex((message) => message.id === activeMusicMessage.id) : -1;
+
+  function updateMusicDockVisibility() {
+    const chatScroll = chatScrollRef.current;
+    if (!chatScroll || !activeMusicMessageId) {
+      setShowMusicDock(false);
+      return;
+    }
+    const activeCard = Array.from(chatScroll.querySelectorAll<HTMLElement>("[data-music-message-id]"))
+      .find((element) => element.dataset.musicMessageId === activeMusicMessageId);
+    if (!activeCard) {
+      setShowMusicDock(false);
+      return;
+    }
+    const scrollRect = chatScroll.getBoundingClientRect();
+    const cardRect = activeCard.getBoundingClientRect();
+    setShowMusicDock(cardRect.bottom <= scrollRect.top + 1);
+  }
+
+  function playMusic(message: ChatMessage) {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const nextDetails = musicDetails(message);
+    if (activeMusicMessageId === message.id) {
+      if (!audio.paused) {
+        audio.pause();
+        return;
+      }
+      setMusicAudioError(false);
+      void audio.play().catch(() => {
+        setMusicPlaying(false);
+        setMusicAudioError(true);
+      });
+      return;
+    }
+
+    audio.pause();
+    audio.src = nextDetails.previewUrl;
+    audio.currentTime = 0;
+    setActiveMusicMessageId(message.id);
+    setMusicProgress(0);
+    setMusicAudioError(false);
+    void audio.play().catch(() => {
+      setMusicPlaying(false);
+      setMusicAudioError(true);
+    });
+  }
+
+  function playMusicByStep(step: -1 | 1) {
+    const nextIndex = activeMusicIndex + step;
+    const nextMessage = musicMessages[nextIndex];
+    if (nextMessage) playMusic(nextMessage);
+  }
+
+  useEffect(() => () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+  }, []);
+
+  useEffect(() => {
+    if (!activeMusicMessageId || activeMusicMessage) return;
+    const audio = audioRef.current;
+    audio?.pause();
+    audio?.removeAttribute("src");
+    audio?.load();
+    setActiveMusicMessageId(null);
+    setMusicPlaying(false);
+    setMusicProgress(0);
+    setMusicAudioError(false);
+    setShowMusicDock(false);
+  }, [activeMusicMessage, activeMusicMessageId]);
+
+  useLayoutEffect(() => {
+    const frame = window.requestAnimationFrame(updateMusicDockVisibility);
+    const chatScroll = chatScrollRef.current;
+    const observer = chatScroll && typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateMusicDockVisibility) : null;
+    if (chatScroll && observer) observer.observe(chatScroll);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
+  }, [activeMusicMessageId, project.messages.length]);
+
+  const musicPlayback: MusicPlaybackController = {
+    activeMessageId: activeMusicMessageId,
+    audioError: musicAudioError,
+    playing: musicPlaying,
+    progress: musicProgress,
+    toggle: playMusic
+  };
+
   return (
     <div className="wechat-preview-shell">
-      <div className={`wechat-phone ${jojoMode ? "dingtalk-phone" : ""}`} aria-label={jojoMode ? "钉钉手机版聊天预览" : "9:16 微信聊天预览"}>
+      <div ref={phoneRef} className={`wechat-phone ${jojoMode ? "dingtalk-phone" : ""}`} aria-label={jojoMode ? "钉钉手机版聊天预览" : "9:16 微信聊天预览"}>
         <div className={jojoMode ? "dingtalk-topbar" : "wechat-topbar"}>
           <img className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.webp" : "/wechat-ui/topbar.webp")} alt="" draggable={false} />
           {jojoMode ? <strong className="dingtalk-topbar-title">{project.title || "工位蛐蛐小队"}</strong> : <strong className="wechat-topbar-title">{peer?.name || project.title}</strong>}
         </div>
-        <div className={`wechat-chat-scroll ${jojoMode ? "dingtalk-chat-scroll" : ""}`}>
-          <div className="wechat-chat-date">{jojoMode ? "今天 09:27" : "今天 17:32"}</div>
-          {project.messages.map((message) => {
-            if (message.type === "system" || message.side === "center") {
-              return <div key={message.id} className="wechat-system-row" data-message-id={message.id}>{message.text}</div>;
-            }
-            const character = getCharacter(project, message);
-            const visualSide = visualSideFor(project, message);
-            return (
-              <div
-                key={message.id}
-                className={`wechat-row wechat-row-${visualSide} ${jojoMode ? `dingtalk-row ${visualSide === "right" ? "dingtalk-row-self" : "dingtalk-row-other"}` : ""}`}
-                data-message-id={message.id}
-              >
-                {visualSide === "left" ? <WechatAvatar project={project} message={message} /> : null}
-                <div className="wechat-message-stack">
-                  {jojoMode ? <div className="wechat-speaker-name">{character.name}</div> : null}
-                  <WechatMessageContent project={project} message={message} />
+        <div className={`wechat-chat-viewport ${jojoMode ? "dingtalk-chat-viewport" : ""}`}>
+          <div
+            ref={chatScrollRef}
+            className={`wechat-chat-scroll ${jojoMode ? "dingtalk-chat-scroll" : ""}`}
+            aria-label={jojoMode ? "钉钉聊天消息" : "微信聊天消息"}
+            tabIndex={0}
+            onScroll={updateMusicDockVisibility}
+          >
+            <div className="wechat-chat-content">
+              <div className="wechat-chat-date">{jojoMode ? "今天 09:27" : "今天 17:32"}</div>
+              {project.messages.map((message) => {
+                if (message.type === "system" || message.side === "center") {
+                  return <div key={message.id} className="wechat-system-row" data-message-id={message.id}>{message.text}</div>;
+                }
+                const character = getCharacter(project, message);
+                const visualSide = visualSideFor(project, message);
+                return (
+                  <div
+                    key={message.id}
+                    className={`wechat-row wechat-row-${visualSide} ${jojoMode ? `dingtalk-row ${visualSide === "right" ? "dingtalk-row-self" : "dingtalk-row-other"}` : ""}`}
+                    data-message-id={message.id}
+                  >
+                    {visualSide === "left" ? <WechatAvatar project={project} message={message} /> : null}
+                    <div className="wechat-message-stack">
+                      {jojoMode ? <div className="wechat-speaker-name">{character.name}</div> : null}
+                      <WechatMessageContent project={project} message={message} musicPlayback={musicPlayback} />
+                    </div>
+                    {visualSide === "right" ? <WechatAvatar project={project} message={message} /> : null}
+                  </div>
+                );
+              })}
+              {showReplay ? (
+                <div className="chat-replay-row">
+                  <button className="chat-replay-button" type="button" onClick={onReplay} aria-label="再来一遍">
+                    再来一遍
+                  </button>
                 </div>
-                {visualSide === "right" ? <WechatAvatar project={project} message={message} /> : null}
-              </div>
-            );
-          })}
-          {showReplay ? (
-            <div className="chat-replay-row">
-              <button className="chat-replay-button" type="button" onClick={onReplay} aria-label="再来一遍">
-                再来一遍
-              </button>
+              ) : null}
             </div>
+          </div>
+          {showMusicDock && activeMusicMessage ? (
+            <WechatMusicDock
+              message={activeMusicMessage}
+              playing={musicPlaying}
+              progress={musicProgress}
+              audioError={musicAudioError}
+              canGoPrevious={activeMusicIndex > 0}
+              canGoNext={activeMusicIndex >= 0 && activeMusicIndex < musicMessages.length - 1}
+              onToggle={() => playMusic(activeMusicMessage)}
+              onPrevious={() => playMusicByStep(-1)}
+              onNext={() => playMusicByStep(1)}
+            />
           ) : null}
         </div>
+        <audio
+          ref={audioRef}
+          preload="metadata"
+          onPlay={() => setMusicPlaying(true)}
+          onPause={() => setMusicPlaying(false)}
+          onEnded={() => {
+            setMusicPlaying(false);
+            setMusicProgress(0);
+          }}
+          onTimeUpdate={(event) => {
+            const audio = event.currentTarget;
+            setMusicProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+          }}
+          onError={() => {
+            setMusicAudioError(true);
+            setMusicPlaying(false);
+          }}
+        />
         <img className={jojoMode ? "dingtalk-inputbar-img" : "wechat-bottombar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/inputbar.webp" : "/wechat-ui/bottombar.webp")} alt="" draggable={false} />
       </div>
     </div>
@@ -814,6 +1089,8 @@ function WechatStoryPreview({
 
 export default function App({ storyPackage }: AppProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const archivePhoneRef = useRef<HTMLDivElement>(null);
+  const archiveExportingRef = useRef(false);
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
   if (!initialPresetArchiveRef.current) {
     initialPresetArchiveRef.current = createPresetInitialArchive(storyPackage);
@@ -834,6 +1111,7 @@ export default function App({ storyPackage }: AppProps) {
   const [mobileStoryCoachPhase, setMobileStoryCoachPhase] = useState<MobileStoryCoachPhase>("idle");
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [aboutDialogView, setAboutDialogView] = useState<AboutDialogView | null>(null);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [visibleAmbientSkin, setVisibleAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [ambientFeedback, setAmbientFeedback] = useState<AmbientFeedback | null>(null);
@@ -1063,7 +1341,7 @@ export default function App({ storyPackage }: AppProps) {
   }, [draftPrompt]);
 
   useEffect(() => () => {
-    if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
+    if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
     if (ambientFeedbackTimerRef.current) window.clearTimeout(ambientFeedbackTimerRef.current);
     if (ambientTransitionTimerRef.current) window.clearTimeout(ambientTransitionTimerRef.current);
@@ -1289,7 +1567,8 @@ export default function App({ storyPackage }: AppProps) {
       if (!chatScroll.isConnected || !target.isConnected) return;
       const containerRect = chatScroll.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
-      const topPadding = 16;
+      const musicDockHeight = root.querySelector<HTMLElement>(".wechat-music-dock")?.offsetHeight ?? 0;
+      const topPadding = 16 + (musicDockHeight ? musicDockHeight + 8 : 0);
       const nextTop = chatScroll.scrollTop + targetRect.top - containerRect.top - topPadding;
       chatScroll.scrollTo({
         top: Math.max(0, Math.min(nextTop, chatScroll.scrollHeight - chatScroll.clientHeight)),
@@ -1393,6 +1672,35 @@ export default function App({ storyPackage }: AppProps) {
     }, 4200);
   }
 
+  async function copyFeedbackWechatId() {
+    if (!hasFeedbackWechatId) {
+      showToast("请先补充微信号");
+      return;
+    }
+    try {
+      let copied = false;
+      if (typeof document.execCommand === "function") {
+        const textarea = document.createElement("textarea");
+        textarea.value = feedbackWechatId;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        copied = document.execCommand("copy");
+        textarea.remove();
+      }
+      if (!copied && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(feedbackWechatId);
+        copied = true;
+      }
+      if (!copied) throw new Error("copy command failed");
+      showToast("复制微信号成功");
+    } catch (error) {
+      console.error("[about] copy wechat id failed", error);
+      showToast("复制失败，请手动复制");
+    }
+  }
+
   function isCurrentGeneration(runId: number, signal: AbortSignal) {
     return generationRunRef.current === runId && !signal.aborted;
   }
@@ -1468,17 +1776,29 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function startMessageReveal(fromCount: number, toCount: number) {
-    if (revealTimerRef.current) window.clearInterval(revealTimerRef.current);
+    if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     setVisibleMessageCount(fromCount);
     let nextCount = fromCount;
-    revealTimerRef.current = window.setInterval(() => {
-      nextCount += 1;
-      setVisibleMessageCount(Math.min(nextCount, toCount));
-      if (nextCount >= toCount && revealTimerRef.current) {
-        window.clearInterval(revealTimerRef.current);
-        revealTimerRef.current = undefined;
-      }
-    }, 1000);
+    if (nextCount >= toCount) {
+      revealTimerRef.current = undefined;
+      return;
+    }
+
+    const revealNextMessage = () => {
+      const nextMessage = projectRef.current.messages[nextCount];
+      const delay = nextMessage ? messageRevealDelayMs(nextMessage) : 1500;
+      revealTimerRef.current = window.setTimeout(() => {
+        nextCount += 1;
+        setVisibleMessageCount(Math.min(nextCount, toCount));
+        if (nextCount >= toCount) {
+          revealTimerRef.current = undefined;
+          return;
+        }
+        revealNextMessage();
+      }, delay);
+    };
+
+    revealNextMessage();
   }
 
   function finishPromptSuggestionAnimation() {
@@ -1598,7 +1918,7 @@ export default function App({ storyPackage }: AppProps) {
     stopGenerationProgress();
     clearPendingPromptRemovalTimers();
     if (revealTimerRef.current) {
-      window.clearInterval(revealTimerRef.current);
+      window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
     captureCurrentStoryLayoutSnapshot();
@@ -1693,6 +2013,15 @@ export default function App({ storyPackage }: AppProps) {
 
   function closeSettingsMenu() {
     setSettingsMenuOpen(false);
+  }
+
+  function openAboutDialog() {
+    closeSettingsMenu();
+    setAboutDialogView("main");
+  }
+
+  function closeAboutDialog() {
+    setAboutDialogView(null);
   }
 
   function setStoryPanelOpenWithContinuity(next: boolean | ((current: boolean) => boolean)) {
@@ -1934,7 +2263,7 @@ export default function App({ storyPackage }: AppProps) {
     generationAbortRef.current = null;
     stopGenerationProgress();
     if (revealTimerRef.current) {
-      window.clearInterval(revealTimerRef.current);
+      window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
     pendingPromptRemovalTimersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -2077,7 +2406,7 @@ export default function App({ storyPackage }: AppProps) {
     generationAbortRef.current = null;
     stopGenerationProgress();
     if (revealTimerRef.current) {
-      window.clearInterval(revealTimerRef.current);
+      window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
     pendingPromptRemovalTimersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -2202,7 +2531,7 @@ export default function App({ storyPackage }: AppProps) {
 
   function scrollConversationToBottom() {
     if (revealTimerRef.current) {
-      window.clearInterval(revealTimerRef.current);
+      window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
     setVideoResult(null);
@@ -2241,7 +2570,7 @@ export default function App({ storyPackage }: AppProps) {
       return;
     }
     if (revealTimerRef.current) {
-      window.clearInterval(revealTimerRef.current);
+      window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = undefined;
     }
     setVideoResult(null);
@@ -2286,14 +2615,36 @@ export default function App({ storyPackage }: AppProps) {
     return true;
   }
 
-  function exportJson() {
-    const archive = makeStoryArchive(project, promptCards);
-    downloadBlob(new Blob([`${JSON.stringify(archive, null, 2)}\n`], { type: "application/json" }), archiveFilename());
-    setStatus("done");
-    setStatusText("存档已导出");
+  async function exportArchive() {
+    if (archiveExportingRef.current) {
+      showToast("正在生成 PNG 存档");
+      return;
+    }
+    archiveExportingRef.current = true;
+    try {
+      setStatusText("正在生成 PNG 存档...");
+      if (previewMode !== "wechat") {
+        changePreviewMode("wechat");
+        await new Promise((resolve) => window.setTimeout(resolve, 440));
+      }
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const phone = archivePhoneRef.current;
+      if (!phone) throw new Error("聊天预览还没有准备好");
+      const archive = makeStoryArchive(projectRef.current, promptCardsRef.current);
+      const png = await createStoryArchivePng(phone, archive);
+      downloadBlob(png, archiveFilename());
+      setStatus("done");
+      setStatusText("PNG 存档已导出，对话数据已写入图片");
+      showToast("PNG 存档已保存");
+    } catch (error) {
+      handleError("存档导出", error);
+      showToast(error instanceof Error ? error.message : "存档导出失败");
+    } finally {
+      archiveExportingRef.current = false;
+    }
   }
 
-  async function importJson(file: File | undefined) {
+  async function importArchive(file: File | undefined) {
     if (!file) return;
     try {
       generationRunRef.current += 1;
@@ -2301,7 +2652,7 @@ export default function App({ storyPackage }: AppProps) {
       generationAbortRef.current = null;
       stopGenerationProgress();
       clearPendingPromptRemovalTimers();
-      const archive = parseStoryArchive(JSON.parse(await file.text()));
+      const archive = parseStoryArchive(await readArchiveFile(file));
       const archivePackage: StoryPackage = isJojoProject(archive.project) ? "jojo" : "viral";
       if (archivePackage !== storyPackage) {
         setStatus("error");
@@ -2425,6 +2776,7 @@ export default function App({ storyPackage }: AppProps) {
           project={previewProject}
           onReplay={replayConversation}
           showReplay={project.messages.length > 0 && visibleMessageCount >= project.messages.length}
+          phoneRef={isActive ? archivePhoneRef : undefined}
         />
       );
     }
@@ -2465,6 +2817,9 @@ export default function App({ storyPackage }: AppProps) {
 
   const switchLink = packageSwitchLink(storyPackage);
   const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
+  const feedbackWechatId = import.meta.env.VITE_FEEDBACK_WECHAT_ID?.trim() || feedbackWechatPlaceholder;
+  const hasFeedbackWechatId = feedbackWechatId !== feedbackWechatPlaceholder;
+  const alipayQrCodeUrl = resolvePublicAssetPath(import.meta.env.VITE_ALIPAY_QR_CODE_URL?.trim());
   const jojoRoleChoices = jojoRoleOptions
     .flatMap((roleId): Array<{ roleId: JojoPresetRole; label: string; avatarInitial: string; avatarUrl?: string }> => {
       const character = project.characters.find((character) => character.id === roleId);
@@ -2648,8 +3003,29 @@ export default function App({ storyPackage }: AppProps) {
       target instanceof Element && Boolean(target.closest(".prompt-card-edit-textarea"))
     );
     const handlePageShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing) return;
+      if (event.isComposing) return;
       const key = event.key;
+      const primaryShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+      if (primaryShortcut && key.toLowerCase() === "s") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) void exportArchive();
+        return;
+      }
+      if (primaryShortcut && key.toLowerCase() === "l") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) importInputRef.current?.click();
+        return;
+      }
+      if (event.defaultPrevented) return;
+      if (aboutDialogView) {
+        if (key === "Escape") {
+          event.preventDefault();
+          closeAboutDialog();
+        }
+        return;
+      }
       const isUndoKey = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && key.toLowerCase() === "z";
       if (isUndoKey) {
         if (undoPromptRestore()) event.preventDefault();
@@ -2718,9 +3094,9 @@ export default function App({ storyPackage }: AppProps) {
       focusPromptCardByStep(arrowDirection);
     };
 
-    window.addEventListener("keydown", handlePageShortcut);
-    return () => window.removeEventListener("keydown", handlePageShortcut);
-  }, [draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, openPromptCardMenuId, pendingPromptCards, promptCards, promptSuggestionActive, status, suggestionDialogOpen]);
+    window.addEventListener("keydown", handlePageShortcut, true);
+    return () => window.removeEventListener("keydown", handlePageShortcut, true);
+  }, [aboutDialogView, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, status, suggestionDialogOpen]);
 
   return (
     <div
@@ -2826,11 +3202,11 @@ export default function App({ storyPackage }: AppProps) {
                   <span>{switchLink.label}</span>
                   <small>切换版本</small>
                 </a>
-                <a className="title-menu-item" role="menuitem" href={githubRepositoryUrl} target="_blank" rel="noreferrer" onClick={closeSettingsMenu}>
-                  <ArrowUpRight size={16} />
-                  <span>Github</span>
-                  <small>公开仓库</small>
-                </a>
+                <button className="title-menu-item" type="button" role="menuitem" onClick={openAboutDialog}>
+                  <Info size={16} />
+                  <span>关于</span>
+                  <small>联系与支持</small>
+                </button>
                 <div className="title-menu-separator" />
                 <button
                   className="title-menu-item"
@@ -2838,12 +3214,12 @@ export default function App({ storyPackage }: AppProps) {
                   role="menuitem"
                   onClick={() => {
                     closeSettingsMenu();
-                    exportJson();
+                    void exportArchive();
                   }}
                 >
                   <FileDown size={16} />
                   <span>存档</span>
-                  <small>导出当前存档</small>
+                  <small>PNG 存档 · ⌘/Ctrl S</small>
                 </button>
                 <button
                   className="title-menu-item"
@@ -2856,17 +3232,89 @@ export default function App({ storyPackage }: AppProps) {
                 >
                   <FileUp size={16} />
                   <span>读档</span>
-                  <small>导入 JSON</small>
+                  <small>PNG / JSON · ⌘/Ctrl L</small>
                 </button>
               </div>
             ) : null}
           </div>
-          <input ref={importInputRef} hidden type="file" accept="application/json,.json" onChange={(event) => importJson(event.currentTarget.files?.[0])} />
+          <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
         </div>
       </header>
       {toastMessage ? (
         <div className="app-toast" role="status" aria-live="polite">
           {toastMessage}
+        </div>
+      ) : null}
+      {aboutDialogView ? (
+        <div className="about-dialog-layer">
+          <div className="about-dialog-backdrop" aria-hidden="true" onClick={closeAboutDialog} />
+          <section className="about-dialog" role="dialog" aria-modal="true" aria-labelledby="about-dialog-title">
+            <header className="about-dialog-header">
+              {aboutDialogView === "main" ? (
+                <span className="about-dialog-heading-icon" aria-hidden="true"><Info size={18} /></span>
+              ) : (
+                <button className="about-dialog-icon-button" type="button" aria-label="返回关于" onClick={() => setAboutDialogView("main")}>
+                  <ArrowLeft size={18} />
+                </button>
+              )}
+              <div>
+                <h2 id="about-dialog-title">
+                  {aboutDialogView === "main" ? "关于" : aboutDialogView === "support" ? "支持鼓励" : "意见反馈"}
+                </h2>
+                <p>
+                  {aboutDialogView === "main" ? "蛐蛐模拟器" : aboutDialogView === "support" ? "谢谢你让这个小工具继续长大" : "欢迎告诉我你的想法"}
+                </p>
+              </div>
+              <button className="about-dialog-icon-button about-dialog-close" type="button" aria-label="关闭关于" autoFocus onClick={closeAboutDialog}>
+                <X size={18} />
+              </button>
+            </header>
+
+            {aboutDialogView === "main" ? (
+              <div className="about-dialog-list">
+                <a className="about-dialog-item" href={githubRepositoryUrl} target="_blank" rel="noreferrer">
+                  <span className="about-dialog-item-icon"><GitBranch size={19} /></span>
+                  <span><strong>GitHub</strong><small>查看源码和项目更新</small></span>
+                  <ArrowUpRight size={17} />
+                </a>
+                <button className="about-dialog-item" type="button" onClick={() => setAboutDialogView("support")}>
+                  <span className="about-dialog-item-icon"><Heart size={19} /></span>
+                  <span><strong>支持鼓励</strong><small>请我喝杯奶茶</small></span>
+                  <ChevronDown className="about-dialog-item-chevron" size={17} />
+                </button>
+                <button className="about-dialog-item" type="button" onClick={() => setAboutDialogView("feedback")}>
+                  <span className="about-dialog-item-icon"><MessageCircle size={19} /></span>
+                  <span><strong>意见反馈</strong><small>通过微信联系我</small></span>
+                  <ChevronDown className="about-dialog-item-chevron" size={17} />
+                </button>
+              </div>
+            ) : aboutDialogView === "support" ? (
+              <div className="about-dialog-content about-support-content">
+                {alipayQrCodeUrl ? (
+                  <img className="about-support-qr" src={alipayQrCodeUrl} alt="支付宝收款码" />
+                ) : (
+                  <div className="about-support-placeholder">
+                    <QrCode size={44} />
+                    <strong>收款码准备中</strong>
+                    <small>之后会在这里补充支付宝收款码</small>
+                  </div>
+                )}
+                <p>你的支持会用于继续完善蛐蛐模拟器。</p>
+              </div>
+            ) : (
+              <div className="about-dialog-content about-feedback-content">
+                <div className="about-feedback-wechat">
+                  <span>微信号</span>
+                  <strong>{feedbackWechatId}</strong>
+                </div>
+                <button className="about-feedback-copy" type="button" disabled={!hasFeedbackWechatId} onClick={copyFeedbackWechatId}>
+                  <Copy size={17} />
+                  <span>{hasFeedbackWechatId ? "复制微信号" : "微信号待补充"}</span>
+                </button>
+                <p>反馈问题时，如果能附上截图和操作步骤，会更容易定位。</p>
+              </div>
+            )}
+          </section>
         </div>
       ) : null}
 

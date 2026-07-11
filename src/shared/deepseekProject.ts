@@ -1,6 +1,7 @@
 import { sampleProject } from "./sampleProject.js";
 import { isGenericImageCopy } from "./imageNarrative.js";
 import { localMemeAssets, normalizeMemeMessage } from "./memeLibrary.js";
+import { hydrateMusicMessage, injectRomanticMusicMessage } from "./musicLibrary.js";
 import {
   messageTypes,
   parseProject,
@@ -94,12 +95,14 @@ function normalizeMessageType(value: unknown, text: string): ChatMessage["type"]
     if (["转账", "红包", "付款"].includes(normalized)) return "transfer";
     if (["图片", "照片"].includes(normalized)) return "image";
     if (["表情", "表情包", "gif"].includes(normalized)) return "meme";
+    if (["音乐", "歌曲", "网易云音乐", "网易云"].includes(normalized)) return "music";
     if (["系统", "旁白"].includes(normalized)) return "system";
   }
 
   if (/转账|红包|付款|¥|￥/.test(text)) return "transfer";
   if (/照片|图片|合照|截图/.test(text)) return "image";
   if (/表情包|表情|破防|狗头/.test(text)) return "meme";
+  if (/分享(?:一首|歌曲|音乐)|网易云音乐|网易云歌曲/.test(text)) return "music";
   return "text";
 }
 
@@ -244,7 +247,7 @@ function normalizeMessage(
   const rawSfx = stringValue(record.sendSfx) || stringValue(record.sfx);
   const sendSfx = enumValue(rawSfx, ["none", "send", "image", "transfer", "meme"] as const, type === "image" || type === "transfer" || type === "meme" ? type : "send");
 
-  return {
+  const message: ChatMessage = {
     id: stringValue(record.id) || `msg-${index + 1}`,
     roleId: side === "center" ? undefined : stringValue(record.roleId) || stringValue(record.characterId) || stringValue(record.character) || roleForSide?.id,
     side,
@@ -258,8 +261,17 @@ function normalizeMessage(
     assetId: stringValue(record.assetId),
     imageUrl: validMediaUrl(stringValue(record.imageUrl) || stringValue(record.url)),
     amount: type === "transfer" ? optionalNumberValue(record.amount, record.money, record.value, amountFromText(text)) : undefined,
-    transferNote: stringValue(record.transferNote)
+    transferNote: stringValue(record.transferNote),
+    musicId: stringValue(record.musicId) || stringValue(record.songId),
+    musicTitle: stringValue(record.musicTitle) || (type === "music" ? stringValue(record.title) : undefined),
+    musicArtist: stringValue(record.musicArtist) || stringValue(record.artist),
+    musicLyric: stringValue(record.musicLyric) || stringValue(record.lyric),
+    musicCoverUrl: validMediaUrl(stringValue(record.musicCoverUrl) || stringValue(record.coverUrl)),
+    musicPreviewUrl: validMediaUrl(stringValue(record.musicPreviewUrl) || stringValue(record.previewUrl)),
+    musicShareUrl: validUrl(stringValue(record.musicShareUrl) || stringValue(record.shareUrl)),
+    musicCommentCount: optionalNumberValue(record.musicCommentCount, record.commentCount)
   };
+  return hydrateMusicMessage(message, text);
 }
 
 function normalizeSfx(value: unknown): DramaProject["sfx"] {
@@ -274,11 +286,11 @@ function normalizeSfx(value: unknown): DramaProject["sfx"] {
 }
 
 function replacementIndexFor(messages: ChatMessage[], preferredIndex: number): number {
-  if (!["transfer", "image", "meme"].includes(messages[preferredIndex]?.type)) {
+  if (!["transfer", "image", "meme", "music"].includes(messages[preferredIndex]?.type)) {
     return preferredIndex;
   }
 
-  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme"].includes(message.type));
+  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme", "music"].includes(message.type));
   return fallbackIndex === -1 ? preferredIndex : fallbackIndex;
 }
 
@@ -310,7 +322,12 @@ export function normalizeDeepSeekProject(value: unknown, request: ScriptGenerate
     throw new Error("DeepSeek JSON did not include a messages array");
   }
 
-  const messages = limitMessages(rawMessages.map((message, index) => normalizeMessage(message, index, characters)), request);
+  const messages = injectRomanticMusicMessage(
+    limitMessages(rawMessages.map((message, index) => normalizeMessage(message, index, characters)), request),
+    fallback,
+    request.brief,
+    "deepseek"
+  );
 
   return parseProject({
     ...fallback,

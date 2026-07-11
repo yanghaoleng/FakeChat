@@ -213,6 +213,18 @@ function capJojoImageFrequency(project: DramaProject, messages: ChatMessage[]) {
   });
 }
 
+function capMusicFrequency(project: DramaProject, messages: ChatMessage[]) {
+  let keptMusic = project.messages.some((message) => message.type === "music") ? 1 : 0;
+  return messages.map((message) => {
+    if (message.type !== "music") return message;
+    if (keptMusic === 0) {
+      keptMusic += 1;
+      return message;
+    }
+    return { ...message, type: "text" as const, sendSfx: "send" as const };
+  });
+}
+
 function makeJojoPhotoMessage(project: DramaProject, premise: string, messages: ChatMessage[]): ChatMessage {
   const context = `${premise} ${messages.map((message) => message.text || message.ttsText || "").join(" ")}`;
   const assetId = pickJojoPhotoAssetId(context);
@@ -248,7 +260,7 @@ function ensureOccasionalJojoPhoto(project: DramaProject, messages: ChatMessage[
 function tuneGeneratedMediaDensity(project: DramaProject, messages: ChatMessage[], premise: string) {
   return ensureOccasionalJojoPhoto(
     project,
-    capJojoImageFrequency(project, reduceTransferFrequency(project, messages, premise)),
+    capMusicFrequency(project, capJojoImageFrequency(project, reduceTransferFrequency(project, messages, premise))),
     premise
   );
 }
@@ -371,7 +383,7 @@ function removeDuplicateMessages(messages: ChatMessage[]) {
     const previous = messages[index - 1];
     const duplicateAdjacent = previous && (previous.text || previous.ttsText) === (message.text || message.ttsText);
     if (duplicateAdjacent) return false;
-    if (["image", "meme", "transfer"].includes(message.type) && seen.has(signature)) return false;
+    if (["image", "meme", "music", "transfer"].includes(message.type) && seen.has(signature)) return false;
     seen.add(signature);
     return true;
   });
@@ -396,6 +408,7 @@ function systemPrompt(project: DramaProject) {
       "可用图片 assetId 已在照片目录列出；优先按标签匹配当前剧情，偶尔用 1 张，最多 2 张。",
       "可用表情 assetId：jojo-meme-jiaojiao-flag、jojo-meme-lingdang-chart、jojo-meme-zhuxiaodi-like、jojo-meme-xitong-notice、jojo-meme-jiaojiao-deadline、jojo-meme-meeting-silence。",
       "transfer 很少出现：平均 3-5 段最多 1 段；本段最多 1 条；只有当前 Prompt 明确涉及会议室费、报销、垫付、早餐、车费、发票等公司费用时才用，否则用普通 text 推进。",
+      "叫叫公司群聊不要生成 music 类型。",
       "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme。",
       "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
       "可以在 JSON 顶层额外输出 suggestedPrompt，作为下一轮可选提示词；没有自然建议就不要输出或留空。",
@@ -420,13 +433,14 @@ function systemPrompt(project: DramaProject) {
     viralInstruction.sideRule,
     "transfer 是低频可选消息类型，本段最多 1 条，只在剧情确实把付款、补偿、订单、押金、红包作为核心冲突时出现；出现时必须给合理 amount 和 transferNote，不要默认 200。",
     "meme 是可选消息类型，只用于真实聊天里的表情反应；text 写情绪或表情名，如“流汗”“白眼”“偷笑”“委屈”，不要写固定口头禅。",
+    "music 是低频可选消息类型，只在两个人关系明显升温、暧昧确认或分享心情时出现，text 写分享歌曲时的自然语气。不要每段都发音乐，具体曲目由系统匹配。",
     "image 类型消息的 text 必须描述照片/截图的实际内容：主体是谁、在哪里、出现了什么关键物件/备注/动作。禁止只写“关键照片/证据/图片/截图”。",
     "image 类型只用 text 一个字段描述图片内容，写清这张图里具体有什么；不要拆成 label/title/detail，也不要输出额外图片文案字段。",
     "不要复用上一轮或示例里的固定图片梗、固定关系梗、固定备注梗；除非用户当前 Prompt 明确要求，否则完全按当前剧情生成新照片内容。",
     "禁止低质套话：不要写“你好”“想聊什么”“你声音好熟悉”“声音跟同学很像”“大众脸/大众嗓”“认错人”“真的吗”“你是谁呀”这类平铺直叙；要用具体细节和压迫感推动。",
     `${viralInstruction.leftLabel}永远在左边 side=left，${viralInstruction.rightLabel}永远在右边 side=right，绝对不要反过来。system 只用于时间/提示，少用。`,
     `${viralInstruction.tone}两个人的语气要明显不同。`,
-    "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme。",
+    "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme；music 使用 send。",
     viralInstruction.roleRule,
     "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
     "可以在 JSON 顶层额外输出 suggestedPrompt，作为下一轮可选提示词；没有自然建议就不要输出或留空。",

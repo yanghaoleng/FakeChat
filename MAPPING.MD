@@ -5,7 +5,7 @@
 | 顶栏 | 全局 | `header` | `.topbar` |
 | 产品名 | 顶栏 | `packageTitle(storyPackage)` | `.brand-block h1` |
 | 网站小 logo | 顶栏 / favicon | `/site-icon.svg` | `.brand-logo`，白底黑色蛐蛐 |
-| Github 菜单项 | 标题下拉菜单 | `VITE_GITHUB_REPO_URL`、`defaultGithubRepositoryUrl`，默认 `https://github.com/yanghaoleng/FakeChat` | `.title-menu-item` |
+| 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |

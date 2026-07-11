@@ -19,9 +19,17 @@ export function estimateSpeechMs(message: ChatMessage): number {
   return Math.min(8000, Math.max(base, text.length * perChar + 360));
 }
 
+export function messageRevealDelayMs(message: ChatMessage): number {
+  const text = (message.text || message.ttsText || "").trim();
+  const meaningfulCharacters = Array.from(text.replace(/\s+/g, "")).length;
+  const mediaFloor = message.type === "image" || message.type === "meme" || message.type === "music" ? 1900 : 1500;
+  return Math.round(Math.min(3000, Math.max(mediaFloor, 1500 + meaningfulCharacters * 50)));
+}
+
 export function estimateMessageHeight(message: ChatMessage): number {
   if (message.type === "image") return 500;
   if (message.type === "meme") return 500;
+  if (message.type === "music") return 430;
   if (message.type === "transfer") return 260;
   if (message.type === "system") return 82;
   const text = message.text || "";

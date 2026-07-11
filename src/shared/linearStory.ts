@@ -1,6 +1,7 @@
 import { sampleProject } from "./sampleProject.js";
 import { imageHintFromContext } from "./imageNarrative.js";
 import { normalizeMemeMessage } from "./memeLibrary.js";
+import { injectRomanticMusicMessage } from "./musicLibrary.js";
 import { isJojoProject, jojoCompanyAssets, jojoProject } from "./jojoProject.js";
 import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { pickJojoPhotoAssetId, pickViralPhotoAssetId } from "./photoLibrary.js";
@@ -306,6 +307,7 @@ export function generateStorySegment({
     messages.push(jojoMode ? rawMeme : normalizeMemeMessage(rawMeme, [premise, contextHook].join(" ")));
   }
   if (!jojoMode) messages = applyViralRegionalFlavorToMessages(messages, project);
+  messages = injectRomanticMusicMessage(messages, project, [premise, previousPrompt, contextHook].join(" "), makeId("segment"));
 
   const card: PromptCard = {
     id: makeId("prompt"),
