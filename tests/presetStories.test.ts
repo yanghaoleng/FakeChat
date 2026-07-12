@@ -49,6 +49,8 @@ describe("微信预制首卡", () => {
     expect(archive.nextPrompt).toContain(peer.name);
     expect(archive.cachedFirstSegment.messages.length).toBeGreaterThan(10);
     expect(archive.cachedFirstSegment.messages.every((message) => !/\p{Script=Han}/u.test(message.text))).toBe(true);
+    expect(archive.cachedFirstSegment.suggestedPrompt).not.toMatch(/^Continue/i);
+    expect(archive.cachedFirstSegment.suggestedPrompt).not.toMatch(/Language:\s*English/i);
     expect(self.avatarUrl).not.toContain("western-student");
     expect(peer.avatarUrl).toContain("western-student");
   });

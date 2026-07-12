@@ -67,6 +67,7 @@ import { musicTrackForMessage } from "./shared/musicLibrary";
 import { publicAsset, resolvePublicAssetPath } from "./shared/publicPath";
 import { getCharacter, isVoiceMessage, type ChatMessage, type DramaProject } from "./shared/schema";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
+import { normalizeSuggestedPrompt } from "./shared/suggestedPrompt";
 import { buildTimeline, getDurationInFrames, messageRevealDelayMs } from "./shared/timing";
 
 type ApiState = "idle" | "loading" | "error" | "done";
@@ -730,12 +731,13 @@ function formatMusicCommentCount(value?: number) {
 
 function musicDetails(message: ChatMessage) {
   const track = musicTrackForMessage(message);
+  const directPreviewUrl = message.musicPreviewUrl || track.previewUrl;
   return {
     artist: message.musicArtist || track.artist,
     commentCount: message.musicCommentCount || track.commentCount,
     coverUrl: message.musicCoverUrl || track.coverUrl,
     lyric: message.musicLyric || track.lyric,
-    previewUrl: message.musicPreviewUrl || track.previewUrl,
+    previewUrl: import.meta.env.PROD ? `/api/music/preview?id=${encodeURIComponent(track.id)}` : directPreviewUrl,
     title: message.musicTitle || track.title
   };
 }
@@ -949,7 +951,7 @@ function WechatStoryPreview({
 
     audio.pause();
     audio.src = nextDetails.previewUrl;
-    audio.currentTime = 0;
+    audio.load();
     setActiveMusicMessageId(message.id);
     setMusicProgress(0);
     setMusicAudioError(false);
@@ -1854,7 +1856,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function offerSuggestedPrompt(nextPrompt: string) {
-    const suggestedPrompt = nextPrompt.trim();
+    const suggestedPrompt = normalizeSuggestedPrompt(nextPrompt);
     if (!suggestedPrompt) return;
     if (draftPromptRef.current.trim()) {
       setDeferredSuggestedPrompt(suggestedPrompt);
@@ -1870,16 +1872,16 @@ export default function App({ storyPackage }: AppProps) {
     result: { project: DramaProject; card: PromptCard; messages: ChatMessage[]; suggestedPrompt?: string },
     nextPromptCards: PromptCard[]
   ) {
-    const deepseekSuggestion = result.suggestedPrompt?.trim();
+    const deepseekSuggestion = normalizeSuggestedPrompt(result.suggestedPrompt);
     if (deepseekSuggestion) return deepseekSuggestion;
     const isFirstGeneratedAfterPreset = nextPromptCards.length === 2 && isPresetPromptCard(nextPromptCards[0]);
     if (nextPromptCards.length !== 1 && !isFirstGeneratedAfterPreset) return "";
-    return suggestNextStoryPrompt({
+    return normalizeSuggestedPrompt(suggestNextStoryPrompt({
       project: result.project,
       prompt: result.card.prompt,
       promptCards: nextPromptCards,
       messages: result.messages
-    });
+    }));
   }
 
   function restorePromptForEditing(nextPrompt: string) {
@@ -2383,16 +2385,16 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function suggestPromptAfterCard(card: PromptCard, nextProject: DramaProject, nextPromptCards: PromptCard[]) {
-    const storedSuggestion = card.suggestedPrompt?.trim();
+    const storedSuggestion = normalizeSuggestedPrompt(card.suggestedPrompt);
     if (storedSuggestion) return storedSuggestion;
     const cardMessageIdSet = new Set(card.messageIds);
     const segmentMessages = nextProject.messages.filter((message) => cardMessageIdSet.has(message.id));
-    return suggestNextStoryPrompt({
+    return normalizeSuggestedPrompt(suggestNextStoryPrompt({
       project: nextProject,
       prompt: card.prompt,
       promptCards: nextPromptCards,
       messages: segmentMessages.length ? segmentMessages : nextProject.messages
-    });
+    }));
   }
 
   function restartFromPromptCard(card: PromptCard) {

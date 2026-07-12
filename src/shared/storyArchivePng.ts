@@ -4,6 +4,16 @@ const maximumArchiveChunkBytes = 16 * 1024 * 1024;
 const transparentImagePlaceholder = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 const crcTable = buildCrcTable();
 
+export const archiveCoverSize = 1024;
+
+export function archiveSquareCrop(sourceWidth: number, sourceHeight: number) {
+  const size = Math.max(1, Math.min(sourceWidth, sourceHeight));
+  const x = Math.max(0, (sourceWidth - size) / 2);
+  const preferredCenterY = sourceHeight * 0.58;
+  const y = Math.max(0, Math.min(sourceHeight - size, preferredCenterY - (size / 2)));
+  return { size, x, y };
+}
+
 function buildCrcTable() {
   const table = new Uint32Array(256);
   for (let index = 0; index < table.length; index += 1) {
@@ -267,36 +277,56 @@ async function applyArchiveLensFilter(blob: Blob) {
   sourceContext.drawImage(image, 0, 0);
 
   const source = sourceContext.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-  const output = sourceContext.createImageData(sourceCanvas.width, sourceCanvas.height);
-  const centerX = (sourceCanvas.width - 1) / 2;
-  const centerY = (sourceCanvas.height - 1) / 2;
-  const strength = 0.095;
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = archiveCoverSize;
+  outputCanvas.height = archiveCoverSize;
+  const outputContext = outputCanvas.getContext("2d");
+  if (!outputContext) throw new Error("当前浏览器无法生成存档图片");
+  const output = outputContext.createImageData(archiveCoverSize, archiveCoverSize);
+  const crop = archiveSquareCrop(sourceCanvas.width, sourceCanvas.height);
+  const outputCenter = (archiveCoverSize - 1) / 2;
 
-  for (let y = 0; y < sourceCanvas.height; y += 1) {
-    const normalizedY = (y - centerY) / centerY;
-    for (let x = 0; x < sourceCanvas.width; x += 1) {
-      const normalizedX = (x - centerX) / centerX;
+  function sample(normalizedX: number, normalizedY: number, channel: number) {
+    const sourceX = Math.max(0, Math.min(
+      sourceCanvas.width - 1,
+      Math.round(crop.x + ((normalizedX + 1) / 2) * (crop.size - 1))
+    ));
+    const sourceY = Math.max(0, Math.min(
+      sourceCanvas.height - 1,
+      Math.round(crop.y + ((normalizedY + 1) / 2) * (crop.size - 1))
+    ));
+    return source.data[((sourceY * sourceCanvas.width) + sourceX) * 4 + channel];
+  }
+
+  for (let y = 0; y < archiveCoverSize; y += 1) {
+    const normalizedY = (y - outputCenter) / outputCenter;
+    for (let x = 0; x < archiveCoverSize; x += 1) {
+      const normalizedX = (x - outputCenter) / outputCenter;
       const radiusSquared = normalizedX * normalizedX + normalizedY * normalizedY;
-      const lensScale = 1 + strength * radiusSquared;
-      const sourceX = Math.max(0, Math.min(sourceCanvas.width - 1, Math.round(centerX + (x - centerX) / lensScale)));
-      const sourceY = Math.max(0, Math.min(sourceCanvas.height - 1, Math.round(centerY + (y - centerY) / lensScale)));
-      const sourceIndex = (sourceY * sourceCanvas.width + sourceX) * 4;
-      const outputIndex = (y * sourceCanvas.width + x) * 4;
-      const vignette = 1 - Math.min(0.18, radiusSquared * 0.09);
+      const radius = Math.sqrt(radiusSquared);
+      const lensScale = 1 + (0.26 * radiusSquared) + (0.05 * radiusSquared * radiusSquared);
+      const lensX = normalizedX / lensScale;
+      const lensY = normalizedY / lensScale;
+      const chromaticOffset = 0.012 * Math.min(1.5, radiusSquared);
+      const red = sample(lensX * (1 + chromaticOffset), lensY * (1 + chromaticOffset), 0);
+      const green = sample(lensX, lensY, 1);
+      const blue = sample(lensX * (1 - chromaticOffset), lensY * (1 - chromaticOffset), 2);
+      const alpha = sample(lensX, lensY, 3);
+      const vignetteProgress = Math.max(0, Math.min(1, (radius - 0.5) / 0.92));
+      const vignette = 1 - (0.68 * Math.pow(vignetteProgress, 1.65));
+      const centerLift = 1 + (0.055 * Math.max(0, 1 - radiusSquared));
       const grain = ((((x * 17) + (y * 31)) % 23) - 11) * 0.28;
-      const red = (source.data[sourceIndex] - 128) * 1.035 + 128;
-      const green = (source.data[sourceIndex + 1] - 128) * 1.025 + 130;
-      const blue = (source.data[sourceIndex + 2] - 128) * 1.02 + 134;
-      output.data[outputIndex] = clampChannel(red * vignette + grain);
-      output.data[outputIndex + 1] = clampChannel(green * vignette + grain);
-      output.data[outputIndex + 2] = clampChannel(blue * vignette + grain);
-      output.data[outputIndex + 3] = source.data[sourceIndex + 3];
+      const outputIndex = ((y * archiveCoverSize) + x) * 4;
+      output.data[outputIndex] = clampChannel((((red - 128) * 1.055) + 128) * vignette * centerLift + grain);
+      output.data[outputIndex + 1] = clampChannel((((green - 128) * 1.04) + 130) * vignette * centerLift + grain);
+      output.data[outputIndex + 2] = clampChannel((((blue - 128) * 1.045) + 134) * vignette * centerLift + grain);
+      output.data[outputIndex + 3] = alpha;
     }
   }
 
-  sourceContext.putImageData(output, 0, 0);
+  outputContext.putImageData(output, 0, 0);
   return new Promise<Blob>((resolve, reject) => {
-    sourceCanvas.toBlob((filteredBlob) => {
+    outputCanvas.toBlob((filteredBlob) => {
       if (filteredBlob) resolve(filteredBlob);
       else reject(new Error("存档 PNG 生成失败"));
     }, "image/png");

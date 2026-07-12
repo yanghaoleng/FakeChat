@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  archiveCoverSize,
+  archiveSquareCrop,
   embedArchiveInPngBytes,
   extractArchiveFromPngBytes,
   isPng,
@@ -14,6 +16,12 @@ function fixturePng() {
 }
 
 describe("PNG story archive", () => {
+  it("exports a square cover and favors the current lower chat viewport", () => {
+    expect(archiveCoverSize).toBe(1024);
+    expect(archiveSquareCrop(800, 1400)).toEqual({ size: 800, x: 0, y: 412 });
+    expect(archiveSquareCrop(1400, 800)).toEqual({ size: 800, x: 300, y: 0 });
+  });
+
   it("embeds and extracts UTF-8 archive data from a viewable PNG", () => {
     const archive = {
       version: 1,

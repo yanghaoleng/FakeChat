@@ -11,6 +11,10 @@
       "destination": "/api/settings/deepseek"
     },
     {
+      "source": "/api/music/preview",
+      "destination": "/api/music/preview"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/health"
     },

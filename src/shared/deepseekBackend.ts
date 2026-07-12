@@ -1,6 +1,7 @@
 import { parseProject, type ChatMessage, type DramaProject } from "./schema";
 import type { DeepSeekSegmentResult } from "./deepseekBrowser";
 import type { PromptCard } from "./linearStory";
+import { normalizeSuggestedPrompt } from "./suggestedPrompt";
 
 function parsePromptCard(value: unknown): PromptCard {
   if (!value || typeof value !== "object") throw new Error("后端返回的 Prompt 卡片无效");
@@ -8,13 +9,14 @@ function parsePromptCard(value: unknown): PromptCard {
   if (!card.id || !card.prompt || !card.createdAt || !Array.isArray(card.messageIds) || !card.summary) {
     throw new Error("后端返回的 Prompt 卡片字段缺失");
   }
+  const suggestedPrompt = normalizeSuggestedPrompt(card.suggestedPrompt);
   return {
     id: card.id,
     prompt: card.prompt,
     createdAt: card.createdAt,
     messageIds: card.messageIds,
     summary: card.summary,
-    ...(typeof card.suggestedPrompt === "string" && card.suggestedPrompt.trim() ? { suggestedPrompt: card.suggestedPrompt.trim() } : {})
+    ...(suggestedPrompt ? { suggestedPrompt } : {})
   };
 }
 
@@ -26,7 +28,7 @@ function parseMessages(value: unknown): ChatMessage[] {
 function parseSuggestedPrompt(value: Partial<DeepSeekSegmentResult> & Record<string, unknown>) {
   for (const key of ["suggestedPrompt", "nextPrompt", "followUpPrompt", "continuePrompt"]) {
     const next = value[key];
-    if (typeof next === "string" && next.trim()) return next.trim();
+    if (typeof next === "string" && next.trim()) return normalizeSuggestedPrompt(next);
   }
   return undefined;
 }

@@ -11,6 +11,7 @@ import {
   viralPhotoCatalog
 } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject, type ScriptGenerateRequest } from "./schema.js";
+import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
 import type { PromptCard } from "./linearStory.js";
 import { viralRegionalInstruction } from "./viralPersona.js";
 
@@ -89,7 +90,7 @@ function suggestedPromptFromDeepSeekJson(value: unknown): string | undefined {
   const record = value as Record<string, unknown>;
   for (const key of ["suggestedPrompt", "nextPrompt", "followUpPrompt", "continuePrompt"]) {
     const next = record[key];
-    if (typeof next === "string" && next.trim()) return next.trim();
+    if (typeof next === "string" && next.trim()) return normalizeSuggestedPrompt(next);
   }
   return undefined;
 }
@@ -412,7 +413,7 @@ function systemPrompt(project: DramaProject) {
       "叫叫公司群聊不要生成 music 类型。",
       "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme。",
       "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
-      "可以在 JSON 顶层额外输出 suggestedPrompt，作为下一轮可选提示词；没有自然建议就不要输出或留空。",
+      "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色、语言、地域、方言或口音设定；没有自然建议就留空。",
       "stylePreset 必须是 jojo-company-chat；assets 必须是数组；messages 必须是数组；sfx 必须是对象。"
     ].join("\n");
   }
@@ -453,7 +454,9 @@ function systemPrompt(project: DramaProject) {
       ? "沿用已经确定的人物姓名，不要在续写中擅自改名。"
       : `第一段必须在 characters 中确定左侧聊天对象（${viralInstruction.leftLabel}）的真实姓名：当前 Prompt 明确写了名字就原样采用；没有写名字就由你编一个自然的中文姓名。不要用“男主”“女主”“对方”等占位词。`,
     "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
-    "可以在 JSON 顶层额外输出 suggestedPrompt，作为下一轮可选提示词；没有自然建议就不要输出或留空。",
+    englishStory
+      ? "For suggestedPrompt, write only the next core plot beat in 1-2 concise sentences. Do not prefix it with 'Continue' and do not repeat language, locale, accent, or fixed character setup."
+      : "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色、语言、地域、方言或口音设定；没有自然建议就留空。",
     "assets 必须是数组；messages 必须是数组；sfx 必须是对象，不要输出数组。"
   ].join("\n");
 }

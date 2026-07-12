@@ -6,10 +6,10 @@ import { isJojoProject, jojoCompanyAssets, jojoProject } from "./jojoProject.js"
 import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { pickJojoPhotoAssetId, pickViralPhotoAssetId } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
+import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
 import {
   applyViralRegionalFlavorToMessages,
-  randomizeViralCharacterProfiles,
-  withViralRegionalPrompt
+  randomizeViralCharacterProfiles
 } from "./viralPersona.js";
 
 export type PromptCard = {
@@ -364,7 +364,7 @@ export function suggestNextStoryPrompt({
             "接着写 NPC 刚加入就遇到一个看似很小的流程问题，叫叫想表现专业，系统用一句提醒把问题放大。",
             "接着写 NPC 以为只是普通寒暄，三四句后发现自己已经被卷进叫叫公司的荒诞日常。"
           ];
-      return npcRoutes[index % npcRoutes.length];
+      return normalizeSuggestedPrompt(npcRoutes[index % npcRoutes.length]);
     }
 
     const jojoRoutes = /老板|客户|需求|排期|周报|会议|工位|报销|咖啡/.test(context)
@@ -378,7 +378,7 @@ export function suggestNextStoryPrompt({
           "接着写一个工位上的小误会，先像普通吐槽，三四句后反转成老板或系统早就看见了。",
           "接着写一个同事群里的荒诞小危机，让叫叫先接锅，再由铃铛把真正的问题翻出来。"
         ];
-    return jojoRoutes[index % jojoRoutes.length];
+    return normalizeSuggestedPrompt(jojoRoutes[index % jojoRoutes.length]);
   }
 
   if (/张阿姨|相亲|小学|林夏|暗恋|毕业照|铅笔盒|小卖部/.test(context)) {
@@ -388,7 +388,7 @@ export function suggestNextStoryPrompt({
       "男主想把话题拉回相亲标准，女生反问他现在还会不会躲在小卖部门口，旧绰号让暧昧升级。",
       "女生发来一张旧同学录截图，里面有男主当年没送出去的话，男主装作不记得，最后被张阿姨的备注反杀。"
     ];
-    return withViralRegionalPrompt(blindDateRoutes[index % blindDateRoutes.length], project);
+    return normalizeSuggestedPrompt(blindDateRoutes[index % blindDateRoutes.length]);
   }
 
   const viralRoutes = [
@@ -396,7 +396,7 @@ export function suggestNextStoryPrompt({
     "接着写女生发来一张截图或照片，把前面的误会翻深一层，男主先解释，最后发现她其实早就知道真相。",
     "接着写男主想转移话题，女生用一个只有两个人知道的旧细节逼他承认，结尾留下下一段钩子。"
   ];
-  return withViralRegionalPrompt(viralRoutes[index % viralRoutes.length], project);
+  return normalizeSuggestedPrompt(viralRoutes[index % viralRoutes.length]);
 }
 
 export function makeStoryArchive(project: DramaProject, promptCards: PromptCard[]): StoryArchive {

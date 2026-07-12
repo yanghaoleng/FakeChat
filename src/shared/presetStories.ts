@@ -4,6 +4,7 @@ import { sampleProject } from "./sampleProject.js";
 import { avatarById } from "./avatarLibrary.js";
 import { injectRomanticMusicMessage } from "./musicLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
+import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
 import {
   applyViralRegionalFlavorToMessages,
@@ -1186,15 +1187,13 @@ export function createPresetInitialArchive(
   const rawPreset = stories[presetIndex];
   const baseProject = applyPresetCharacterOverrides(initialBaseProject, rawPreset);
   const preset = packageId === "jojo"
-    ? rawPreset
+    ? { ...rawPreset, nextPrompt: normalizeSuggestedPrompt(rawPreset.nextPrompt) }
     : {
         ...rawPreset,
         prompt: rawPreset.language === "en"
           ? withViralCharacterNames(rawPreset.prompt, baseProject)
           : withViralRegionalPrompt(withViralCharacterNames(rawPreset.prompt, baseProject), baseProject),
-        nextPrompt: rawPreset.language === "en"
-          ? rawPreset.nextPrompt
-          : withViralRegionalPrompt(rawPreset.nextPrompt, baseProject)
+        nextPrompt: normalizeSuggestedPrompt(rawPreset.nextPrompt)
       };
   const messages = buildPresetMessages(baseProject, preset);
   const project = parseProject({
