@@ -7,6 +7,7 @@ export interface DefaultAvatar {
   title: string;
   vibe: string;
   gender: DefaultAvatarGender;
+  group?: "western-student";
   url: string;
   sourceName: string;
   sourceUrl: string;
@@ -119,6 +120,24 @@ export const defaultAvatars: DefaultAvatar[] = [
     gender: "girl",
     url: localAvatar("abstract-dark-glasses.webp"),
     ...generatedSource
+  },
+  {
+    id: "western-student-male-cafe",
+    title: "Campus Coffee",
+    vibe: "欧美男留学生 / 校园咖啡 / 纸杯遮脸",
+    gender: "boy",
+    group: "western-student",
+    url: localAvatar("western-student-male-cafe.webp"),
+    ...generatedSource
+  },
+  {
+    id: "western-student-female-cafe",
+    title: "Library Coffee",
+    vibe: "欧美女留学生 / 图书馆咖啡 / 纸杯遮脸",
+    gender: "girl",
+    group: "western-student",
+    url: localAvatar("western-student-female-cafe.webp"),
+    ...generatedSource
   }
 ];
 
@@ -126,8 +145,8 @@ export function avatarById(id: string): DefaultAvatar | undefined {
   return defaultAvatars.find((avatar) => avatar.id === id);
 }
 
-export function avatarsByGender(gender: DefaultAvatarGender): DefaultAvatar[] {
-  return defaultAvatars.filter((avatar) => avatar.gender === gender);
+export function avatarsByGender(gender: DefaultAvatarGender, group: DefaultAvatar["group"] | "asian" = "asian"): DefaultAvatar[] {
+  return defaultAvatars.filter((avatar) => avatar.gender === gender && (avatar.group ?? "asian") === group);
 }
 
 function randomAvatar(gender: DefaultAvatarGender): DefaultAvatar | undefined {
@@ -148,8 +167,8 @@ function configuredDefaultAvatar(avatarUrl: string | undefined) {
   return defaultAvatars.find((avatar) => avatar.url === avatarUrl || avatarUrl.endsWith(avatar.url));
 }
 
-function stableAvatar(gender: DefaultAvatarGender, seed: string) {
-  const avatars = avatarsByGender(gender);
+function stableAvatar(gender: DefaultAvatarGender, seed: string, group: DefaultAvatar["group"] | "asian" = "asian") {
+  const avatars = avatarsByGender(gender, group);
   if (!avatars.length) return undefined;
   const hash = [...seed].reduce((total, character) => total + character.charCodeAt(0), 17);
   return avatars[Math.abs(hash) % avatars.length];
@@ -160,7 +179,7 @@ export function genderMatchedAvatarUrl(character: DramaProject["characters"][num
   if (!configured) return character.avatarUrl;
   const gender = avatarGenderForCharacter(character);
   if (configured.gender === gender) return configured.url;
-  return stableAvatar(gender, `${character.id}:${character.name}`)?.url ?? character.avatarUrl;
+  return stableAvatar(gender, `${character.id}:${character.name}`, configured.group ?? "asian")?.url ?? character.avatarUrl;
 }
 
 export function randomizeViralCharacterAvatars(project: DramaProject): DramaProject {

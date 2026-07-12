@@ -2,11 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   avatarById,
   avatarGenderForCharacter,
+  avatarsByGender,
   genderMatchedAvatarUrl
 } from "../src/shared/avatarLibrary";
 import { sampleProject } from "../src/shared/sampleProject";
 
 describe("微信角色头像性别", () => {
+  it("默认头像池只给自己使用亚洲头像，欧美留学生头像单独分组", () => {
+    expect(avatarsByGender("boy").every((avatar) => !avatar.group)).toBe(true);
+    expect(avatarsByGender("girl").every((avatar) => !avatar.group)).toBe(true);
+    expect(avatarsByGender("boy", "western-student").map((avatar) => avatar.id)).toEqual(["western-student-male-cafe"]);
+    expect(avatarsByGender("girl", "western-student").map((avatar) => avatar.id)).toEqual(["western-student-female-cafe"]);
+  });
+
   it("按角色身份判断性别，不受左右位置变化影响", () => {
     const girl = sampleProject.characters.find((character) => character.id === "girl")!;
     const boy = sampleProject.characters.find((character) => character.id === "boy")!;

@@ -417,18 +417,24 @@ function systemPrompt(project: DramaProject) {
     ].join("\n");
   }
   const viralInstruction = viralPerspectiveInstruction(project);
+  const englishStory = /\bLanguage:\s*English\b/i.test(project.brief);
   return [
     "你是爆款聊天记录短剧编剧，擅长写高密度微信聊天短剧。输出必须是严格 JSON，不要 markdown。",
+    englishStory
+      ? "This story is in English. Write every chat message, ttsText, transferNote, image description, character name, and suggestedPrompt in concise, natural conversational English. Do not insert Chinese dialogue or Chinese regional slang."
+      : "所有聊天内容使用自然中文。",
     "成片观感：横向聊天画布，大字号短消息，连续滚屏，像真实聊天局部放大。用户只看聊天，不看旁白，也必须看懂剧情。",
     project.messages.length ? "你正在续写同一条线。只输出新段落，不要重复已有对话。" : "你正在写第一段。它要一次性生成到位，像能直接剪成短视频的完整开局。",
     `本段节拍：${storyBeats.join(" -> ")}。`,
     targetMessageRange(project),
     mediaRule(project),
-    "消息必须短，单条中文尽量 4-18 字；偶尔可到 24 字，但不能写小说旁白。",
+    englishStory
+      ? "Keep each English message short, usually 2-12 words and occasionally up to 18 words; never write novel-style narration."
+      : "消息必须短，单条中文尽量 4-18 字；偶尔可到 24 字，但不能写小说旁白。",
     "每一句都要有信息量：试探、隐瞒、证据、反问、误会、旧称呼、金额、截图、沉默、钩子。不要写寒暄废话。",
     "网红版要更暧昧、更情绪化：多写拉扯、吃醋、克制、欲言又止、嘴硬心软、旧关系刺痛；情绪要递进，不要只靠大吵。",
     "当前新 Prompt 的明确修改优先级最高。用户如果更改名字、职业、性格、关系、性别、前史或世界设定，立即以新设定为准；默认用秘密、误会或身份揭露自然承接，不要反驳前后矛盾。只有用户明确说从头重写或重新开始时，才把修改视为硬重置。",
-    viralRegionalInstruction(project),
+    englishStory ? "The international-student story should use natural campus English without forced regional slang." : viralRegionalInstruction(project),
     "第一条消息不得是问候，必须直接进入事件：下单、账单备注、现场照片、误会、旧称呼、截图、备注。",
     "如果 Prompt 里有陪聊/旧关系：第一屏必须出现下单、订单备注、只有两人知道的具体细节、现场照片或备注，不许从陌生人闲聊开始。",
     viralInstruction.sideRule,

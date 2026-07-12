@@ -1,6 +1,7 @@
 import { jojoProject } from "./jojoProject.js";
 import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { sampleProject } from "./sampleProject.js";
+import { avatarById } from "./avatarLibrary.js";
 import { injectRomanticMusicMessage } from "./musicLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
@@ -25,16 +26,21 @@ type PresetMessageSpec = {
   sendSfx?: ChatMessage["sendSfx"];
 };
 
+export type ViralPresetRole = "male" | "female";
+export type JojoPresetRole = "jiaojiao" | "npc";
+
 export type PresetStory = {
   id: string;
   title: string;
   prompt: string;
   nextPrompt: string;
   messages: PresetMessageSpec[];
+  language?: "zh" | "en";
+  viralRole?: ViralPresetRole;
+  peerAvatarSet?: "western-student";
+  characterNames?: Partial<Record<"boy" | "girl", string>>;
 };
 
-export type ViralPresetRole = "male" | "female";
-export type JojoPresetRole = "jiaojiao" | "npc";
 export type PresetRoleSelection = {
   viralRole: ViralPresetRole;
   jojoRole: JojoPresetRole;
@@ -62,14 +68,14 @@ const m = (
 ): PresetMessageSpec => ({ roleId, text, ...options });
 
 export const defaultPresetRoleSelection: PresetRoleSelection = {
-  viralRole: "male",
-  jojoRole: "jiaojiao"
+  viralRole: "female",
+  jojoRole: "npc"
 };
 
 export function normalizePresetRoleSelection(selection: Partial<PresetRoleSelection> = {}): PresetRoleSelection {
   return {
-    viralRole: selection.viralRole === "female" ? "female" : "male",
-    jojoRole: selection.jojoRole === "npc" ? "npc" : "jiaojiao"
+    viralRole: selection.viralRole === "male" ? "male" : defaultPresetRoleSelection.viralRole,
+    jojoRole: selection.jojoRole === "jiaojiao" ? "jiaojiao" : defaultPresetRoleSelection.jojoRole
   };
 }
 
@@ -1003,7 +1009,7 @@ function cloneBaseProject(project: DramaProject): DramaProject {
 function presetStoriesFor(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
   const role = normalizePresetRoleSelection(roleSelection);
   if (packageId === "jojo") return role.jojoRole === "npc" ? jojoNpcPresetStories : jojoPresetStories;
-  return viralPresetStories;
+  return viralPresetStories.filter((story) => !story.viralRole || story.viralRole === role.viralRole);
 }
 
 function withViralCharacterNames(prompt: string, project: DramaProject) {
@@ -1011,7 +1017,36 @@ function withViralCharacterNames(prompt: string, project: DramaProject) {
   const girlName = project.characters.find((character) => character.id === "girl")?.name;
   return prompt
     .replace(/男主(?=是)/g, boyName ? `男主${boyName}` : "男主")
-    .replace(/女主(?=是)/g, girlName ? `女主${girlName}` : "女主");
+    .replace(/女主(?=是)/g, girlName ? `女主${girlName}` : "女主")
+    .replace(/the male lead(?= is)/gi, boyName ? `The male lead ${boyName}` : "The male lead")
+    .replace(/the female lead(?= is)/gi, girlName ? `The female lead ${girlName}` : "The female lead");
+}
+
+function initialsForPresetName(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length > 1) return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+  return [...name].slice(-2).join("");
+}
+
+function applyPresetCharacterOverrides(project: DramaProject, preset: PresetStory) {
+  if (!preset.characterNames && !preset.peerAvatarSet) return project;
+  return parseProject({
+    ...project,
+    characters: project.characters.map((character) => {
+      const name = (character.id === "boy" || character.id === "girl")
+        ? preset.characterNames?.[character.id] || character.name
+        : character.name;
+      const peerAvatar = preset.peerAvatarSet === "western-student" && character.side === "left"
+        ? avatarById(character.id === "girl" ? "western-student-female-cafe" : "western-student-male-cafe")
+        : undefined;
+      return {
+        ...character,
+        name,
+        avatarInitial: initialsForPresetName(name),
+        avatarUrl: peerAvatar?.url || character.avatarUrl
+      };
+    })
+  });
 }
 
 function applyViralRole(project: DramaProject, viralRole: ViralPresetRole): DramaProject {
@@ -1116,7 +1151,7 @@ function buildPresetMessages(project: DramaProject, preset: PresetStory): ChatMe
       transferNote: message.transferNote
     };
   });
-  const flavoredMessages = project.stylePreset === "kuaishou-horizontal-chat"
+  const flavoredMessages = project.stylePreset === "kuaishou-horizontal-chat" && preset.language !== "en"
     ? applyViralRegionalFlavorToMessages(messages, project)
     : messages;
   return injectRomanticMusicMessage(flavoredMessages, project, preset.prompt, preset.id);
@@ -1147,14 +1182,19 @@ export function createPresetInitialArchive(
   const stories = presetStoriesFor(packageId, resolvedRoleSelection);
   const selectedIndex = requestedIndex ?? randomPresetStoryIndex(packageId, resolvedRoleSelection);
   const presetIndex = ((selectedIndex % stories.length) + stories.length) % stories.length;
-  const baseProject = baseProjectFor(packageId, resolvedRoleSelection);
+  const initialBaseProject = baseProjectFor(packageId, resolvedRoleSelection);
   const rawPreset = stories[presetIndex];
+  const baseProject = applyPresetCharacterOverrides(initialBaseProject, rawPreset);
   const preset = packageId === "jojo"
     ? rawPreset
     : {
         ...rawPreset,
-        prompt: withViralRegionalPrompt(withViralCharacterNames(rawPreset.prompt, baseProject), baseProject),
-        nextPrompt: withViralRegionalPrompt(rawPreset.nextPrompt, baseProject)
+        prompt: rawPreset.language === "en"
+          ? withViralCharacterNames(rawPreset.prompt, baseProject)
+          : withViralRegionalPrompt(withViralCharacterNames(rawPreset.prompt, baseProject), baseProject),
+        nextPrompt: rawPreset.language === "en"
+          ? rawPreset.nextPrompt
+          : withViralRegionalPrompt(rawPreset.nextPrompt, baseProject)
       };
   const messages = buildPresetMessages(baseProject, preset);
   const project = parseProject({
