@@ -1,4 +1,5 @@
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { genderMatchedAvatarUrl } from "../shared/avatarLibrary";
 import { imageNarrativeCopy, imageSourceForMessage } from "../shared/imageNarrative";
 import { jojoCssMemeCardForMessage, type JojoCssMemeCard } from "../shared/jojoMemeCards";
 import { isJojoProject } from "../shared/jojoProject";
@@ -26,10 +27,11 @@ const scrollTargetFor = (project: DramaProject, timeline: TimelineEntry[], entry
 
 function Avatar({ project, message }: { project: DramaProject; message: ChatMessage }) {
   const character = getCharacter(project, message);
+  const avatarUrl = genderMatchedAvatarUrl(character);
 
-  if (character.avatarUrl) {
-    const avatarUrl = resolvePublicAssetPath(character.avatarUrl) || character.avatarUrl;
-    return <Img className="chat-avatar" src={avatarUrl} />;
+  if (avatarUrl) {
+    const resolvedAvatarUrl = resolvePublicAssetPath(avatarUrl) || avatarUrl;
+    return <Img className="chat-avatar" src={resolvedAvatarUrl} />;
   }
 
   return (

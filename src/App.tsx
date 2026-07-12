@@ -59,7 +59,7 @@ import {
   type ViralPresetRole
 } from "./shared/presetStories";
 import { ChatDrama } from "./remotion/ChatDrama";
-import { defaultAvatars } from "./shared/avatarLibrary";
+import { defaultAvatars, genderMatchedAvatarUrl } from "./shared/avatarLibrary";
 import { imageNarrativeCopy, imageSourceForMessage } from "./shared/imageNarrative";
 import { jojoCssMemeCardForMessage, type JojoCssMemeCard } from "./shared/jojoMemeCards";
 import { isJojoProject } from "./shared/jojoProject";
@@ -701,7 +701,8 @@ function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMes
 
 function WechatAvatar({ project, message }: { project: DramaProject; message: ChatMessage }) {
   const character = getCharacter(project, message);
-  if (character.avatarUrl) return <img className="wechat-avatar" src={resolvePublicAssetPath(character.avatarUrl)} alt="" />;
+  const avatarUrl = genderMatchedAvatarUrl(character);
+  if (avatarUrl) return <img className="wechat-avatar" src={resolvePublicAssetPath(avatarUrl)} alt="" />;
   return (
     <div className="wechat-avatar wechat-avatar-fallback" style={{ background: character.avatarGradient }}>
       {character.avatarInitial}
@@ -2334,7 +2335,6 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function applyCachedInitialPresetSegment(prompt: string) {
-    if (storyPackage !== "jojo") return false;
     const archive = initialPresetArchiveRef.current;
     const cachedFirstSegment = archive?.cachedFirstSegment;
     if (!archive || !cachedFirstSegment) return false;

@@ -1,4 +1,4 @@
-import { randomizeViralCharacterAvatars, type DefaultAvatarGender } from "./avatarLibrary.js";
+import { avatarGenderForCharacter, randomizeViralCharacterAvatars, type DefaultAvatarGender } from "./avatarLibrary.js";
 import type { ChatMessage, DramaProject } from "./schema.js";
 
 type ViralRegion = {
@@ -132,12 +132,6 @@ function rememberDistinct<T>(storageKey: string, items: T[], valueKey: (item: T)
   }
 }
 
-function genderForCharacter(character: DramaProject["characters"][number]): DefaultAvatarGender {
-  if (character.id === "girl") return "girl";
-  if (character.id === "boy") return "boy";
-  return character.side === "left" ? "girl" : "boy";
-}
-
 function initialsForName(name: string) {
   const compact = [...name.replace(/\s+/g, "")];
   return compact.slice(Math.max(0, compact.length - 2)).join("") || name.slice(0, 2);
@@ -247,7 +241,7 @@ export function randomizeViralCharacterProfiles(project: DramaProject): DramaPro
     ...projectWithAvatars,
     brief: regionalBrief(projectWithAvatars.brief, region),
     characters: projectWithAvatars.characters.map((character) => {
-      const gender = genderForCharacter(character);
+      const gender = avatarGenderForCharacter(character);
       const name = names[gender];
       return {
         ...character,

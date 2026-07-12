@@ -135,10 +135,32 @@ function randomAvatar(gender: DefaultAvatarGender): DefaultAvatar | undefined {
   return avatars[Math.floor(Math.random() * avatars.length)];
 }
 
-function genderForCharacter(character: DramaProject["characters"][number]): DefaultAvatarGender {
+export function avatarGenderForCharacter(character: DramaProject["characters"][number]): DefaultAvatarGender {
   if (character.id === "girl") return "girl";
   if (character.id === "boy") return "boy";
+  if (character.voicePreset === "young_real_female") return "girl";
+  if (character.voicePreset === "young_male") return "boy";
   return character.side === "left" ? "girl" : "boy";
+}
+
+function configuredDefaultAvatar(avatarUrl: string | undefined) {
+  if (!avatarUrl) return undefined;
+  return defaultAvatars.find((avatar) => avatar.url === avatarUrl || avatarUrl.endsWith(avatar.url));
+}
+
+function stableAvatar(gender: DefaultAvatarGender, seed: string) {
+  const avatars = avatarsByGender(gender);
+  if (!avatars.length) return undefined;
+  const hash = [...seed].reduce((total, character) => total + character.charCodeAt(0), 17);
+  return avatars[Math.abs(hash) % avatars.length];
+}
+
+export function genderMatchedAvatarUrl(character: DramaProject["characters"][number]) {
+  const configured = configuredDefaultAvatar(character.avatarUrl);
+  if (!configured) return character.avatarUrl;
+  const gender = avatarGenderForCharacter(character);
+  if (configured.gender === gender) return configured.url;
+  return stableAvatar(gender, `${character.id}:${character.name}`)?.url ?? character.avatarUrl;
 }
 
 export function randomizeViralCharacterAvatars(project: DramaProject): DramaProject {
@@ -150,7 +172,7 @@ export function randomizeViralCharacterAvatars(project: DramaProject): DramaProj
   return {
     ...project,
     characters: project.characters.map((character) => {
-      const avatar = selectedAvatars[genderForCharacter(character)];
+      const avatar = selectedAvatars[avatarGenderForCharacter(character)];
       return avatar ? { ...character, avatarUrl: avatar.url } : character;
     })
   };
