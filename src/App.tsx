@@ -888,11 +888,13 @@ function visualSideFor(project: DramaProject, message: ChatMessage) {
 
 function WechatStoryPreview({
   project,
+  showPeerName,
   onReplay,
   showReplay,
   phoneRef
 }: {
   project: DramaProject;
+  showPeerName?: boolean;
   onReplay?: () => void;
   showReplay?: boolean;
   phoneRef?: Ref<HTMLDivElement>;
@@ -1007,7 +1009,7 @@ function WechatStoryPreview({
       <div ref={phoneRef} className={`wechat-phone ${jojoMode ? "dingtalk-phone" : ""}`} aria-label={jojoMode ? "钉钉手机版聊天预览" : "9:16 微信聊天预览"}>
         <div className={jojoMode ? "dingtalk-topbar" : "wechat-topbar"}>
           <img className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.webp" : "/wechat-ui/topbar.webp")} alt="" draggable={false} />
-          {jojoMode ? <strong className="dingtalk-topbar-title">{project.title || "工位蛐蛐小队"}</strong> : <strong className="wechat-topbar-title">{peer?.name || project.title}</strong>}
+          {jojoMode ? <strong className="dingtalk-topbar-title">{project.title || "工位蛐蛐小队"}</strong> : <strong className="wechat-topbar-title">{showPeerName ? (peer?.name || project.title) : "？"}</strong>}
         </div>
         <div className={`wechat-chat-viewport ${jojoMode ? "dingtalk-chat-viewport" : ""}`}>
           <div
@@ -2332,6 +2334,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function applyCachedInitialPresetSegment(prompt: string) {
+    if (storyPackage !== "jojo") return false;
     const archive = initialPresetArchiveRef.current;
     const cachedFirstSegment = archive?.cachedFirstSegment;
     if (!archive || !cachedFirstSegment) return false;
@@ -2774,6 +2777,7 @@ export default function App({ storyPackage }: AppProps) {
       return (
         <WechatStoryPreview
           project={previewProject}
+          showPeerName={promptCards.length > 0}
           onReplay={replayConversation}
           showReplay={project.messages.length > 0 && visibleMessageCount >= project.messages.length}
           phoneRef={isActive ? archivePhoneRef : undefined}

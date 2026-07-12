@@ -1,4 +1,5 @@
 import { normalizeDeepSeekProject, extractJson } from "./deepseekProject.js";
+import { resolveFirstViralPeerCharacters } from "./chatPeerName.js";
 import { isGenericImageCopy } from "./imageNarrative.js";
 import { isJojoProject } from "./jojoProject.js";
 import {
@@ -442,6 +443,9 @@ function systemPrompt(project: DramaProject) {
     `${viralInstruction.tone}两个人的语气要明显不同。`,
     "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme；music 使用 send。",
     viralInstruction.roleRule,
+    project.messages.length
+      ? "沿用已经确定的人物姓名，不要在续写中擅自改名。"
+      : `第一段必须在 characters 中确定左侧聊天对象（${viralInstruction.leftLabel}）的真实姓名：当前 Prompt 明确写了名字就原样采用；没有写名字就由你编一个自然的中文姓名。不要用“男主”“女主”“对方”等占位词。`,
     "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
     "可以在 JSON 顶层额外输出 suggestedPrompt，作为下一轮可选提示词；没有自然建议就不要输出或留空。",
     "assets 必须是数组；messages 必须是数组；sfx 必须是对象，不要输出数组。"
@@ -589,7 +593,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
     console.warn(`[${logLabel}] low-quality opening; retrying with repair prompt`, { repairAttempt });
     generated = await fetchGeneratedProject(repairAttempt);
   }
-  const baseCharacters = project.characters;
+  const baseCharacters = resolveFirstViralPeerCharacters(project, generated.project, premise);
   const cardId = makeId("prompt");
   const normalizedMessages = removeDuplicateMessages(generated.project.messages)
     .map((message, index) => ({

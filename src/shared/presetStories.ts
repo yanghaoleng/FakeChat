@@ -1006,14 +1006,6 @@ function presetStoriesFor(packageId: StoryPackage, roleSelection: Partial<Preset
   return viralPresetStories;
 }
 
-function withViralCharacterNames(prompt: string, project: DramaProject) {
-  const boyName = project.characters.find((character) => character.id === "boy")?.name;
-  const girlName = project.characters.find((character) => character.id === "girl")?.name;
-  return prompt
-    .replace(/男主(?=是)/g, boyName ? `男主${boyName}` : "男主")
-    .replace(/女主(?=是)/g, girlName ? `女主${girlName}` : "女主");
-}
-
 function applyViralRole(project: DramaProject, viralRole: ViralPresetRole): DramaProject {
   if (viralRole === "male") return project;
   return parseProject({
@@ -1153,7 +1145,7 @@ export function createPresetInitialArchive(
     ? rawPreset
     : {
         ...rawPreset,
-        prompt: withViralRegionalPrompt(withViralCharacterNames(rawPreset.prompt, baseProject), baseProject),
+        prompt: withViralRegionalPrompt(rawPreset.prompt, baseProject),
         nextPrompt: withViralRegionalPrompt(rawPreset.nextPrompt, baseProject)
       };
   const messages = buildPresetMessages(baseProject, preset);
