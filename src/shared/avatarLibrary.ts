@@ -6,8 +6,8 @@ export interface DefaultAvatar {
   id: string;
   title: string;
   vibe: string;
-  gender: DefaultAvatarGender;
-  group?: "western-student";
+  gender: DefaultAvatarGender | "neutral";
+  group?: "western-student" | "neutral-editorial";
   url: string;
   sourceName: string;
   sourceUrl: string;
@@ -121,6 +121,22 @@ export const defaultAvatars: DefaultAvatar[] = [
     url: localAvatar("abstract-dark-glasses.webp"),
     ...generatedSource
   },
+  ...[
+    ["neutral-animal-orange-cat", "丑橘", "橘猫 / 厌世脸 / 晴空蓝"],
+    ["neutral-animal-capybara", "橘子水豚", "水豚 / 小橘子 / 奶油黄"],
+    ["neutral-animal-shiba", "侧眼柴犬", "柴犬 / 侧眼 / 杏橙"],
+    ["neutral-animal-red-panda", "捏叶小熊猫", "小熊猫 / 绿叶 / 薄荷"],
+    ["neutral-animal-alpaca", "乱毛羊驼", "羊驼 / 乱刘海 / 珊瑚"],
+    ["neutral-animal-seal", "放空海豹", "海豹 / 放空脸 / 暖白"]
+  ].map(([id, title, vibe]) => ({
+    id,
+    title,
+    vibe: `中性插画 / ${vibe}`,
+    gender: "neutral" as const,
+    group: "neutral-editorial" as const,
+    url: localAvatar(`${id}.webp`),
+    ...generatedSource
+  })),
   {
     id: "western-student-male-cafe",
     title: "Campus Coffee",
@@ -149,12 +165,17 @@ export function avatarsByGender(gender: DefaultAvatarGender, group: DefaultAvata
   return defaultAvatars.filter((avatar) => avatar.gender === gender && (avatar.group ?? "asian") === group);
 }
 
+export function neutralEditorialAvatars(): DefaultAvatar[] {
+  return defaultAvatars.filter((avatar) => avatar.gender === "neutral" && avatar.group === "neutral-editorial");
+}
+
 function randomAvatar(gender: DefaultAvatarGender): DefaultAvatar | undefined {
   const avatars = avatarsByGender(gender);
   return avatars[Math.floor(Math.random() * avatars.length)];
 }
 
 export function avatarGenderForCharacter(character: DramaProject["characters"][number]): DefaultAvatarGender {
+  if (character.avatarGender) return character.avatarGender;
   if (character.id === "girl") return "girl";
   if (character.id === "boy") return "boy";
   if (character.voicePreset === "young_real_female") return "girl";
@@ -177,6 +198,7 @@ function stableAvatar(gender: DefaultAvatarGender, seed: string, group: DefaultA
 export function genderMatchedAvatarUrl(character: DramaProject["characters"][number]) {
   const configured = configuredDefaultAvatar(character.avatarUrl);
   if (!configured) return character.avatarUrl;
+  if (configured.gender === "neutral") return configured.url;
   const gender = avatarGenderForCharacter(character);
   if (configured.gender === gender) return configured.url;
   return stableAvatar(gender, `${character.id}:${character.name}`, configured.group ?? "asian")?.url ?? character.avatarUrl;

@@ -10,95 +10,250 @@ const m = (
 
 export const viralPresetStories: PresetStory[] = [
   {
-    id: "viral-english-campus-lost-card-female",
-    title: "The Card That Opened His Room",
-    language: "en",
-    viralRole: "female",
-    peerAvatarSet: "western-student",
-    characterNames: { girl: "Mia Chen", boy: "Noah Bennett" },
-    prompt: "Language: English. The female lead is a Chinese graduate student studying abroad; the male lead is a British exchange student living in the same residence hall. They have only exchanged polite hellos until Mia's missing student card opens Noah's room by mistake. Tonight, Noah messages her with a photo of the card on his desk, but the handwritten note underneath it contains a private sentence Mia never showed anyone.",
-    nextPrompt: "Continue in English: Mia asks how Noah knows the sentence on the note. Noah reveals that the same sentence appeared in an anonymous campus writing workshop, but he still refuses to say which story was his.",
-    messages: [
-      m("boy", "Is this your student card?"),
-      m("girl", "Where did you get that?"),
-      m("boy", "It opened my door."),
-      m("girl", "That's not possible."),
-      m("boy", "Campus desk close-up: Mia's student card rests on a handwritten note beside a room key", { type: "image", assetId: "viral-photo-door-card", emotion: "evidence" }),
-      m("girl", "Don't read the note."),
-      m("boy", "Too late."),
-      m("girl", "Noah."),
-      m("boy", "You never use my name."),
-      m("girl", "You never enter my room."),
-      m("boy", "Your card entered mine."),
-      m("girl", "Leave it at reception."),
-      m("boy", "What does 'the blue stairwell' mean?"),
-      m("girl", "You read all of it?"),
-      m("boy", "I read that line last semester."),
-      m("girl", "We've never met before this year."),
-      m("boy", "Not under our real names."),
-      m("girl", "Which story was yours?"),
-      m("boy", "Come get the card first.")
-    ]
-  },
-  {
-    id: "viral-english-campus-lost-card-male",
-    title: "Her Voice Was in His Assignment",
-    language: "en",
+    id: "viral-pan-jinlian-window-request",
+    title: "大郎烧饼售后群",
     viralRole: "male",
-    peerAvatarSet: "western-student",
-    characterNames: { boy: "Evan Lin", girl: "Sophie Miller" },
-    prompt: "Language: English. The male lead is a Chinese international student in a documentary program; the female lead is an American exchange student from his campus radio class. Evan hires an anonymous English voice coach for a final film, unaware that the coach is Sophie. Tonight, he sends the coach a rough cut recorded in Sophie's dorm hallway, and she recognizes a secret argument in the background.",
-    nextPrompt: "Continue in English: Sophie stays anonymous and asks Evan why he was filming outside her dorm. Evan sends the production schedule, which shows that somebody changed the location after he submitted it.",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "西门庆", girl: "武大郎" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    prompt: "西门庆申请添加潘金莲时，武大郎先用她的手机通过好友，还把聊天窗口改名成了“大郎烧饼售后群”。",
+    nextPrompt: "武大郎发来满十送一券，西门庆准备退群时才发现群里从头到尾只有他们两个人。",
     messages: [
-      m("girl", "Pause the video at 00:43."),
-      m("boy", "The pronunciation is that bad?"),
-      m("girl", "Listen to the background."),
-      m("boy", "It's just a hallway."),
-      m("girl", "A blurred editing screen shows the subtitle 'Don't tell Evan' over a dorm corridor", { type: "image", assetId: "viral-photo-phone-chat", emotion: "clue" }),
-      m("boy", "How do you know my name?"),
-      m("girl", "It's in the file title."),
-      m("boy", "No. The file says Final_v7."),
-      m("girl", "Then rename your files better."),
-      m("boy", "Who said that line?"),
-      m("girl", "Someone outside room 412."),
-      m("boy", "That's Sophie's floor."),
-      m("girl", "You sound surprised."),
-      m("boy", "I wasn't meant to film there."),
-      m("girl", "But your camera was already rolling."),
-      m("boy", "Were you there?"),
-      m("girl", "Fix the audio first, Evan."),
-      m("boy", "Sophie?"),
-      m("girl", "Send me the location sheet.")
+      m("boy", "你家窗户是不是又掉东西了？"),
+      m("girl", "掉了，掉进我手机里了。"),
+      m("boy", "潘姑娘在吗？"),
+      m("girl", "烧饼要甜的还是咸的？"),
+      m("boy", "我不买烧饼。"),
+      m("girl", "那你加我家顾客微信做什么？"),
+      m("boy", "我找掉下来的叉竿。"),
+      m("girl", "叉竿找到了，人也找到了。"),
+      m("boy", "误会。"),
+      m("girl", "没事，拉你进售后群了。"),
+      m("boy", "能退群吗？"),
+      m("girl", "先下单。")
     ]
   },
   {
-    id: "viral-double-life-clerk",
-    title: "下班后别叫我店员",
-    prompt: "男主是经常深夜买咖啡的广告策划；女主是白天温柔的便利店员，晚上却用另一个微信做乐队鼓手。男主分别加了她两个账号，却不知道是同一个人，两段关系会同时升温并逐渐撞车；今晚，他把只告诉过店员的秘密发给了她的夜间账号。",
-    nextPrompt: "接着写男主从咖啡口味和女主手链发现两个账号属于同一个人，女主继续嘴硬，只承认自己认识那位店员。",
+    id: "viral-trump-takaichi-tariff-coupon",
+    title: "特朗普的关税优惠券",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "特朗普", girl: "高市早苗" },
+    prompt: "特朗普给高市早苗发了一张亲笔签名的“关税优惠券”，高市早苗问他能不能和会员折扣叠加使用。",
+    nextPrompt: "特朗普说优惠券仅限当面使用，高市早苗追问是不是还要满额。",
     messages: [
-      m("girl", "今晚别来找店里的我"),
-      m("boy", "你认识那个店员？"),
-      m("girl", "比你早认识"),
-      m("boy", "她今天请假了？"),
-      m("girl", "她今晚在台上"),
-      m("boy", "你到底是谁"),
-      m("girl", "夜晚街道路灯空镜：便利店招牌旁贴着一张临时演出海报", { type: "image", assetId: "viral-photo-night-street", emotion: "露馅" }),
-      m("boy", "海报上那条手链"),
-      m("girl", "手链很常见"),
-      m("boy", "咖啡也无糖？"),
-      m("girl", "你只跟她说过？"),
-      m("boy", "我刚刚只跟你说了"),
-      m("girl", "那就当我听错了"),
-      m("boy", "十点二十，无糖"),
-      m("girl", "明晚别迟到"),
-      m("boy", "去便利店还是演出"),
-      m("girl", "看你想见谁")
+      m("boy", "送你一张最好的关税优惠券。"),
+      m("girl", "可以和会员折扣叠加吗？"),
+      m("boy", "仅限当面使用。"),
+      m("girl", "还要满额吗？")
+    ]
+  },
+  {
+    id: "viral-musk-altman-alumni-group",
+    title: "OpenAI 离职员工群",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "马斯克", girl: "Sam Altman" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    prompt: "马斯克给 Sam Altman 发了一张“OpenAI 离职员工群”二维码，Sam 点进去后发现群主还是自己。",
+    nextPrompt: "Sam 追问马斯克为什么不自己进群，马斯克说自己刚进去就被踢了。",
+    messages: [
+      m("boy", "给你个老同事群。"),
+      m("girl", "为什么群主是我？"),
+      m("boy", "方便你管理。"),
+      m("girl", "那你怎么不进？"),
+      m("boy", "刚进去就被踢了。")
+    ]
+  },
+  {
+    id: "viral-altman-dario-safe-document",
+    title: "安全文档禁止复制",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "Sam Altman", girl: "Dario Amodei" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    prompt: "Sam Altman 约 Dario Amodei 聊 AI 安全，Dario 打开共享文档后发现权限是“可查看、禁止复制、随时可能改名”。",
+    nextPrompt: "Dario 要求先锁定文档标题，Sam 说模型都没锁定，标题更不可能。",
+    messages: [
+      m("boy", "今晚聊聊安全？"),
+      m("girl", "先把文档权限开一下。"),
+      m("boy", "你已经能看了。"),
+      m("girl", "能看，不能复制。"),
+      m("boy", "安全第一。"),
+      m("girl", "标题怎么又改了？")
+    ]
+  },
+  {
+    id: "viral-fengge-female-fan-private-chat",
+    title: "这个问题不公开采访",
+    viralRole: "female",
+    characterNames: { boy: "峰哥", girl: "成年女粉" },
+    characterVoiceDescriptions: {
+      boy: "成熟真实的西北男性声线，判断笃定，短句下结论后突然反转，生活化、自嘲，像一本正经地解答世间万物"
+    },
+    prompt: "成年女粉深夜问峰哥为什么一直不采访自己，峰哥先说这是好事，再反向判断她不是缺采访，而是想把好感研究成社会问题。",
+    nextPrompt: "女粉追问两人的关系到底算什么，峰哥从采访方法一路分析到暧昧，最后说这个问题得到现场看看。",
+    messages: [
+      m("girl", "峰哥，你采访过那么多人，什么时候采访我？"),
+      m("boy", "这是好事呀。"),
+      m("girl", "什么好事？"),
+      m("boy", "说明你还没被生活采访够。"),
+      m("girl", "我只想被你采访。"),
+      m("boy", "恰恰相反，这就不是采访了。"),
+      m("girl", "那是什么？"),
+      m("boy", "你把好感研究成社会问题了。"),
+      m("girl", "那你给个结论。"),
+      m("boy", "我得到现场看看。"),
+      m("girl", "现场在哪？"),
+      m("boy", "你定，峰哥负责下结论。")
+    ]
+  },
+  {
+    id: "viral-fengge-male-b-friend-advice",
+    title: "到账不算心动",
+    viralRole: "male",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "男B友", girl: "峰哥" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    characterVoiceDescriptions: {
+      girl: "成熟真实的西北男性声线，判断笃定，短句下结论后突然反转，生活化、自嘲，像一本正经地解答世间万物"
+    },
+    prompt: "男B友问峰哥，喜欢的女生平时不回消息、收到红包却秒回是不是慢热；峰哥把情感问题分析成支付平台活跃问题。",
+    nextPrompt: "男B友继续拿更多聊天细节让峰哥判断，峰哥每次先宣布是好事，再反向拆穿他的自我安慰。",
+    messages: [
+      m("boy", "峰哥，她平时不回我，发红包却秒回，是不是慢热？"),
+      m("girl", "这是好事呀。"),
+      m("boy", "真有戏？"),
+      m("girl", "恰恰相反，她对你没反应，对到账有反应。"),
+      m("boy", "那她到底喜不喜欢我？"),
+      m("girl", "我跟你说，别研究她，先研究你自己。"),
+      m("boy", "我怎么了？"),
+      m("girl", "你把转账当聊天，把收款提示当心动。"),
+      m("girl", "这不是追人，是给支付平台做活跃。"),
+      m("boy", "那我还追吗？"),
+      m("girl", "停七天。她来找你是关系，只催红包是业务。"),
+      m("boy", "听完更难受了。"),
+      m("girl", "难受是好事，说明支付密码还没替你做决定。")
+    ]
+  },
+  {
+    id: "viral-luo-jia-next-week-live",
+    title: "下周一定进直播间",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "罗永浩", girl: "贾跃亭" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    prompt: "罗永浩邀请贾跃亭进直播间聊“如何按时交付”，贾跃亭回复“下周一定”，罗永浩把预约时间直接设成了每周循环。",
+    nextPrompt: "罗永浩追问具体是哪个下周，贾跃亭发来一个没有结束日期的日历邀请。",
+    messages: [
+      m("boy", "来直播间聊聊按时交付？"),
+      m("girl", "下周一定。"),
+      m("boy", "具体哪天下周？"),
+      m("girl", "下周的下周。"),
+      m("boy", "那我把预约设成每周循环。")
+    ]
+  },
+  {
+    id: "viral-lei-yu-joint-launch",
+    title: "两场遥遥领先发布会",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "雷军", girl: "余承东" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    prompt: "雷军和余承东同时给对方发来新品发布会邀请函，备注都写着“欢迎友商到场见证遥遥领先”。",
+    nextPrompt: "两人发现发布会撞在同一分钟，于是开始争谁去谁的直播间刷礼物。",
+    messages: [
+      m("boy", "今晚发布会，欢迎友商。"),
+      m("girl", "巧了，我也发你一张。"),
+      m("boy", "你那张写着遥遥领先。"),
+      m("girl", "你这张写着全面领先。"),
+      m("boy", "要不一起开？"),
+      m("girl", "直播间会放不下。")
+    ]
+  },
+  {
+    id: "viral-liu-qiangdong-passerby",
+    title: "你只是路人",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "刘强东", girl: "点外卖的路人" },
+    characterGenders: { boy: "boy", girl: "boy" },
+    prompt: "一位顾客问刘强东，自己天天点京东外卖算不算兄弟，刘强东看完他的配送记录后回复：“你只是路人，不是我们的兄弟。”",
+    nextPrompt: "顾客拿出全年订单证明贡献，刘强东让他先从亲自送一单开始。",
+    messages: [
+      m("girl", "我天天点京东外卖，算兄弟吗？"),
+      m("boy", "你送过外卖吗？"),
+      m("girl", "我负责点。"),
+      m("boy", "那你只是路人。"),
+      m("girl", "优惠券也不算家书？"),
+      m("boy", "先亲自送一单再进群。")
+    ]
+  },
+  {
+    id: "viral-wang-dong-nearby-office",
+    title: "离职了还要随时汇报",
+    viralRole: "any",
+    characterAvatarSet: "neutral-editorial",
+    characterNames: { boy: "王自如", girl: "董明珠" },
+    prompt: "王自如离职后，董明珠发消息问他那间离自己最近的办公室还留不留，王自如嘴上说不用，听说要给别人又立刻改口。",
+    nextPrompt: "董明珠把王自如新公司的地址发来，让他先算算以后过来汇报还算不算顺路。",
+    messages: [
+      m("girl", "你的办公室还留吗？"),
+      m("boy", "人都离职了，还留什么。"),
+      m("girl", "那我让别人搬进去。"),
+      m("boy", "等一下。"),
+      m("girl", "不是不留吗？"),
+      m("boy", "我只是离职，又没说以后不汇报。")
+    ]
+  },
+  {
+    id: "viral-king-of-comedy-support-you",
+    title: "演员训练班家属免费",
+    viralRole: "any",
+    characterNames: { boy: "尹天仇", girl: "柳飘飘" },
+    prompt: "尹天仇追着出租车喊出“我养你啊”后，柳飘飘在车上加了他的微信，第一句就问他打算拿什么养。",
+    nextPrompt: "尹天仇说演员训练班家属免费，柳飘飘让他先把家属两个字解释清楚。",
+    messages: [
+      m("girl", "你刚刚说什么？"),
+      m("boy", "我养你啊。"),
+      m("girl", "先把你自己养明白。"),
+      m("boy", "那两个人一起省。"),
+      m("girl", "怎么省？"),
+      m("boy", "演员训练班，家属免费。")
+    ]
+  },
+  {
+    id: "viral-daughter-kingdom-520",
+    title: "唐僧给女王发了 520",
+    viralRoles: ["male", "female"],
+    characterNames: { boy: "唐玄奘", girl: "女儿国国王" },
+    prompt: "唐僧离开女儿国后，突然给女儿国国王发了一个 520 红包，备注却写着“功德随喜”。",
+    nextPrompt: "女王收下红包，问他这算化缘还是还情债。",
+    messages: [
+      m("boy", "一点心意", { type: "transfer", amount: 520, transferNote: "功德随喜" }),
+      m("girl", "御弟哥哥，佛门现在也过 520？"),
+      m("boy", "路过女儿国，手滑。"),
+      m("girl", "那你再滑一次给我看看。")
+    ]
+  },
+  {
+    id: "viral-baigujing-third-account",
+    title: "白骨精的第三个小号",
+    viralRoles: ["male", "female"],
+    characterNames: { boy: "孙悟空", girl: "白骨精" },
+    prompt: "白骨精用第三个微信小号添加孙悟空，好友验证写着“都见第三次了，能不能先聊天再动手”。",
+    nextPrompt: "孙悟空通过好友后，第一句就问她这次用的是谁的头像。",
+    messages: [
+      m("girl", "都见第三次了，能不能先聊天再动手？"),
+      m("boy", "你这次又是谁？"),
+      m("girl", "先通过，再发原图。"),
+      m("boy", "老孙就看你还有几个号。")
     ]
   },
   {
     id: "viral-old-crush-roommate",
     title: "房东把你推给我了",
+    viralRoles: ["male", "female"],
     prompt: "男主是游戏公司的主策；女主是刚调回本地的记者，也是他高中时没能追到的人。两人会因合租重新靠近，过去的拒绝和误会也会逐渐被翻出来；此刻，女主发现新房钥匙在男主手里，而他第一句话就叫出了她多年前的绰号。",
     nextPrompt: "接着写女主坚持两人已经不熟，男主却从她的行李和旧钥匙扣里认出更多高中细节，合租第一晚开始翻旧账。",
     messages: [
@@ -118,109 +273,6 @@ export const viralPresetStories: PresetStory[] = [
       m("boy", "你擅长不记得"),
       m("girl", "今晚先把房间分清"),
       m("boy", "可以，旧账明天算")
-    ]
-  },
-  {
-    id: "viral-double-lease-lawyers",
-    title: "一套房，两份合同",
-    prompt: "男主是嘴毒但专业的律所合伙人；女主是第二天即将入职的新人律师。两人被同一位房东一房两租，白天会成为上下级，晚上却不得不暂时合住；此刻，两人都拿着有效合同站在门外，谁也不肯离开。",
-    nextPrompt: "接着写两人开始逐条检查租房合同，女主先发现房东留下的漏洞，男主则认出她就是明早要来报到的新人。",
-    messages: [
-      m("girl", "你现在在门口吗"),
-      m("boy", "你怎么有我微信"),
-      m("girl", "房东发的"),
-      m("boy", "让你来交钥匙？"),
-      m("girl", "让我来住"),
-      m("boy", "这套房我租了"),
-      m("girl", "门口鞋子、行李箱和两份同地址租房合同局部", { type: "image", assetId: "viral-photo-shoes-door", emotion: "双合同" }),
-      m("boy", "签约日期也是今天"),
-      m("girl", "你不会是房托吧"),
-      m("boy", "先进去，再报警"),
-      m("girl", "谁跟你一起进去"),
-      m("boy", "明早九点你还要入职"),
-      m("girl", "你怎么知道"),
-      m("boy", "衡川律所，对吧"),
-      m("girl", "你是面试里那个合伙人？"),
-      m("boy", "也是你今晚的室友"),
-      m("girl", "我现在辞职还来得及吗")
-    ]
-  },
-  {
-    id: "viral-second-phone-persona",
-    title: "你把另一部手机落下了",
-    prompt: "男主是擅长经营精英形象的投资经理；女主是同样习惯假装成熟的初级律师。两人会在互相试探中逐渐拆穿彼此的人设；此刻，女主在出差返程时拿错了男主的备用手机，男主突然发来消息，让她千万不要解锁。",
-    nextPrompt: "接着写备用手机上的匿名账号弹出一条新提醒，女主发现男主一直在记录两人的偶遇，而男主反过来指出她也有一套假装精致的朋友圈。",
-    messages: [
-      m("boy", "别解锁那部手机"),
-      m("girl", "你怎么知道在我这"),
-      m("boy", "定位开着"),
-      m("girl", "锁屏已经亮了"),
-      m("boy", "看见什么了"),
-      m("girl", "你不是没有朋友圈吗"),
-      m("boy", "那不是朋友圈"),
-      m("girl", "手边手机亮屏局部：匿名账号草稿写着她在返程车上睡着了", { type: "image", assetId: "viral-photo-hand-phone", emotion: "人设裂缝" }),
-      m("boy", "只是随手记录"),
-      m("girl", "连我耳环颜色都记录？"),
-      m("boy", "职业习惯"),
-      m("girl", "投资也看耳环？"),
-      m("boy", "你朋友圈的书也没翻过"),
-      m("girl", "你调查我"),
-      m("boy", "彼此彼此"),
-      m("girl", "手机可以还你"),
-      m("boy", "条件呢"),
-      m("girl", "当面交换真话")
-    ]
-  },
-  {
-    id: "viral-wrong-interview-target",
-    title: "采访对象加错了",
-    prompt: "男主是低调的科技投资人；女主是想拿下独家采访的财经记者。女主误以为他是前任新欢的哥哥，带着一点报复心主动接近，而男主早已看穿却没有拆穿；此刻，她刚发出一句越界的试探，第二天的正式采访还没开始。",
-    nextPrompt: "接着写男主把女主最初的好友验证备注截给她看，证明自己从一开始就知道她认错了人，却仍然答应了采访。",
-    messages: [
-      m("girl", "采访提纲发你了"),
-      m("boy", "第七题不像公事"),
-      m("girl", "哪一题"),
-      m("boy", "有没有女朋友"),
-      m("girl", "人物背景调查"),
-      m("boy", "还是想报复前任"),
-      m("girl", "你什么意思"),
-      m("boy", "模糊聊天屏幕：最初的好友验证备注写着她哥哥", { type: "image", assetId: "viral-photo-phone-chat", emotion: "认错人" }),
-      m("girl", "你早就看到了？"),
-      m("boy", "我不是她哥哥"),
-      m("girl", "那你是谁"),
-      m("boy", "她哥哥的投资人"),
-      m("girl", "为什么不早说"),
-      m("boy", "想看你能试探到哪"),
-      m("girl", "现在看够了吗"),
-      m("boy", "采访还没开始"),
-      m("girl", "第七题删掉"),
-      m("boy", "来不及，我记住了")
-    ]
-  },
-  {
-    id: "viral-old-game-id",
-    title: "这个 ID 你用了十年",
-    prompt: "男主是游戏公司的算法工程师；女主是游戏水平很差却立了高手人设的生活博主。女主秘密请他做陪练，却不知道他是多年未见的高中同桌；此刻，男主通过她用了十年的游戏 ID 认出了她，而她的直播考核只剩三天。",
-    nextPrompt: "接着写男主用只有高中同桌才知道的旧称呼试探女主，女主一边否认身份，一边不得不请他继续陪练保住工作。",
-    messages: [
-      m("girl", "今晚能带我上分吗"),
-      m("boy", "先回答一个问题"),
-      m("girl", "加钱不行？"),
-      m("boy", "这个 ID 用了十年？"),
-      m("girl", "你怎么知道"),
-      m("boy", "头像也没换"),
-      m("girl", "游戏资料页局部：旧账号创建日期是十年前，头像是一只手绘小猫", { type: "image", assetId: "viral-photo-phone-chat", emotion: "旧账号" }),
-      m("boy", "小班长"),
-      m("girl", "别乱叫"),
-      m("boy", "你高中也这么说"),
-      m("girl", "你是谁"),
-      m("boy", "数学课坐你右边"),
-      m("girl", "不可能"),
-      m("boy", "你还欠我一顿夜宵"),
-      m("girl", "那个人早就不联系了"),
-      m("boy", "现在联系上了"),
-      m("girl", "三天后我有直播考核"),
-      m("boy", "那先还一局")
     ]
   }
 ];

@@ -34,6 +34,7 @@ export const characterSchema = z.object({
   id: z.string(),
   name: z.string(),
   side: z.enum(["left", "right"]),
+  avatarGender: z.enum(["boy", "girl"]).optional(),
   avatarUrl: mediaUrlSchema.optional(),
   avatarInitial: z.string().min(1).max(2),
   avatarGradient: z.string(),

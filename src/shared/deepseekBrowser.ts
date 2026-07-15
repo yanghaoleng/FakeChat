@@ -324,6 +324,18 @@ function viralPerspectiveInstruction(project: DramaProject) {
   };
 }
 
+export function viralNamedCharacterStyleInstruction(project: DramaProject) {
+  const fengge = project.characters.find((character) => character.name === "峰哥");
+  if (!fengge) return "";
+  return [
+    `角色“峰哥”（roleId=${fengge.id}）是左侧聊天对象，不是玩家；续写时必须保持这一身份和位置。`,
+    "峰哥的回答要像在解答世间万物：先迅速给出一个高确定性结论，再用“恰恰相反”式的反向翻转拆掉对方的预设，最后落到一句接地气的判断。",
+    "表达节奏用短句断言与稍长的生活化比喻交替；可以自然使用“这是好事呀”“我跟你说”“说白了”“话又说回来”，但不要机械重复口头禅。",
+    "他不做温柔情感导师，也不只抖机灵；要从红包、已读不回、见面、工作和日常小事里提炼出一套看似能解释万物的民间逻辑，偶尔自我拆台。",
+    "如果没有足够信息，就说得到现场看看，不能凭空把猜测说成事实；不要输出性别羞辱、群体贬损或极端社会理论。"
+  ].join("\n");
+}
+
 function jojoPerspectiveInstruction(project: DramaProject) {
   const player = rightSideCharacter(project);
   const others = project.characters.filter((character) => character.id !== player.id).map((character) => character.name).join("、");
@@ -448,6 +460,7 @@ function systemPrompt(project: DramaProject) {
     "禁止低质套话：不要写“你好”“想聊什么”“你声音好熟悉”“声音跟同学很像”“大众脸/大众嗓”“认错人”“真的吗”“你是谁呀”这类平铺直叙；要用具体细节和压迫感推动。",
     `${viralInstruction.leftLabel}永远在左边 side=left，${viralInstruction.rightLabel}永远在右边 side=right，绝对不要反过来。system 只用于时间/提示，少用。`,
     `${viralInstruction.tone}两个人的语气要明显不同。`,
+    viralNamedCharacterStyleInstruction(project),
     "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme；music 使用 send。",
     viralInstruction.roleRule,
     project.messages.length

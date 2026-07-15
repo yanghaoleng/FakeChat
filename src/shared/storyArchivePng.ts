@@ -1,10 +1,13 @@
 const pngSignature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 const archiveKeyword = "chara";
 const maximumArchiveChunkBytes = 16 * 1024 * 1024;
-const transparentImagePlaceholder = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 const crcTable = buildCrcTable();
 
-export const archiveCoverSize = 1024;
+export const archiveCoverSize = 300;
+export const archiveFooterHeight = archiveCoverSize / 3;
+export const archiveImageHeight = archiveCoverSize + archiveFooterHeight;
+export const archiveFooterTitle = "蛐蛐模拟器存档文件";
+export const archiveFooterUrl = "ququ.mikeywa.icu";
 
 export function archiveSquareCrop(sourceWidth: number, sourceHeight: number) {
   const size = Math.max(1, Math.min(sourceWidth, sourceHeight));
@@ -178,183 +181,242 @@ export async function readArchiveFile(file: Blob) {
   }
 }
 
-function waitForFrame() {
-  return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-}
+type ArchiveCoverCharacter = {
+  name: string;
+  side: "left" | "right";
+  avatarUrl?: string;
+  avatarInitial: string;
+};
 
-async function waitForCaptureAssets(element: HTMLElement) {
-  await document.fonts?.ready;
-  const images = Array.from(element.querySelectorAll("img"));
-  await Promise.all(images.map(async (image) => {
-    if (image.complete && image.naturalWidth) return;
-    try {
-      await Promise.race([
-        image.decode(),
-        new Promise<void>((resolve) => window.setTimeout(resolve, 1600))
-      ]);
-    } catch {
-      // html-to-image will replace an unavailable remote image with the placeholder.
-    }
-  }));
-  await waitForFrame();
-  await waitForFrame();
-}
+type ArchiveCoverProject = {
+  stylePreset: string;
+  characters: ArchiveCoverCharacter[];
+};
 
-function makeCurrentViewportClone(element: HTMLElement) {
-  const rect = element.getBoundingClientRect();
-  const clone = element.cloneNode(true) as HTMLElement;
-  const host = document.createElement("div");
-  clone.classList.add("archive-capture-target");
-  clone.setAttribute("aria-hidden", "true");
-  Object.assign(clone.style, {
-    position: "relative",
-    top: "0",
-    left: "0",
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    margin: "0",
-    transform: "none",
-    pointerEvents: "none"
-  });
+type ArchiveBubble = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  colored: boolean;
+  tail: "left" | "right";
+};
 
-  const sourceScroll = element.querySelector<HTMLElement>(".wechat-chat-scroll");
-  const cloneScroll = clone.querySelector<HTMLElement>(".wechat-chat-scroll");
-  const cloneContent = clone.querySelector<HTMLElement>(".wechat-chat-content");
-  if (sourceScroll && cloneScroll && cloneContent) {
-    const maximumScroll = Math.max(0, sourceScroll.scrollHeight - sourceScroll.clientHeight);
-    const currentScroll = Math.max(0, Math.min(sourceScroll.scrollTop, maximumScroll));
-    cloneScroll.style.overflow = "hidden";
-    cloneScroll.scrollTop = 0;
-    cloneContent.style.transform = `translateY(-${currentScroll}px)`;
-    cloneContent.style.animation = "none";
-    cloneContent.style.transition = "none";
+const archiveBubbleCloud: ArchiveBubble[] = [
+  { x: 58, y: 116, width: 78, height: 29, rotation: -4, colored: false, tail: "left" },
+  { x: 142, y: 111, width: 72, height: 28, rotation: 3, colored: true, tail: "right" },
+  { x: 82, y: 137, width: 106, height: 36, rotation: 2, colored: true, tail: "right" },
+  { x: 183, y: 139, width: 67, height: 29, rotation: -5, colored: false, tail: "left" },
+  { x: 39, y: 155, width: 78, height: 30, rotation: -2, colored: true, tail: "right" },
+  { x: 112, y: 160, width: 96, height: 38, rotation: -3, colored: false, tail: "left" },
+  { x: 204, y: 171, width: 61, height: 27, rotation: 5, colored: true, tail: "right" },
+  { x: 58, y: 187, width: 86, height: 33, rotation: 4, colored: false, tail: "left" },
+  { x: 137, y: 191, width: 111, height: 39, rotation: 2, colored: true, tail: "right" },
+  { x: 31, y: 217, width: 66, height: 27, rotation: -6, colored: true, tail: "right" },
+  { x: 87, y: 219, width: 91, height: 34, rotation: -2, colored: false, tail: "left" },
+  { x: 174, y: 228, width: 78, height: 30, rotation: 5, colored: false, tail: "left" },
+  { x: 66, y: 248, width: 75, height: 28, rotation: 4, colored: true, tail: "right" },
+  { x: 133, y: 252, width: 103, height: 35, rotation: -4, colored: true, tail: "right" },
+  { x: 224, y: 248, width: 49, height: 24, rotation: 6, colored: false, tail: "left" },
+  { x: 24, y: 128, width: 42, height: 22, rotation: 5, colored: true, tail: "right" },
+  { x: 236, y: 122, width: 39, height: 21, rotation: -5, colored: false, tail: "left" },
+  { x: 17, y: 263, width: 43, height: 22, rotation: -3, colored: false, tail: "left" }
+];
+
+function getArchiveCoverProject(archive: unknown): ArchiveCoverProject {
+  if (!archive || typeof archive !== "object") throw new Error("存档内容无效，无法生成封面");
+  const project = (archive as { project?: unknown }).project;
+  if (!project || typeof project !== "object") throw new Error("存档缺少聊天项目");
+  const candidate = project as Partial<ArchiveCoverProject>;
+  if (!Array.isArray(candidate.characters) || candidate.characters.length < 2) {
+    throw new Error("存档缺少聊天角色");
   }
-
-  Object.assign(host.style, {
-    position: "fixed",
-    top: "0",
-    left: "-20000px",
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    overflow: "hidden",
-    pointerEvents: "none"
-  });
-  host.appendChild(clone);
-  document.body.appendChild(host);
   return {
-    element: clone,
-    remove: () => host.remove()
+    stylePreset: typeof candidate.stylePreset === "string" ? candidate.stylePreset : "kuaishou-horizontal-chat",
+    characters: candidate.characters
   };
 }
 
-function loadImage(blob: Blob) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
+function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
+function loadArchiveAvatar(url: string | undefined) {
+  if (!url) return Promise.resolve<HTMLImageElement | null>(null);
+  return new Promise<HTMLImageElement | null>((resolve) => {
     const image = new Image();
-    const url = URL.createObjectURL(blob);
+    const timeout = window.setTimeout(() => resolve(null), 2600);
+    image.crossOrigin = "anonymous";
     image.onload = () => {
-      URL.revokeObjectURL(url);
+      window.clearTimeout(timeout);
       resolve(image);
     };
     image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("存档截图无法解码"));
+      window.clearTimeout(timeout);
+      resolve(null);
     };
-    image.src = url;
+    image.src = new URL(url, document.baseURI).href;
   });
 }
 
-function clampChannel(value: number) {
-  return Math.max(0, Math.min(255, Math.round(value)));
+function drawArchiveAvatar(
+  context: CanvasRenderingContext2D,
+  character: ArchiveCoverCharacter,
+  image: HTMLImageElement | null,
+  x: number,
+  y: number,
+  accent: string
+) {
+  const size = 48;
+  context.save();
+  context.beginPath();
+  context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  context.clip();
+  if (image) {
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+    const sourceX = (image.naturalWidth - sourceSize) / 2;
+    const sourceY = (image.naturalHeight - sourceSize) / 2;
+    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, x, y, size, size);
+  } else {
+    const fallback = context.createLinearGradient(x, y, x + size, y + size);
+    fallback.addColorStop(0, accent);
+    fallback.addColorStop(1, "#172331");
+    context.fillStyle = fallback;
+    context.fillRect(x, y, size, size);
+    context.fillStyle = "rgba(255,255,255,0.94)";
+    context.font = '700 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(character.avatarInitial.slice(0, 2), x + size / 2, y + size / 2 + 1);
+  }
+  context.restore();
+  context.beginPath();
+  context.arc(x + size / 2, y + size / 2, size / 2 - 0.5, 0, Math.PI * 2);
+  context.strokeStyle = "rgba(255,255,255,0.28)";
+  context.lineWidth = 1;
+  context.stroke();
 }
 
-async function applyArchiveLensFilter(blob: Blob) {
-  const image = await loadImage(blob);
-  const sourceCanvas = document.createElement("canvas");
-  sourceCanvas.width = image.naturalWidth;
-  sourceCanvas.height = image.naturalHeight;
-  const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
-  if (!sourceContext) throw new Error("当前浏览器无法生成存档图片");
-  sourceContext.drawImage(image, 0, 0);
+function drawArchiveBubble(context: CanvasRenderingContext2D, bubble: ArchiveBubble, accent: string) {
+  context.save();
+  context.translate(bubble.x + bubble.width / 2, bubble.y + bubble.height / 2);
+  context.rotate((bubble.rotation * Math.PI) / 180);
+  context.shadowColor = "rgba(0,0,0,0.28)";
+  context.shadowBlur = 8;
+  context.shadowOffsetY = 4;
+  const fill = bubble.colored ? accent : "#f3f5f7";
+  context.fillStyle = fill;
+  roundedRectPath(context, -bubble.width / 2, -bubble.height / 2, bubble.width, bubble.height, 9);
+  context.fill();
+  context.shadowColor = "transparent";
+  context.beginPath();
+  const tailX = bubble.tail === "left" ? -bubble.width / 2 + 12 : bubble.width / 2 - 12;
+  context.moveTo(tailX - (bubble.tail === "left" ? 5 : 0), bubble.height / 2 - 2);
+  context.lineTo(tailX + (bubble.tail === "left" ? -2 : 7), bubble.height / 2 + 8);
+  context.lineTo(tailX + (bubble.tail === "left" ? 8 : -5), bubble.height / 2 - 1);
+  context.closePath();
+  context.fill();
+  context.restore();
+}
 
-  const source = sourceContext.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-  const outputCanvas = document.createElement("canvas");
-  outputCanvas.width = archiveCoverSize;
-  outputCanvas.height = archiveCoverSize;
-  const outputContext = outputCanvas.getContext("2d");
-  if (!outputContext) throw new Error("当前浏览器无法生成存档图片");
-  const output = outputContext.createImageData(archiveCoverSize, archiveCoverSize);
-  const crop = archiveSquareCrop(sourceCanvas.width, sourceCanvas.height);
-  const outputCenter = (archiveCoverSize - 1) / 2;
+function fitArchiveName(context: CanvasRenderingContext2D, name: string, maximumWidth: number) {
+  const trimmed = name.trim() || "聊天对象";
+  if (context.measureText(trimmed).width <= maximumWidth) return trimmed;
+  let value = trimmed;
+  while (value.length > 1 && context.measureText(`${value}…`).width > maximumWidth) value = value.slice(0, -1);
+  return `${value}…`;
+}
 
-  function sample(normalizedX: number, normalizedY: number, channel: number) {
-    const sourceX = Math.max(0, Math.min(
-      sourceCanvas.width - 1,
-      Math.round(crop.x + ((normalizedX + 1) / 2) * (crop.size - 1))
-    ));
-    const sourceY = Math.max(0, Math.min(
-      sourceCanvas.height - 1,
-      Math.round(crop.y + ((normalizedY + 1) / 2) * (crop.size - 1))
-    ));
-    return source.data[((sourceY * sourceCanvas.width) + sourceX) * 4 + channel];
+async function renderArchiveCover(archive: unknown) {
+  const project = getArchiveCoverProject(archive);
+  const leftCharacter = project.characters.find((character) => character.side === "left") ?? project.characters[0];
+  const rightCharacter = project.characters.find((character) => character.side === "right") ?? project.characters[1];
+  const isDingTalk = project.stylePreset === "jojo-company-chat";
+  const accent = isDingTalk ? "#1677ff" : "#07c160";
+  const [leftAvatar, rightAvatar] = await Promise.all([
+    loadArchiveAvatar(leftCharacter.avatarUrl),
+    loadArchiveAvatar(rightCharacter.avatarUrl)
+  ]);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = archiveCoverSize;
+  canvas.height = archiveImageHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("当前浏览器无法生成存档图片");
+
+  const background = context.createLinearGradient(0, 0, 0, archiveCoverSize);
+  background.addColorStop(0, "#111922");
+  background.addColorStop(0.56, "#0b141c");
+  background.addColorStop(1, "#071016");
+  context.fillStyle = background;
+  context.fillRect(0, 0, archiveCoverSize, archiveCoverSize);
+
+  for (let index = 0; index < 110; index += 1) {
+    const x = (index * 47) % archiveCoverSize;
+    const y = (index * 83) % archiveCoverSize;
+    context.fillStyle = `rgba(255,255,255,${0.008 + (index % 3) * 0.004})`;
+    context.fillRect(x, y, 1, 1);
   }
 
-  for (let y = 0; y < archiveCoverSize; y += 1) {
-    const normalizedY = (y - outputCenter) / outputCenter;
-    for (let x = 0; x < archiveCoverSize; x += 1) {
-      const normalizedX = (x - outputCenter) / outputCenter;
-      const radiusSquared = normalizedX * normalizedX + normalizedY * normalizedY;
-      const radius = Math.sqrt(radiusSquared);
-      const lensScale = 1 + (0.26 * radiusSquared) + (0.05 * radiusSquared * radiusSquared);
-      const lensX = normalizedX / lensScale;
-      const lensY = normalizedY / lensScale;
-      const chromaticOffset = 0.012 * Math.min(1.5, radiusSquared);
-      const red = sample(lensX * (1 + chromaticOffset), lensY * (1 + chromaticOffset), 0);
-      const green = sample(lensX, lensY, 1);
-      const blue = sample(lensX * (1 - chromaticOffset), lensY * (1 - chromaticOffset), 2);
-      const alpha = sample(lensX, lensY, 3);
-      const vignetteProgress = Math.max(0, Math.min(1, (radius - 0.5) / 0.92));
-      const vignette = 1 - (0.68 * Math.pow(vignetteProgress, 1.65));
-      const centerLift = 1 + (0.055 * Math.max(0, 1 - radiusSquared));
-      const grain = ((((x * 17) + (y * 31)) % 23) - 11) * 0.28;
-      const outputIndex = ((y * archiveCoverSize) + x) * 4;
-      output.data[outputIndex] = clampChannel((((red - 128) * 1.055) + 128) * vignette * centerLift + grain);
-      output.data[outputIndex + 1] = clampChannel((((green - 128) * 1.04) + 130) * vignette * centerLift + grain);
-      output.data[outputIndex + 2] = clampChannel((((blue - 128) * 1.045) + 134) * vignette * centerLift + grain);
-      output.data[outputIndex + 3] = alpha;
-    }
-  }
+  drawArchiveAvatar(context, leftCharacter, leftAvatar, 20, 18, accent);
+  drawArchiveAvatar(context, rightCharacter, rightAvatar, 232, 18, accent);
 
-  outputContext.putImageData(output, 0, 0);
+  roundedRectPath(context, 84, 24, 132, 42, 11);
+  context.fillStyle = "rgba(3,8,13,0.78)";
+  context.fill();
+  context.strokeStyle = "rgba(255,255,255,0.1)";
+  context.lineWidth = 1;
+  context.stroke();
+  context.fillStyle = "rgba(255,255,255,0.96)";
+  context.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(fitArchiveName(context, leftCharacter.name, 104), archiveCoverSize / 2, 45);
+
+  archiveBubbleCloud.forEach((bubble) => drawArchiveBubble(context, bubble, accent));
+
+  const vignette = context.createRadialGradient(150, 145, 76, 150, 145, 214);
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(0.68, "rgba(0,0,0,0.05)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.48)");
+  context.fillStyle = vignette;
+  context.fillRect(0, 0, archiveCoverSize, archiveCoverSize);
+
+  context.fillStyle = "#030506";
+  context.fillRect(0, archiveCoverSize, archiveCoverSize, archiveFooterHeight);
+  context.fillStyle = "rgba(255,255,255,0.08)";
+  context.fillRect(0, archiveCoverSize, archiveCoverSize, 1);
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "#ffffff";
+  context.font = '650 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillText(archiveFooterTitle, archiveCoverSize / 2, archiveCoverSize + 38);
+  context.font = '400 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillStyle = "#b8bdc2";
+  context.fillText(archiveFooterUrl, archiveCoverSize / 2, archiveCoverSize + 68);
+
   return new Promise<Blob>((resolve, reject) => {
-    outputCanvas.toBlob((filteredBlob) => {
-      if (filteredBlob) resolve(filteredBlob);
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
       else reject(new Error("存档 PNG 生成失败"));
     }, "image/png");
   });
 }
 
-export async function createStoryArchivePng(element: HTMLElement, archive: unknown) {
-  const { toBlob } = await import("html-to-image");
-  const capture = makeCurrentViewportClone(element);
-  const fetchController = new AbortController();
-  const fetchTimeout = window.setTimeout(() => fetchController.abort(), 5000);
-  try {
-    await waitForCaptureAssets(capture.element);
-    const screenshot = await toBlob(capture.element, {
-      backgroundColor: "#ededed",
-      cacheBust: false,
-      fetchRequestInit: { cache: "force-cache", signal: fetchController.signal },
-      imagePlaceholder: transparentImagePlaceholder,
-      pixelRatio: 2,
-      skipFonts: true,
-      skipAutoScale: true
-    });
-    if (!screenshot) throw new Error("当前界面暂时无法生成存档截图");
-    const filtered = await applyArchiveLensFilter(screenshot);
-    const embedded = embedArchiveInPngBytes(new Uint8Array(await filtered.arrayBuffer()), archive);
-    return new Blob([embedded], { type: "image/png" });
-  } finally {
-    window.clearTimeout(fetchTimeout);
-    capture.remove();
-  }
+export async function createStoryArchivePng(archive: unknown) {
+  const cover = await renderArchiveCover(archive);
+  const embedded = embedArchiveInPngBytes(new Uint8Array(await cover.arrayBuffer()), archive);
+  return new Blob([embedded], { type: "image/png" });
 }

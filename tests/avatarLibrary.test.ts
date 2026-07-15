@@ -3,7 +3,8 @@ import {
   avatarById,
   avatarGenderForCharacter,
   avatarsByGender,
-  genderMatchedAvatarUrl
+  genderMatchedAvatarUrl,
+  neutralEditorialAvatars
 } from "../src/shared/avatarLibrary";
 import { sampleProject } from "../src/shared/sampleProject";
 
@@ -13,6 +14,14 @@ describe("微信角色头像性别", () => {
     expect(avatarsByGender("girl").every((avatar) => !avatar.group)).toBe(true);
     expect(avatarsByGender("boy", "western-student").map((avatar) => avatar.id)).toEqual(["western-student-male-cafe"]);
     expect(avatarsByGender("girl", "western-student").map((avatar) => avatar.id)).toEqual(["western-student-female-cafe"]);
+  });
+
+  it("非恋爱题材拥有独立的无性别插画头像池", () => {
+    const avatars = neutralEditorialAvatars();
+
+    expect(avatars).toHaveLength(6);
+    expect(avatars.every((avatar) => avatar.gender === "neutral")).toBe(true);
+    expect(avatars.every((avatar) => avatar.url.includes("neutral-animal-"))).toBe(true);
   });
 
   it("按角色身份判断性别，不受左右位置变化影响", () => {
@@ -40,5 +49,12 @@ describe("微信角色头像性别", () => {
 
     expect(correctedUrl).not.toBe(femaleAvatar.url);
     expect(correctedUrl?.startsWith("/avatars/boy-")).toBe(true);
+  });
+
+  it("中性插画头像不会被男女角色匹配逻辑替换", () => {
+    const girl = sampleProject.characters.find((character) => character.id === "girl")!;
+    const neutralAvatar = neutralEditorialAvatars()[0];
+
+    expect(genderMatchedAvatarUrl({ ...girl, avatarUrl: neutralAvatar.url })).toBe(neutralAvatar.url);
   });
 });

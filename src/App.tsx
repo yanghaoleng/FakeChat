@@ -27,6 +27,7 @@ import {
   QrCode,
   RefreshCcw,
   Save,
+  Settings,
   SkipBack,
   SkipForward,
   Smartphone,
@@ -166,8 +167,9 @@ const jojoStoryToggleGlassStyle: CSSProperties = {
 };
 
 const viralRoleOptions: Array<{ id: ViralPresetRole; label: string }> = [
-  { id: "male", label: "扮演男生" },
-  { id: "female", label: "扮演女生" }
+  { id: "any", label: "不限" },
+  { id: "male", label: "男" },
+  { id: "female", label: "女" }
 ];
 
 const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
@@ -798,7 +800,8 @@ function WechatMusicDock({
   canGoNext,
   onToggle,
   onPrevious,
-  onNext
+  onNext,
+  onDismiss
 }: {
   message: ChatMessage;
   playing: boolean;
@@ -809,15 +812,32 @@ function WechatMusicDock({
   onToggle: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onDismiss: () => void;
 }) {
   const details = musicDetails(message);
+  const [closeControlPinned, setCloseControlPinned] = useState(false);
   return (
     <div
-      className={`wechat-music-dock ${audioError ? "wechat-music-dock-error" : ""}`}
+      className={`wechat-music-dock ${audioError ? "wechat-music-dock-error" : ""} ${closeControlPinned ? "wechat-music-dock-close-visible" : ""}`}
       role="region"
       aria-label={`正在播放 ${details.title}`}
       style={{ "--music-progress": `${progress * 100}%` } as CSSProperties}
+      onClick={(event) => {
+        if (event.target instanceof Element && event.target.closest("button")) return;
+        setCloseControlPinned(true);
+      }}
     >
+      <button
+        type="button"
+        className="wechat-music-dock-close"
+        aria-label="关闭悬浮播放器"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDismiss();
+        }}
+      >
+        <X size={13} strokeWidth={2.2} />
+      </button>
       <img src={details.coverUrl} alt="" />
       <span className="wechat-music-dock-copy">
         <strong>{details.title}</strong>
@@ -912,12 +932,13 @@ function WechatStoryPreview({
   const [musicProgress, setMusicProgress] = useState(0);
   const [musicAudioError, setMusicAudioError] = useState(false);
   const [showMusicDock, setShowMusicDock] = useState(false);
+  const [musicDockDismissed, setMusicDockDismissed] = useState(false);
   const activeMusicMessage = musicMessages.find((message) => message.id === activeMusicMessageId);
   const activeMusicIndex = activeMusicMessage ? musicMessages.findIndex((message) => message.id === activeMusicMessage.id) : -1;
 
   function updateMusicDockVisibility() {
     const chatScroll = chatScrollRef.current;
-    if (!chatScroll || !activeMusicMessageId) {
+    if (!chatScroll || !activeMusicMessageId || musicDockDismissed) {
       setShowMusicDock(false);
       return;
     }
@@ -941,6 +962,7 @@ function WechatStoryPreview({
         audio.pause();
         return;
       }
+      setMusicDockDismissed(false);
       setMusicAudioError(false);
       void audio.play().catch(() => {
         setMusicPlaying(false);
@@ -952,6 +974,7 @@ function WechatStoryPreview({
     audio.pause();
     audio.src = nextDetails.previewUrl;
     audio.load();
+    setMusicDockDismissed(false);
     setActiveMusicMessageId(message.id);
     setMusicProgress(0);
     setMusicAudioError(false);
@@ -986,6 +1009,7 @@ function WechatStoryPreview({
     setMusicProgress(0);
     setMusicAudioError(false);
     setShowMusicDock(false);
+    setMusicDockDismissed(false);
   }, [activeMusicMessage, activeMusicMessageId]);
 
   useLayoutEffect(() => {
@@ -997,7 +1021,7 @@ function WechatStoryPreview({
       window.cancelAnimationFrame(frame);
       observer?.disconnect();
     };
-  }, [activeMusicMessageId, project.messages.length]);
+  }, [activeMusicMessageId, musicDockDismissed, project.messages.length]);
 
   const musicPlayback: MusicPlaybackController = {
     activeMessageId: activeMusicMessageId,
@@ -1054,7 +1078,7 @@ function WechatStoryPreview({
               ) : null}
             </div>
           </div>
-          {showMusicDock && activeMusicMessage ? (
+          {showMusicDock && !musicDockDismissed && activeMusicMessage ? (
             <WechatMusicDock
               message={activeMusicMessage}
               playing={musicPlaying}
@@ -1065,6 +1089,10 @@ function WechatStoryPreview({
               onToggle={() => playMusic(activeMusicMessage)}
               onPrevious={() => playMusicByStep(-1)}
               onNext={() => playMusicByStep(1)}
+              onDismiss={() => {
+                setMusicDockDismissed(true);
+                setShowMusicDock(false);
+              }}
             />
           ) : null}
         </div>
@@ -1094,7 +1122,6 @@ function WechatStoryPreview({
 
 export default function App({ storyPackage }: AppProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const archivePhoneRef = useRef<HTMLDivElement>(null);
   const archiveExportingRef = useRef(false);
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
   if (!initialPresetArchiveRef.current) {
@@ -1116,6 +1143,7 @@ export default function App({ storyPackage }: AppProps) {
   const [mobileStoryCoachPhase, setMobileStoryCoachPhase] = useState<MobileStoryCoachPhase>("idle");
   const [previewTransition, setPreviewTransition] = useState<PreviewTransition | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [settingsMenuClosing, setSettingsMenuClosing] = useState(false);
   const [aboutDialogView, setAboutDialogView] = useState<AboutDialogView | null>(null);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [visibleAmbientSkin, setVisibleAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
@@ -1151,7 +1179,9 @@ export default function App({ storyPackage }: AppProps) {
   const previousStoryPanelOpenRef = useRef(storyPanelOpen);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const settingsDialogRef = useRef<HTMLElement>(null);
+  const settingsMenuCloseTimerRef = useRef<number | undefined>(undefined);
   const revealTimerRef = useRef<number | undefined>(undefined);
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
   const ambientFeedbackTimerRef = useRef<number | undefined>(undefined);
@@ -1356,6 +1386,7 @@ export default function App({ storyPackage }: AppProps) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     if (generationProgressTimerRef.current) window.clearInterval(generationProgressTimerRef.current);
     if (storyLayoutUnlockTimerRef.current) window.clearTimeout(storyLayoutUnlockTimerRef.current);
+    if (settingsMenuCloseTimerRef.current) window.clearTimeout(settingsMenuCloseTimerRef.current);
     mobileStoryCoachTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     mobileStoryCoachTimersRef.current = [];
     clearPendingPromptRemovalTimers();
@@ -1363,21 +1394,15 @@ export default function App({ storyPackage }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (!settingsMenuOpen) return undefined;
-    const handlePointerDown = (event: PointerEvent) => {
-      if (settingsMenuRef.current?.contains(event.target as Node)) return;
-      setSettingsMenuOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [settingsMenuOpen]);
+    if (!settingsMenuOpen || settingsMenuClosing) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const dialog = settingsDialogRef.current;
+      const selectedControl = dialog?.querySelector<HTMLElement>("[aria-selected='true']");
+      const firstControl = dialog?.querySelector<HTMLElement>("button:not(:disabled), a[href]");
+      (selectedControl ?? firstControl)?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [settingsMenuClosing, settingsMenuOpen]);
 
   useEffect(() => {
     if (!openPromptCardMenuId) return undefined;
@@ -1967,7 +1992,10 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function roleStatusLabel(roleSelection: PresetRoleSelection) {
-    if (storyPackage !== "jojo") return roleSelection.viralRole === "female" ? "女性视角" : "男性视角";
+    if (storyPackage !== "jojo") {
+      if (roleSelection.viralRole === "any") return "不限";
+      return roleSelection.viralRole === "female" ? "女性视角" : "男性视角";
+    }
     if (roleSelection.jojoRole === "npc") return "NPC";
     const character = projectRef.current.characters.find((item) => item.id === roleSelection.jojoRole);
     return character?.name || "叫叫";
@@ -2016,13 +2044,75 @@ export default function App({ storyPackage }: AppProps) {
     triggerAmbientFeedback("story");
   }
 
+  function openSettingsMenu() {
+    if (settingsMenuCloseTimerRef.current) window.clearTimeout(settingsMenuCloseTimerRef.current);
+    settingsMenuCloseTimerRef.current = undefined;
+    setAboutDialogView(null);
+    setOpenPromptCardMenuId(null);
+    setSettingsMenuClosing(false);
+    setSettingsMenuOpen(true);
+  }
+
   function closeSettingsMenu() {
-    setSettingsMenuOpen(false);
+    if (!settingsMenuOpen || settingsMenuClosing) return;
+    setSettingsMenuClosing(true);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    settingsMenuCloseTimerRef.current = window.setTimeout(() => {
+      setSettingsMenuOpen(false);
+      setSettingsMenuClosing(false);
+      settingsMenuCloseTimerRef.current = undefined;
+      window.requestAnimationFrame(() => settingsButtonRef.current?.focus());
+    }, reduceMotion ? 0 : 180);
+  }
+
+  function toggleSettingsMenu() {
+    if (settingsMenuOpen) {
+      closeSettingsMenu();
+      return;
+    }
+    openSettingsMenu();
+  }
+
+  function handleSettingsDialogKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.defaultPrevented) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSettingsMenu();
+      return;
+    }
+
+    const dialog = settingsDialogRef.current;
+    if (!dialog) return;
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+    if (!controls.length) return;
+    const currentIndex = controls.indexOf(document.activeElement as HTMLElement);
+
+    if (event.key === "Tab") {
+      const nextIndex = event.shiftKey
+        ? (currentIndex <= 0 ? controls.length - 1 : currentIndex - 1)
+        : (currentIndex >= controls.length - 1 ? 0 : currentIndex + 1);
+      event.preventDefault();
+      controls[nextIndex]?.focus();
+      return;
+    }
+
+    const direction = event.key === "ArrowUp" || event.key === "ArrowLeft"
+      ? -1
+      : event.key === "ArrowDown" || event.key === "ArrowRight"
+        ? 1
+        : 0;
+    if (!direction) return;
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + direction + controls.length) % controls.length;
+    event.preventDefault();
+    controls[nextIndex]?.focus();
   }
 
   function openAboutDialog() {
     closeSettingsMenu();
-    setAboutDialogView("main");
+    window.setTimeout(() => setAboutDialogView("main"), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180);
   }
 
   function closeAboutDialog() {
@@ -2628,15 +2718,8 @@ export default function App({ storyPackage }: AppProps) {
     archiveExportingRef.current = true;
     try {
       setStatusText("正在生成 PNG 存档...");
-      if (previewMode !== "wechat") {
-        changePreviewMode("wechat");
-        await new Promise((resolve) => window.setTimeout(resolve, 440));
-      }
-      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-      const phone = archivePhoneRef.current;
-      if (!phone) throw new Error("聊天预览还没有准备好");
       const archive = makeStoryArchive(projectRef.current, promptCardsRef.current);
-      const png = await createStoryArchivePng(phone, archive);
+      const png = await createStoryArchivePng(archive);
       downloadBlob(png, archiveFilename());
       setStatus("done");
       setStatusText("PNG 存档已导出，对话数据已写入图片");
@@ -2782,7 +2865,6 @@ export default function App({ storyPackage }: AppProps) {
           showPeerName={promptCards.length > 0}
           onReplay={replayConversation}
           showReplay={project.messages.length > 0 && visibleMessageCount >= project.messages.length}
-          phoneRef={isActive ? archivePhoneRef : undefined}
         />
       );
     }
@@ -2840,7 +2922,7 @@ export default function App({ storyPackage }: AppProps) {
   const viralRoleChoices = useMemo(
     () => viralRoleOptions.map((option) => ({
       ...option,
-      symbol: option.id === "male" ? "♂" : "♀"
+      symbol: option.id === "any" ? "＊" : option.id === "male" ? "♂" : "♀"
     })),
     []
   );
@@ -3012,19 +3094,32 @@ export default function App({ storyPackage }: AppProps) {
       if (event.isComposing) return;
       const key = event.key;
       const primaryShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+      if (primaryShortcut && key.toLowerCase() === "k") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) toggleSettingsMenu();
+        return;
+      }
       if (primaryShortcut && key.toLowerCase() === "s") {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) void exportArchive();
         return;
       }
-      if (primaryShortcut && key.toLowerCase() === "l") {
+      if (primaryShortcut && key.toLowerCase() === "i") {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) importInputRef.current?.click();
         return;
       }
       if (event.defaultPrevented) return;
+      if (settingsMenuOpen) {
+        if (key === "Escape") {
+          event.preventDefault();
+          closeSettingsMenu();
+        }
+        return;
+      }
       if (aboutDialogView) {
         if (key === "Escape") {
           event.preventDefault();
@@ -3102,7 +3197,7 @@ export default function App({ storyPackage }: AppProps) {
 
     window.addEventListener("keydown", handlePageShortcut, true);
     return () => window.removeEventListener("keydown", handlePageShortcut, true);
-  }, [aboutDialogView, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, status, suggestionDialogOpen]);
+  }, [aboutDialogView, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, settingsMenuClosing, settingsMenuOpen, status, suggestionDialogOpen]);
 
   return (
     <div
@@ -3116,139 +3211,167 @@ export default function App({ storyPackage }: AppProps) {
       <header className="topbar motion-in">
         <div className="brand-block">
           <h1>{packageTitle(storyPackage)}</h1>
-          <div ref={settingsMenuRef} className="title-menu-wrap">
-            <button
-              className={settingsMenuOpen ? "title-menu-button title-menu-button-open" : "title-menu-button"}
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={settingsMenuOpen}
-              aria-label="打开设置菜单"
-              onClick={() => setSettingsMenuOpen((current) => !current)}
-            >
-              <ChevronDown size={17} />
-            </button>
-            {settingsMenuOpen ? (
-              <div className="title-menu-popover" role="menu">
-                <div className="title-menu-tabs" role="tablist" aria-label="预览模式">
-                  <button
-                    className={previewMode === "wechat" ? "title-menu-tab title-menu-tab-active" : "title-menu-tab"}
-                    type="button"
-                    role="tab"
-                    aria-selected={previewMode === "wechat"}
-                    onClick={() => choosePreviewMode("wechat")}
-                  >
-                    <Smartphone size={15} />
-                    <span>界面版</span>
-                  </button>
-                  <button
-                    className={previewMode === "video" ? "title-menu-tab title-menu-tab-active" : "title-menu-tab"}
-                    type="button"
-                    role="tab"
-                    aria-selected={previewMode === "video"}
-                    onClick={() => choosePreviewMode("video")}
-                  >
-                    <Video size={15} />
-                    <span>视频版</span>
-                  </button>
-                </div>
-                <div className="title-menu-panel" role="group" aria-label="选择角色">
-                  {storyPackage === "jojo" ? (
-                    <div className="title-role-avatar-grid">
-                      {jojoRoleChoices.map((character) => (
-                        <button
-                          key={character.roleId}
-                          className={activePresetRole.jojoRole === character.roleId ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
-                          type="button"
-                          onClick={() => switchPresetRole({ jojoRole: character.roleId })}
-                          aria-pressed={activePresetRole.jojoRole === character.roleId}
-                        >
-                          {character.avatarUrl ? <img src={resolvePublicAssetPath(character.avatarUrl)} alt="" /> : <span className="title-role-avatar-fallback">{character.avatarInitial}</span>}
-                          <strong>{character.label}</strong>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="title-role-avatar-grid title-role-avatar-grid-two title-role-symbol-grid">
-                      {viralRoleChoices.map((option) => (
-                        <button
-                          key={option.id}
-                          className={activePresetRole.viralRole === option.id ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
-                          type="button"
-                          onClick={() => switchPresetRole({ viralRole: option.id })}
-                          aria-pressed={activePresetRole.viralRole === option.id}
-                        >
-                          <span className="title-role-symbol" aria-hidden="true">{option.symbol}</span>
-                          <strong>{option.label}</strong>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="title-menu-panel title-ambient-panel" role="group" aria-label="切换背景">
-                  <div className="title-menu-section-label">
-                    <Sparkles size={14} />
-                    <span>背景</span>
-                  </div>
-                  <div className="title-ambient-grid">
-                    {ambientSkins.map((skin) => (
-                      <button
-                        key={skin.id}
-                        className={ambientSkin === skin.id ? "title-ambient-option title-ambient-option-active" : "title-ambient-option"}
-                        type="button"
-                        aria-pressed={ambientSkin === skin.id}
-                        onClick={() => selectAmbientSkin(skin.id)}
-                      >
-                        <span>{skin.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <a className="title-menu-item" role="menuitem" href={switchLink.href} target="_blank" rel="noreferrer" onClick={closeSettingsMenu}>
-                  <ArrowUpRight size={16} />
-                  <span>{switchLink.label}</span>
-                  <small>切换版本</small>
-                </a>
-                <button className="title-menu-item" type="button" role="menuitem" onClick={openAboutDialog}>
-                  <Info size={16} />
-                  <span>关于</span>
-                  <small>联系与支持</small>
-                </button>
-                <div className="title-menu-separator" />
-                <button
-                  className="title-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    closeSettingsMenu();
-                    void exportArchive();
-                  }}
-                >
-                  <FileDown size={16} />
-                  <span>存档</span>
-                  <small>PNG 存档 · ⌘/Ctrl S</small>
-                </button>
-                <button
-                  className="title-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    closeSettingsMenu();
-                    importInputRef.current?.click();
-                  }}
-                >
-                  <FileUp size={16} />
-                  <span>读档</span>
-                  <small>PNG / JSON · ⌘/Ctrl L</small>
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
         </div>
+        <div className="settings-trigger-group">
+          <kbd className="settings-trigger-shortcut">⌘K</kbd>
+          <button
+            ref={settingsButtonRef}
+            className={settingsMenuOpen ? "title-menu-button title-menu-button-open" : "title-menu-button"}
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="settings-dialog"
+            aria-expanded={settingsMenuOpen}
+            aria-label="打开设置"
+            title="设置 (⌘K)"
+            onClick={toggleSettingsMenu}
+          >
+            <Settings size={18} />
+          </button>
+        </div>
+        <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
       </header>
       {toastMessage ? (
         <div className="app-toast" role="status" aria-live="polite">
           {toastMessage}
+        </div>
+      ) : null}
+      {settingsMenuOpen ? (
+        <div className={settingsMenuClosing ? "settings-dialog-layer settings-dialog-layer-closing" : "settings-dialog-layer"}>
+          <div className="settings-dialog-backdrop" aria-hidden="true" onClick={closeSettingsMenu} />
+          <section
+            ref={settingsDialogRef}
+            id="settings-dialog"
+            className="settings-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-dialog-title"
+            aria-describedby="settings-dialog-hint"
+            onKeyDown={handleSettingsDialogKeyDown}
+          >
+            <header className="settings-dialog-header">
+              <span className="settings-dialog-heading-icon" aria-hidden="true"><Settings size={18} /></span>
+              <div>
+                <h2 id="settings-dialog-title">设置</h2>
+                <p id="settings-dialog-hint">方向键切换，回车确认</p>
+              </div>
+              <button className="settings-dialog-close" type="button" aria-label="关闭设置" onClick={closeSettingsMenu}>
+                <X size={18} />
+              </button>
+            </header>
+            <div className="settings-dialog-body">
+              <div className="title-menu-tabs" role="tablist" aria-label="预览模式">
+                <button
+                  className={previewMode === "wechat" ? "title-menu-tab title-menu-tab-active" : "title-menu-tab"}
+                  type="button"
+                  role="tab"
+                  aria-selected={previewMode === "wechat"}
+                  onClick={() => choosePreviewMode("wechat")}
+                >
+                  <Smartphone size={15} />
+                  <span>界面版</span>
+                </button>
+                <button
+                  className={previewMode === "video" ? "title-menu-tab title-menu-tab-active" : "title-menu-tab"}
+                  type="button"
+                  role="tab"
+                  aria-selected={previewMode === "video"}
+                  onClick={() => choosePreviewMode("video")}
+                >
+                  <Video size={15} />
+                  <span>视频版</span>
+                </button>
+              </div>
+              <div className="title-menu-panel" role="group" aria-label="选择角色">
+                {storyPackage === "jojo" ? (
+                  <div className="title-role-avatar-grid">
+                    {jojoRoleChoices.map((character) => (
+                      <button
+                        key={character.roleId}
+                        className={activePresetRole.jojoRole === character.roleId ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
+                        type="button"
+                        onClick={() => switchPresetRole({ jojoRole: character.roleId })}
+                        aria-pressed={activePresetRole.jojoRole === character.roleId}
+                      >
+                        {character.avatarUrl ? <img src={resolvePublicAssetPath(character.avatarUrl)} alt="" /> : <span className="title-role-avatar-fallback">{character.avatarInitial}</span>}
+                        <strong>{character.label}</strong>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="title-role-avatar-grid title-role-symbol-grid">
+                    {viralRoleChoices.map((option) => (
+                      <button
+                        key={option.id}
+                        className={activePresetRole.viralRole === option.id ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
+                        type="button"
+                        onClick={() => switchPresetRole({ viralRole: option.id })}
+                        aria-pressed={activePresetRole.viralRole === option.id}
+                        aria-label={option.label}
+                        title={option.label}
+                      >
+                        <span className="title-role-symbol" aria-hidden="true">{option.symbol}</span>
+                        <strong>{option.label}</strong>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="title-menu-panel title-ambient-panel" role="group" aria-label="切换背景">
+                <div className="title-menu-section-label">
+                  <Sparkles size={14} />
+                  <span>背景</span>
+                </div>
+                <div className="title-ambient-grid">
+                  {ambientSkins.map((skin) => (
+                    <button
+                      key={skin.id}
+                      className={ambientSkin === skin.id ? "title-ambient-option title-ambient-option-active" : "title-ambient-option"}
+                      type="button"
+                      aria-pressed={ambientSkin === skin.id}
+                      onClick={() => selectAmbientSkin(skin.id)}
+                    >
+                      <span>{skin.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <a className="title-menu-item" href={switchLink.href} target="_blank" rel="noreferrer" onClick={() => closeSettingsMenu()}>
+                <ArrowUpRight size={16} />
+                <span>{switchLink.label}</span>
+                <small>切换版本</small>
+              </a>
+              <button className="title-menu-item" type="button" onClick={openAboutDialog}>
+                <Info size={16} />
+                <span>关于</span>
+                <small>联系与支持</small>
+              </button>
+              <div className="title-menu-separator" />
+              <button
+                className="title-menu-item"
+                type="button"
+                onClick={() => {
+                  closeSettingsMenu();
+                  void exportArchive();
+                }}
+              >
+                <FileDown size={16} />
+                <span>存档</span>
+                <small>⌘ S</small>
+              </button>
+              <button
+                className="title-menu-item"
+                type="button"
+                onClick={() => {
+                  closeSettingsMenu();
+                  importInputRef.current?.click();
+                }}
+              >
+                <FileUp size={16} />
+                <span>读档</span>
+                <small>⌘ I</small>
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
       {aboutDialogView ? (
@@ -3297,7 +3420,9 @@ export default function App({ storyPackage }: AppProps) {
             ) : aboutDialogView === "support" ? (
               <div className="about-dialog-content about-support-content">
                 {alipayQrCodeUrl ? (
-                  <img className="about-support-qr" src={alipayQrCodeUrl} alt="支付宝收款码" />
+                  <div className="about-support-qr">
+                    <img src={alipayQrCodeUrl} alt="支付宝收款码" />
+                  </div>
                 ) : (
                   <div className="about-support-placeholder">
                     <QrCode size={44} />
@@ -3324,7 +3449,7 @@ export default function App({ storyPackage }: AppProps) {
         </div>
       ) : null}
 
-      <main className="workspace static-workspace">
+      <main className={`workspace static-workspace ${storyCardCount ? "workspace-has-story-cards" : ""}`}>
         {storyPanelOpen ? (
           <button
             className="story-panel-backdrop"

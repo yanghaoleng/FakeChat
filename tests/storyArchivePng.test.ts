@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   archiveCoverSize,
+  archiveFooterHeight,
+  archiveFooterTitle,
+  archiveFooterUrl,
+  archiveImageHeight,
   archiveSquareCrop,
   embedArchiveInPngBytes,
   extractArchiveFromPngBytes,
@@ -16,8 +20,12 @@ function fixturePng() {
 }
 
 describe("PNG story archive", () => {
-  it("exports a square cover and favors the current lower chat viewport", () => {
-    expect(archiveCoverSize).toBe(1024);
+  it("exports a portrait cover with a dedicated footer", () => {
+    expect(archiveCoverSize).toBe(300);
+    expect(archiveFooterHeight).toBe(100);
+    expect(archiveImageHeight).toBe(400);
+    expect(archiveFooterTitle).toBe("蛐蛐模拟器存档文件");
+    expect(archiveFooterUrl).toBe("ququ.mikeywa.icu");
     expect(archiveSquareCrop(800, 1400)).toEqual({ size: 800, x: 0, y: 412 });
     expect(archiveSquareCrop(1400, 800)).toEqual({ size: 800, x: 300, y: 0 });
   });

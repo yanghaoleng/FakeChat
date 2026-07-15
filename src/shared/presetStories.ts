@@ -1,15 +1,14 @@
 import { jojoProject } from "./jojoProject.js";
 import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { sampleProject } from "./sampleProject.js";
-import { avatarById } from "./avatarLibrary.js";
+import { avatarById, avatarsByGender, neutralEditorialAvatars, type DefaultAvatarGender } from "./avatarLibrary.js";
 import { injectRomanticMusicMessage } from "./musicLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
 import {
   applyViralRegionalFlavorToMessages,
-  randomizeViralCharacterProfiles,
-  withViralRegionalPrompt
+  randomizeViralCharacterProfiles
 } from "./viralPersona.js";
 import { viralPresetStories } from "./viralPresetStories.js";
 
@@ -27,7 +26,7 @@ type PresetMessageSpec = {
   sendSfx?: ChatMessage["sendSfx"];
 };
 
-export type ViralPresetRole = "male" | "female";
+export type ViralPresetRole = "any" | "male" | "female";
 export type JojoPresetRole = "jiaojiao" | "npc";
 
 export type PresetStory = {
@@ -38,8 +37,12 @@ export type PresetStory = {
   messages: PresetMessageSpec[];
   language?: "zh" | "en";
   viralRole?: ViralPresetRole;
+  viralRoles?: Array<Exclude<ViralPresetRole, "any">>;
   peerAvatarSet?: "western-student";
+  characterAvatarSet?: "neutral-editorial";
   characterNames?: Partial<Record<"boy" | "girl", string>>;
+  characterGenders?: Partial<Record<"boy" | "girl", DefaultAvatarGender>>;
+  characterVoiceDescriptions?: Partial<Record<"boy" | "girl", string>>;
 };
 
 export type PresetRoleSelection = {
@@ -69,13 +72,15 @@ const m = (
 ): PresetMessageSpec => ({ roleId, text, ...options });
 
 export const defaultPresetRoleSelection: PresetRoleSelection = {
-  viralRole: "female",
+  viralRole: "any",
   jojoRole: "npc"
 };
 
 export function normalizePresetRoleSelection(selection: Partial<PresetRoleSelection> = {}): PresetRoleSelection {
   return {
-    viralRole: selection.viralRole === "male" ? "male" : defaultPresetRoleSelection.viralRole,
+    viralRole: selection.viralRole === "male" || selection.viralRole === "female"
+      ? selection.viralRole
+      : defaultPresetRoleSelection.viralRole,
     jojoRole: selection.jojoRole === "jiaojiao" ? "jiaojiao" : defaultPresetRoleSelection.jojoRole
   };
 }
@@ -1010,7 +1015,10 @@ function cloneBaseProject(project: DramaProject): DramaProject {
 function presetStoriesFor(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
   const role = normalizePresetRoleSelection(roleSelection);
   if (packageId === "jojo") return role.jojoRole === "npc" ? jojoNpcPresetStories : jojoPresetStories;
-  return viralPresetStories.filter((story) => !story.viralRole || story.viralRole === role.viralRole);
+  if (role.viralRole === "any") return viralPresetStories;
+  return viralPresetStories.filter((story) => (
+    story.viralRole === role.viralRole || story.viralRoles?.includes(role.viralRole as "male" | "female")
+  ));
 }
 
 function withViralCharacterNames(prompt: string, project: DramaProject) {
@@ -1030,28 +1038,52 @@ function initialsForPresetName(name: string) {
 }
 
 function applyPresetCharacterOverrides(project: DramaProject, preset: PresetStory) {
-  if (!preset.characterNames && !preset.peerAvatarSet) return project;
+  if (!preset.characterNames && !preset.characterGenders && !preset.characterVoiceDescriptions && !preset.peerAvatarSet && !preset.characterAvatarSet) return project;
   return parseProject({
     ...project,
     characters: project.characters.map((character) => {
-      const name = (character.id === "boy" || character.id === "girl")
-        ? preset.characterNames?.[character.id] || character.name
+      const presetCharacterId = character.id === "boy" || character.id === "girl" ? character.id : undefined;
+      const name = presetCharacterId
+        ? preset.characterNames?.[presetCharacterId] || character.name
         : character.name;
+      const avatarGender = presetCharacterId ? preset.characterGenders?.[presetCharacterId] : undefined;
+      const voiceDescription = presetCharacterId ? preset.characterVoiceDescriptions?.[presetCharacterId] : undefined;
+      const genderAvatars = avatarGender ? avatarsByGender(avatarGender) : [];
+      const avatarHash = [...`${character.id}:${name}`]
+        .reduce((total, item) => total + item.charCodeAt(0), 17);
+      const genderAvatar = genderAvatars.length
+        ? genderAvatars[Math.abs(avatarHash) % genderAvatars.length]
+        : undefined;
+      const neutralAvatars = preset.characterAvatarSet === "neutral-editorial" ? neutralEditorialAvatars() : [];
+      const neutralAvatar = neutralAvatars.length
+        ? neutralAvatars[Math.abs(avatarHash) % neutralAvatars.length]
+        : undefined;
       const peerAvatar = preset.peerAvatarSet === "western-student" && character.side === "left"
         ? avatarById(character.id === "girl" ? "western-student-female-cafe" : "western-student-male-cafe")
         : undefined;
       return {
         ...character,
         name,
+        avatarGender: avatarGender || character.avatarGender,
         avatarInitial: initialsForPresetName(name),
-        avatarUrl: peerAvatar?.url || character.avatarUrl
+        avatarUrl: neutralAvatar?.url || genderAvatar?.url || peerAvatar?.url || character.avatarUrl,
+        voicePreset: avatarGender === "girl"
+          ? "young_real_female"
+          : avatarGender === "boy"
+            ? "young_male"
+            : character.voicePreset,
+        voiceDescription: voiceDescription || (avatarGender === "girl"
+          ? "自然、清晰的年轻女声"
+          : avatarGender === "boy"
+            ? "自然、清晰的年轻男声"
+            : character.voiceDescription)
       };
     })
   });
 }
 
 function applyViralRole(project: DramaProject, viralRole: ViralPresetRole): DramaProject {
-  if (viralRole === "male") return project;
+  if (viralRole !== "female") return project;
   return parseProject({
     ...project,
     id: `${project.id}-female`,
@@ -1190,9 +1222,7 @@ export function createPresetInitialArchive(
     ? { ...rawPreset, nextPrompt: normalizeSuggestedPrompt(rawPreset.nextPrompt) }
     : {
         ...rawPreset,
-        prompt: rawPreset.language === "en"
-          ? withViralCharacterNames(rawPreset.prompt, baseProject)
-          : withViralRegionalPrompt(withViralCharacterNames(rawPreset.prompt, baseProject), baseProject),
+        prompt: withViralCharacterNames(rawPreset.prompt, baseProject),
         nextPrompt: normalizeSuggestedPrompt(rawPreset.nextPrompt)
       };
   const messages = buildPresetMessages(baseProject, preset);
