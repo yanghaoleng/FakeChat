@@ -1,4 +1,5 @@
 import type { ChatMessage, DramaProject } from "./schema";
+import { speakerNameForMessage } from "./messagePresentation";
 
 export interface TimelineEntry {
   message: ChatMessage;
@@ -47,7 +48,8 @@ export function buildTimeline(project: DramaProject): TimelineEntry[] {
   let cursorY = 116;
 
   return project.messages.map((message, index) => {
-    const height = estimateMessageHeight(message);
+    const speakerNameHeight = speakerNameForMessage(project, message, "canvas") ? 44 : 0;
+    const height = estimateMessageHeight(message) + speakerNameHeight;
     const startMs = cursorMs;
     const endMs = startMs + messageDurationMs(message);
     const entry: TimelineEntry = {
@@ -67,21 +69,36 @@ export function buildTimeline(project: DramaProject): TimelineEntry[] {
   });
 }
 
-export function getDurationInFrames(project: DramaProject): number {
-  const timeline = buildTimeline(project);
+export function getDurationInFrames(project: DramaProject, timeline: readonly TimelineEntry[] = buildTimeline(project)): number {
   const last = timeline[timeline.length - 1];
   const endMs = last ? last.endMs + 1600 : 30000;
   return Math.max(120, Math.ceil((endMs / 1000) * (project.fps || 30)));
 }
 
-export function getActiveEntry(project: DramaProject, frame: number): TimelineEntry | undefined {
-  const timeline = buildTimeline(project);
-  return [...timeline].reverse().find((entry) => frame >= entry.startFrame) ?? timeline[0];
+export function getActiveEntry(
+  project: DramaProject,
+  frame: number,
+  timeline: readonly TimelineEntry[] = buildTimeline(project)
+): TimelineEntry | undefined {
+  if (!timeline.length) return undefined;
+  if (frame < timeline[0].startFrame) return timeline[0];
+
+  let low = 0;
+  let high = timeline.length - 1;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (timeline[middle].startFrame <= frame) low = middle + 1;
+    else high = middle - 1;
+  }
+  return timeline[Math.max(0, high)];
 }
 
-export function getScrollY(project: DramaProject, frame: number): number {
-  const timeline = buildTimeline(project);
-  const active = getActiveEntry(project, frame);
+export function getScrollY(
+  project: DramaProject,
+  frame: number,
+  timeline: readonly TimelineEntry[] = buildTimeline(project)
+): number {
+  const active = getActiveEntry(project, frame, timeline);
   if (!active) return 0;
 
   const viewportFocusY = project.canvas.height * 0.62;

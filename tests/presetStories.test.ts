@@ -35,6 +35,11 @@ describe("微信预制首卡", () => {
       expect(archive.cachedFirstSegment.suggestedPrompt.length).toBeLessThanOrEqual(120);
       expect(archive.cachedFirstSegment.messages.length).toBeGreaterThanOrEqual(12);
       expect(archive.cachedFirstSegment.project.messages).toEqual(archive.cachedFirstSegment.messages);
+      expect(archive.cachedFirstSegment.card.segment?.messageIds).toEqual(
+        archive.cachedFirstSegment.messages.map((message) => message.id)
+      );
+      expect(archive.cachedFirstSegment.card.segment?.before).not.toHaveProperty("messages");
+      expect(archive.cachedFirstSegment.card.segment?.after).not.toHaveProperty("messages");
     }
   });
 
@@ -77,12 +82,13 @@ describe("微信预制首卡", () => {
       "viral-wang-dong-nearby-office",
       "viral-king-of-comedy-support-you",
       "viral-journey-secret-cp-group",
+      "viral-gta-release-city-summit",
       "viral-office-private-calendar",
       "viral-roommate-last-key",
       "viral-encounter-wrong-umbrella"
     ];
 
-    expect(presetStoryCount("viral", { viralRole: "any" })).toBe(15);
+    expect(presetStoryCount("viral", { viralRole: "any" })).toBe(16);
     expect(presetStoryCount("viral", { viralRole: "male" })).toBe(7);
     expect(presetStoryCount("viral", { viralRole: "female" })).toBe(6);
     for (const presetId of presetIds) expect(archiveById("any", presetId).preset.id).toBe(presetId);
@@ -110,6 +116,18 @@ describe("微信预制首卡", () => {
 
     expect(avatarUrls.every((avatarUrl) => avatarUrl?.includes("neutral-animal-"))).toBe(true);
     expect(new Set(avatarUrls).size).toBe(2);
+  });
+
+  it("刘强东本改为与前员工讨论兄弟和路人", () => {
+    const archive = archiveById("any", "viral-liu-qiangdong-passerby");
+    const dialogue = archive.cachedFirstSegment.messages.map((message) => message.text).join(" ");
+
+    expect(archive.project.characters.map((character) => character.name)).toEqual(["刘强东", "前员工"]);
+    expect(dialogue).toContain("生活第一，事业、工作第二");
+    expect(dialogue).toContain("你不是我们的兄弟，你是路人");
+    expect(dialogue).toContain("我们不是一路人，我们不是一家人");
+    expect(dialogue).toContain("对他们严重不公平");
+    expect(dialogue).toContain("离职日期");
   });
 
   it("西游本排在最前面，峰哥本紧随其后", () => {
@@ -199,11 +217,48 @@ describe("微信预制首卡", () => {
     expect(new Set(project.messages.map((message) => message.roleId).filter(Boolean))).toEqual(
       new Set(["wukong", "baigujing", "tang", "queen", "shaseng", "bajie"])
     );
+    const firstOutsiderIndex = project.messages.findIndex((message) => (
+      message.roleId === "queen" || message.roleId === "baigujing"
+    ));
+    expect(firstOutsiderIndex).toBeGreaterThanOrEqual(12);
+    expect(new Set(project.messages.slice(0, firstOutsiderIndex).map((message) => message.roleId))).toEqual(
+      new Set(["tang", "wukong", "shaseng", "bajie"])
+    );
+    expect(project.messages.slice(0, firstOutsiderIndex).some((message) => message.text.includes("女儿国国王"))).toBe(true);
+    expect(project.messages.slice(0, firstOutsiderIndex).some((message) => message.text.includes("白骨精"))).toBe(true);
     expect(project.messages.some((message) => message.text.includes("昨晚"))).toBe(true);
     expect(project.messages.some((message) => message.text.includes("小群"))).toBe(true);
     for (const character of project.characters) {
       expect(character.avatarUrl).toContain("/avatars/journey-1986-");
     }
+  });
+
+  it("GTA 群包含九名历代主角并绑定专属头像", () => {
+    const archive = archiveById("any", "viral-gta-release-city-summit");
+    const project = archive.cachedFirstSegment.project;
+
+    expect(project.chatMode).toBe("group");
+    expect(project.characters.map((character) => character.name)).toEqual([
+      "Lucia", "Jason", "Michael", "Franklin", "Trevor", "Niko", "CJ", "Tommy", "Claude"
+    ]);
+    expect(project.characters.map((character) => character.avatarUrl)).toEqual([
+      "/avatars/gta-lucia.webp",
+      "/avatars/gta-jason.webp",
+      "/avatars/gta-michael.webp",
+      "/avatars/gta-franklin.webp",
+      "/avatars/gta-trevor.webp",
+      "/avatars/gta-niko.webp",
+      "/avatars/gta-cj.webp",
+      "/avatars/gta-tommy.webp",
+      "/avatars/gta-claude.webp"
+    ]);
+    expect(new Set(project.messages.map((message) => message.roleId).filter(Boolean))).toEqual(
+      new Set(["lucia", "jason", "michael", "franklin", "trevor", "niko", "cj", "tommy", "claude"])
+    );
+    expect(project.messages.some((message) => message.text.includes("11 月 19 日"))).toBe(true);
+    expect(project.messages.some((message) => message.text.includes("Vice City"))).toBe(true);
+    expect(project.messages.some((message) => message.text.includes("Liberty City"))).toBe(true);
+    expect(project.messages.some((message) => message.text.includes("Los Santos"))).toBe(true);
   });
 
   it("切换不限、男、女视角后，角色头像仍与角色性别对应", () => {

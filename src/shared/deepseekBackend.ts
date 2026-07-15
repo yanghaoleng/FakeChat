@@ -1,5 +1,5 @@
 import { parseProject, type ChatMessage, type DramaProject } from "./schema";
-import type { DeepSeekSegmentResult } from "./deepseekBrowser";
+import type { DeepSeekSegmentResult } from "./storyGeneration/contract";
 import type { PromptCard } from "./linearStory";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt";
 

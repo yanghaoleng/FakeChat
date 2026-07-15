@@ -67,9 +67,15 @@ describe("linear story archive", () => {
     const archive = makeStoryArchive(segment.project, promptCards);
     const imported = parseStoryArchive(JSON.parse(JSON.stringify(archive)));
 
-    expect(imported.version).toBe(1);
+    expect(imported.version).toBe(2);
     expect(imported.promptCards[0]?.prompt).toBe("账单截图把误会翻出来。");
+    expect(imported.promptCards[0]?.segment?.after).not.toHaveProperty("messages");
+    expect(imported.promptCards[0]?.segment).toEqual(segment.card.segment);
     expect(imported.project.messages).toHaveLength(segment.messages.length);
+
+    const brokenSegmentArchive = JSON.parse(JSON.stringify(archive));
+    brokenSegmentArchive.promptCards[0].segment.version = 999;
+    expect(parseStoryArchive(brokenSegmentArchive).promptCards[0]?.segment).toBeUndefined();
   });
 
   it("round-trips chat sessions and message session ids while accepting legacy archives", () => {
@@ -105,6 +111,44 @@ describe("linear story archive", () => {
     const importedLegacy = parseStoryArchive(legacyArchive);
 
     expect(importedLegacy.project.chatSessions).toEqual([]);
-    expect(importedLegacy.project.messages.every((message) => message.sessionId === undefined)).toBe(true);
+    expect(importedLegacy.project.messages.every((message) => message.sessionId === "chat-main")).toBe(true);
+    expect(importedLegacy.project.messages.every((message) => message.senderId === message.roleId)).toBe(true);
+  });
+
+  it("migrates version 1 and unversioned archives while safely normalizing prompt cards", () => {
+    const segment = generateStorySegment({
+      project: createInitialStaticProject(),
+      prompt: "旧存档继续写。",
+      promptCards: []
+    });
+    const legacyArchive = {
+      version: 1,
+      exportedAt: "2025-01-01T00:00:00.000Z",
+      project: segment.project,
+      promptCards: [
+        {
+          prompt: segment.card.prompt,
+          messageIds: [...segment.card.messageIds, 42, "missing-message"],
+          suggestedPrompt: 42
+        },
+        null,
+        { id: "invalid-without-prompt" }
+      ]
+    };
+
+    const importedV1 = parseStoryArchive(legacyArchive);
+    expect(importedV1.version).toBe(2);
+    expect(importedV1.promptCards).toHaveLength(1);
+    expect(importedV1.promptCards[0]).toMatchObject({
+      id: "imported-prompt-1",
+      createdAt: legacyArchive.exportedAt,
+      messageIds: segment.card.messageIds
+    });
+    expect(importedV1.promptCards[0]?.summary).toContain("导入故事卡");
+    expect(importedV1.promptCards[0]?.segment).toBeUndefined();
+
+    const unversioned = { ...legacyArchive } as Record<string, unknown>;
+    delete unversioned.version;
+    expect(parseStoryArchive(unversioned).project.messages).toHaveLength(segment.project.messages.length);
   });
 });

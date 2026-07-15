@@ -15,4 +15,4 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
-warmStaticVisualAssets();
+warmStaticVisualAssets({ storyPackage: __APP_STORY_PACKAGE__ });

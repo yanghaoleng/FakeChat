@@ -2,12 +2,39 @@ import type { Character, ChatMessage, ChatSession, DramaProject } from "./schema
 
 export const defaultChatSessionId = "chat-main";
 
+export interface ConversationIndex {
+  readonly sessions: readonly ChatSession[];
+  readonly sessionsById: ReadonlyMap<string, ChatSession>;
+  readonly sessionIdByMessageId: ReadonlyMap<string, string>;
+  readonly messagesBySessionId: ReadonlyMap<string, readonly ChatMessage[]>;
+  readonly incomingIdsBySessionId: ReadonlyMap<string, readonly string[]>;
+  readonly charactersById: ReadonlyMap<string, Character>;
+  readonly sessionIdsByParticipantId: ReadonlyMap<string, readonly string[]>;
+}
+
+interface CachedConversationIndex {
+  readonly index: ConversationIndex;
+  readonly characters: DramaProject["characters"];
+  readonly chatSessions: DramaProject["chatSessions"];
+  readonly messages: DramaProject["messages"];
+  readonly characterCount: number;
+  readonly chatSessionCount: number;
+  readonly messageCount: number;
+  readonly chatMode: DramaProject["chatMode"];
+  readonly selfCharacterId: DramaProject["selfCharacterId"];
+  readonly title: string;
+}
+
+const conversationIndexCache = new WeakMap<DramaProject, CachedConversationIndex>();
+
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
 function playerCharacter(project: DramaProject) {
-  return project.characters.find((character) => character.side === "right") ?? project.characters[0];
+  return project.characters.find((character) => character.id === project.selfCharacterId)
+    ?? project.characters.find((character) => character.side === "right")
+    ?? project.characters[0];
 }
 
 function fallbackChatSession(project: DramaProject): ChatSession {
@@ -16,110 +43,292 @@ function fallbackChatSession(project: DramaProject): ChatSession {
     ?? project.characters.find((character) => character.id !== player?.id)
     ?? project.characters[0];
   const participantIds = project.chatMode === "group"
-    ? project.characters.map((character) => character.id)
+    ? unique([player?.id || "", ...project.characters.map((character) => character.id)])
     : unique([player?.id, peer?.id].filter((id): id is string => Boolean(id)));
 
   return {
     id: defaultChatSessionId,
     title: project.chatMode === "group" ? (project.title || "群聊") : (peer?.name || project.title || "聊天"),
+    kind: project.chatMode,
     participantIds
   };
 }
 
-function inferredSession(project: DramaProject, sessionId: string): ChatSession {
+function inferredSession(
+  project: DramaProject,
+  sessionId: string,
+  roleIds: string[]
+): ChatSession & { kind: "direct" | "group" } {
   const player = playerCharacter(project);
-  const roleIds = unique(project.messages
-    .filter((message) => message.sessionId === sessionId)
-    .map((message) => message.roleId || ""));
   const peer = project.characters.find((character) => roleIds.includes(character.id) && character.side === "left");
+  const participantIds = unique([player?.id || "", ...roleIds]);
   return {
     id: sessionId,
-    title: peer?.name || "新会话",
-    participantIds: unique([player?.id || "", ...roleIds])
+    title: participantIds.length > 2 ? "新群聊" : (peer?.name || "新会话"),
+    kind: participantIds.length > 2 ? "group" : "direct",
+    participantIds
   };
 }
 
-export function getChatSessions(project: DramaProject): ChatSession[] {
-  if (project.chatMode === "group") return [fallbackChatSession(project)];
+function deriveChatSessions(project: DramaProject): ChatSession[] {
   const validCharacterIds = new Set(project.characters.map((character) => character.id));
   const player = playerCharacter(project);
-  const sessions = project.chatSessions.map((session) => ({
-    ...session,
-    title: session.title.trim() || "聊天",
-    participantIds: unique([
+  const sessions = project.chatSessions.map((session) => {
+    const requestedParticipants = unique([
       player?.id || "",
       ...session.participantIds.filter((id) => validCharacterIds.has(id))
-    ])
-  }));
+    ]);
+    const kind = session.kind
+      ?? (requestedParticipants.length > 2 || project.chatMode === "group" ? "group" : "direct");
+    return {
+      ...session,
+      kind,
+      title: session.title.trim() || (kind === "group" ? "群聊" : "聊天"),
+      participantIds: kind === "direct"
+        ? unique([
+          player?.id || "",
+          requestedParticipants.find((id) => id !== player?.id)
+            ?? project.characters.find((character) => character.id !== player?.id)?.id
+            ?? ""
+        ])
+        : requestedParticipants
+    };
+  });
   const knownIds = new Set(sessions.map((session) => session.id));
-  for (const sessionId of unique(project.messages.map((message) => message.sessionId || ""))) {
+  const inferredRoleIds = new Map<string, string[]>();
+  for (const message of project.messages) {
+    if (!message.sessionId) continue;
+    const roleIds = inferredRoleIds.get(message.sessionId) ?? [];
+    const senderId = message.senderId ?? message.roleId;
+    if (senderId && !roleIds.includes(senderId)) roleIds.push(senderId);
+    inferredRoleIds.set(message.sessionId, roleIds);
+  }
+  for (const [sessionId, roleIds] of inferredRoleIds) {
     if (!knownIds.has(sessionId)) {
-      sessions.push(inferredSession(project, sessionId));
+      sessions.push(inferredSession(project, sessionId, roleIds));
       knownIds.add(sessionId);
     }
   }
   return sessions.length ? sessions : [fallbackChatSession(project)];
 }
 
-export function chatSessionIdForMessage(project: DramaProject, message: ChatMessage): string {
-  const sessions = getChatSessions(project);
-  if (message.sessionId && sessions.some((session) => session.id === message.sessionId)) return message.sessionId;
-  if (message.roleId) {
-    const matchingSessions = sessions.filter((session) => session.participantIds.includes(message.roleId!));
-    if (matchingSessions.length === 1) return matchingSessions[0].id;
+type ConversationSessionLookup = Pick<
+  ConversationIndex,
+  "sessions" | "sessionsById" | "sessionIdsByParticipantId"
+>;
+
+function resolveChatSessionId(index: ConversationSessionLookup, message: ChatMessage): string {
+  if (message.sessionId && index.sessionsById.has(message.sessionId)) return message.sessionId;
+  const senderId = message.senderId ?? message.roleId;
+  if (senderId) {
+    const matchingSessionIds = index.sessionIdsByParticipantId.get(senderId);
+    if (matchingSessionIds?.length === 1) return matchingSessionIds[0];
   }
-  return sessions[0].id;
+  return index.sessions[0].id;
 }
 
-export function messagesForChatSession(project: DramaProject, sessionId: string) {
-  return project.messages.filter((message) => chatSessionIdForMessage(project, message) === sessionId);
-}
+/**
+ * Builds all frequently-used conversation lookups in one pass over the project.
+ * Prefer getConversationIndex() in UI/read paths so the result can be reused.
+ */
+export function buildConversationIndex(project: DramaProject): ConversationIndex {
+  const sessions = deriveChatSessions(project);
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+  const charactersById = new Map(project.characters.map((character) => [character.id, character]));
+  const participantSessionIds = new Map<string, string[]>();
 
-export function incomingMessageIdsForChatSession(project: DramaProject, sessionId: string) {
-  return messagesForChatSession(project, sessionId)
-    .filter((message) => message.side !== "right")
-    .map((message) => message.id);
-}
+  for (const session of sessions) {
+    for (const participantId of session.participantIds) {
+      const sessionIds = participantSessionIds.get(participantId) ?? [];
+      if (!sessionIds.includes(session.id)) sessionIds.push(session.id);
+      participantSessionIds.set(participantId, sessionIds);
+    }
+  }
 
-export function unreadCountForChatSession(project: DramaProject, sessionId: string, readMessageIds: ReadonlySet<string>) {
-  return incomingMessageIdsForChatSession(project, sessionId)
-    .filter((messageId) => !readMessageIds.has(messageId))
-    .length;
-}
+  const sessionIdsByParticipantId = new Map<string, readonly string[]>(participantSessionIds);
+  const sessionLookup: ConversationSessionLookup = {
+    sessions,
+    sessionsById,
+    sessionIdsByParticipantId
+  };
+  const sessionIdByMessageId = new Map<string, string>();
+  const messagesBySessionId = new Map<string, ChatMessage[]>(sessions.map((session) => [session.id, []]));
+  const incomingIdsBySessionId = new Map<string, string[]>(sessions.map((session) => [session.id, []]));
 
-export function chatSessionPeer(project: DramaProject, session: ChatSession): Character {
-  const player = playerCharacter(project);
-  return project.characters.find((character) => (
-    character.id !== player?.id
-      && character.side === "left"
-      && session.participantIds.includes(character.id)
-  )) ?? project.characters.find((character) => character.side === "left") ?? project.characters[0];
-}
+  for (const message of project.messages) {
+    const sessionId = resolveChatSessionId(sessionLookup, message);
+    sessionIdByMessageId.set(message.id, sessionId);
+    messagesBySessionId.get(sessionId)?.push(message);
+    if (message.side !== "right") incomingIdsBySessionId.get(sessionId)?.push(message.id);
+  }
 
-export function chatSessionTitle(project: DramaProject, session: ChatSession) {
-  if (project.chatMode === "group") return `${project.title} (${project.characters.length})`;
-  return session.title || chatSessionPeer(project, session).name || project.title;
-}
-
-export function projectForChatSession(project: DramaProject, sessionId: string): DramaProject {
-  const sessions = getChatSessions(project);
-  const session = sessions.find((item) => item.id === sessionId) ?? sessions[0];
-  if (project.chatMode === "group") return project;
-  const participantIds = new Set(session.participantIds);
-  const characters = project.characters.filter((character) => participantIds.has(character.id));
   return {
-    ...project,
-    title: chatSessionTitle(project, session),
-    characters: characters.length >= 2 ? characters : project.characters,
-    chatSessions: [session],
-    messages: messagesForChatSession(project, session.id)
+    sessions,
+    sessionsById,
+    sessionIdByMessageId,
+    messagesBySessionId,
+    incomingIdsBySessionId,
+    charactersById,
+    sessionIdsByParticipantId
   };
 }
 
-export function chatSessionsForMessages(project: DramaProject, messages: ChatMessage[]) {
-  if (project.chatMode === "group" || !project.chatSessions.length) return project.chatSessions;
-  const usedSessionIds = new Set(messages.map((message) => chatSessionIdForMessage(project, message)));
-  return project.chatSessions.filter((session) => usedSessionIds.has(session.id));
+/**
+ * Returns a cached index while the project and its collection references stay unchanged.
+ * Project state is treated as immutable; call invalidateConversationIndex() after an
+ * intentional in-place mutation.
+ */
+export function getConversationIndex(project: DramaProject): ConversationIndex {
+  const cached = conversationIndexCache.get(project);
+  if (
+    cached
+    && cached.characters === project.characters
+    && cached.chatSessions === project.chatSessions
+    && cached.messages === project.messages
+    && cached.characterCount === project.characters.length
+    && cached.chatSessionCount === project.chatSessions.length
+    && cached.messageCount === project.messages.length
+    && cached.chatMode === project.chatMode
+    && cached.selfCharacterId === project.selfCharacterId
+    && cached.title === project.title
+  ) {
+    return cached.index;
+  }
+
+  const index = buildConversationIndex(project);
+  conversationIndexCache.set(project, {
+    index,
+    characters: project.characters,
+    chatSessions: project.chatSessions,
+    messages: project.messages,
+    characterCount: project.characters.length,
+    chatSessionCount: project.chatSessions.length,
+    messageCount: project.messages.length,
+    chatMode: project.chatMode,
+    selfCharacterId: project.selfCharacterId,
+    title: project.title
+  });
+  return index;
+}
+
+export function invalidateConversationIndex(project: DramaProject) {
+  conversationIndexCache.delete(project);
+}
+
+export function getChatSessions(project: DramaProject, index = getConversationIndex(project)): ChatSession[] {
+  return [...index.sessions];
+}
+
+export function chatSessionIdForMessage(
+  project: DramaProject,
+  message: ChatMessage,
+  index = getConversationIndex(project)
+): string {
+  return resolveChatSessionId(index, message);
+}
+
+export function messagesForChatSession(
+  project: DramaProject,
+  sessionId: string,
+  index = getConversationIndex(project)
+) {
+  return [...(index.messagesBySessionId.get(sessionId) ?? [])];
+}
+
+export function incomingMessageIdsForChatSession(
+  project: DramaProject,
+  sessionId: string,
+  index = getConversationIndex(project)
+) {
+  return [...(index.incomingIdsBySessionId.get(sessionId) ?? [])];
+}
+
+export function unreadCountForChatSession(
+  project: DramaProject,
+  sessionId: string,
+  readMessageIds: ReadonlySet<string>,
+  index = getConversationIndex(project)
+) {
+  let unreadCount = 0;
+  for (const messageId of index.incomingIdsBySessionId.get(sessionId) ?? []) {
+    if (!readMessageIds.has(messageId)) unreadCount += 1;
+  }
+  return unreadCount;
+}
+
+export function chatSessionParticipants(
+  project: DramaProject,
+  session: ChatSession,
+  index = getConversationIndex(project)
+) {
+  const participantIds = new Set(session.participantIds);
+  return project.characters
+    .filter((character) => participantIds.has(character.id))
+    .map((character) => index.charactersById.get(character.id) ?? character);
+}
+
+export function isGroupChatSession(
+  project: DramaProject,
+  session: ChatSession,
+  index = getConversationIndex(project)
+) {
+  return session.kind === "group" || chatSessionParticipants(project, session, index).length > 2;
+}
+
+export function chatSessionPeer(
+  project: DramaProject,
+  session: ChatSession,
+  index = getConversationIndex(project)
+): Character {
+  const characters = project.characters.map((character) => index.charactersById.get(character.id) ?? character);
+  const player = characters.find((character) => character.id === playerCharacter(project).id) ?? characters[0];
+  return characters.find((character) => (
+    character.id !== player?.id
+      && character.side === "left"
+      && session.participantIds.includes(character.id)
+  )) ?? characters.find((character) => character.side === "left") ?? characters[0];
+}
+
+export function chatSessionTitle(
+  project: DramaProject,
+  session: ChatSession,
+  index = getConversationIndex(project)
+) {
+  if (isGroupChatSession(project, session, index)) {
+    const participants = chatSessionParticipants(project, session, index);
+    return `${session.title || project.title} (${participants.length})`;
+  }
+  return session.title || chatSessionPeer(project, session, index).name || project.title;
+}
+
+export function projectForChatSession(
+  project: DramaProject,
+  sessionId: string,
+  index = getConversationIndex(project)
+): DramaProject {
+  const sessions = getChatSessions(project, index);
+  const session = sessions.find((item) => item.id === sessionId) ?? sessions[0];
+  const participantIds = new Set(session.participantIds);
+  const characters = project.characters.filter((character) => participantIds.has(character.id));
+  const chatMode = isGroupChatSession(project, session, index) ? "group" as const : "direct" as const;
+  return {
+    ...project,
+    chatMode,
+    title: chatSessionTitle(project, session, index),
+    characters: characters.length >= 2 ? characters : project.characters,
+    chatSessions: [session],
+    messages: messagesForChatSession(project, session.id, index)
+  };
+}
+
+export function chatSessionsForMessages(
+  project: DramaProject,
+  messages: ChatMessage[],
+  index = getConversationIndex(project)
+) {
+  if (!project.chatSessions.length) return project.chatSessions;
+  const usedSessionIds = new Set(messages.map((message) => resolveChatSessionId(index, message)));
+  return getChatSessions(project, index).filter((session) => usedSessionIds.has(session.id));
 }
 
 export function mergeChatSessions(
@@ -127,20 +336,33 @@ export function mergeChatSessions(
   generatedProject: DramaProject,
   characters: DramaProject["characters"]
 ): ChatSession[] {
-  if (project.chatMode === "group") return project.chatSessions;
-  const player = characters.find((character) => character.side === "right") ?? characters[0];
+  const player = characters.find((character) => character.id === project.selfCharacterId)
+    ?? characters.find((character) => character.side === "right")
+    ?? characters[0];
   const validCharacterIds = new Set(characters.map((character) => character.id));
   const merged = new Map<string, ChatSession>();
   for (const session of [...project.chatSessions, ...generatedProject.chatSessions]) {
     const previous = merged.get(session.id);
+    const requestedParticipants = unique([
+      player?.id || "",
+      ...(previous?.participantIds || []),
+      ...session.participantIds.filter((id) => validCharacterIds.has(id))
+    ]);
+    const kind = previous?.kind === "group" || session.kind === "group" || requestedParticipants.length > 2
+      ? "group"
+      : session.kind ?? previous?.kind ?? "direct";
     merged.set(session.id, {
       id: session.id,
       title: session.title.trim() || previous?.title || "聊天",
-      participantIds: unique([
-        player?.id || "",
-        ...(previous?.participantIds || []),
-        ...session.participantIds.filter((id) => validCharacterIds.has(id))
-      ])
+      kind,
+      participantIds: kind === "direct"
+        ? unique([
+          player?.id || "",
+          requestedParticipants.find((id) => id !== player?.id)
+            ?? characters.find((character) => character.id !== player?.id)?.id
+            ?? ""
+        ])
+        : requestedParticipants
     });
   }
   return [...merged.values()].slice(0, 6);

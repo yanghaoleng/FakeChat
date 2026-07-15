@@ -122,6 +122,22 @@ function journeyProfileForCharacter(character: Character, context: string) {
   return undefined;
 }
 
+export function canonicalJourneyRoleId(
+  roleId: string | undefined,
+  generatedCharacters: Character[],
+  context: string
+) {
+  if (!roleId) return undefined;
+  const generatedCharacter = generatedCharacters.find((character) => character.id === roleId);
+  const generatedProfile = generatedCharacter ? journeyProfileForCharacter(generatedCharacter, context) : undefined;
+  if (generatedProfile) return generatedProfile.id;
+  const source = compact(roleId);
+  return journeyProfiles.find((profile) => (
+    source === compact(profile.id)
+    || profile.aliases.some((alias) => source.includes(compact(alias)))
+  ))?.id;
+}
+
 export function applyJourneyCharacterAvatars(characters: Character[], context: string) {
   return characters.map((character) => {
     const profile = journeyProfileForCharacter(character, context);

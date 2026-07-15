@@ -77,6 +77,10 @@
   white-space: nowrap;
 }
 
+.message-stack-right .group-speaker-name {
+  text-align: right;
+}
+
 .chat-avatar {
   width: 112px;
   height: 112px;

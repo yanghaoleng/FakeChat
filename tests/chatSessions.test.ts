@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildConversationIndex,
   chatSessionIdForMessage,
+  chatSessionParticipants,
   defaultChatSessionId,
+  getConversationIndex,
   getChatSessions,
   incomingMessageIdsForChatSession,
+  invalidateConversationIndex,
+  isGroupChatSession,
+  mergeChatSessions,
   messagesForChatSession,
   projectForChatSession,
   unreadCountForChatSession
@@ -86,6 +92,39 @@ describe("chat sessions", () => {
     ]);
   });
 
+  it("builds reusable lookup maps for sessions, messages, unread ids, and characters", () => {
+    const project = multiSessionProject();
+    const index = buildConversationIndex(project);
+
+    expect([...index.sessionsById.keys()]).toEqual(["date", "friend-chat"]);
+    expect(index.charactersById.get("friend")?.name).toBe("周雨");
+    expect(index.sessionIdByMessageId.get("friend-incoming")).toBe("friend-chat");
+    expect(index.messagesBySessionId.get("date")?.map((message) => message.id)).toEqual([
+      "date-outgoing",
+      "date-incoming"
+    ]);
+    expect(index.incomingIdsBySessionId.get("friend-chat")).toEqual(["friend-incoming"]);
+    expect(messagesForChatSession(project, "friend-chat", index).map((message) => message.id)).toEqual([
+      "friend-outgoing",
+      "friend-incoming"
+    ]);
+    expect(unreadCountForChatSession(project, "friend-chat", new Set(), index)).toBe(1);
+  });
+
+  it("reuses an index until project collections change or the cache is invalidated", () => {
+    const project = multiSessionProject();
+    const firstIndex = getConversationIndex(project);
+
+    expect(getConversationIndex(project)).toBe(firstIndex);
+
+    project.messages = [...project.messages];
+    const collectionReplacementIndex = getConversationIndex(project);
+    expect(collectionReplacementIndex).not.toBe(firstIndex);
+
+    invalidateConversationIndex(project);
+    expect(getConversationIndex(project)).not.toBe(collectionReplacementIndex);
+  });
+
   it("clears the active session unread count without marking another session read", () => {
     const project = multiSessionProject();
     expect(unreadCountForChatSession(project, "date", new Set())).toBe(1);
@@ -105,7 +144,7 @@ describe("chat sessions", () => {
     expect(sessionProject.title).toBe("周雨");
     expect(sessionProject.characters.map((character) => character.id)).toEqual(["boy", "friend"]);
     expect(sessionProject.chatSessions).toEqual([
-      { id: "friend-chat", title: "周雨", participantIds: ["boy", "friend"] }
+      { id: "friend-chat", title: "周雨", kind: "direct", participantIds: ["boy", "friend"] }
     ]);
     expect(sessionProject.messages.map((message) => message.id)).toEqual([
       "friend-outgoing",
@@ -115,21 +154,98 @@ describe("chat sessions", () => {
 
   it("keeps group chat as one session containing every participant and message", () => {
     const directProject = multiSessionProject();
-    const groupProject = parseProject({
+    const legacyGroupInput = JSON.parse(JSON.stringify({
       ...directProject,
       title: "三人同学群",
       chatMode: "group"
-    });
+    })) as Record<string, unknown>;
+    delete legacyGroupInput.schemaVersion;
+    delete legacyGroupInput.selfCharacterId;
+    const groupProject = parseProject(legacyGroupInput);
     const sessions = getChatSessions(groupProject);
 
     expect(sessions).toEqual([{
       id: defaultChatSessionId,
       title: "三人同学群",
+      kind: "group",
       participantIds: ["boy", "girl", "friend"]
     }]);
     expect(messagesForChatSession(groupProject, defaultChatSessionId).map((message) => message.id)).toEqual(
       groupProject.messages.map((message) => message.id)
     );
-    expect(projectForChatSession(groupProject, defaultChatSessionId)).toBe(groupProject);
+    expect(chatSessionParticipants(groupProject, sessions[0]).map((character) => character.id)).toEqual([
+      "boy", "girl", "friend"
+    ]);
+    expect(isGroupChatSession(groupProject, sessions[0])).toBe(true);
+    expect(projectForChatSession(groupProject, defaultChatSessionId)).toMatchObject({
+      chatMode: "group",
+      selfCharacterId: "boy"
+    });
+  });
+
+  it("supports direct and group sessions in the same v2 project", () => {
+    const friend = { ...sampleProject.characters[1], id: "friend", name: "周雨", avatarInitial: "雨" };
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "律" };
+    const project = parseProject({
+      ...sampleProject,
+      schemaVersion: 2,
+      selfCharacterId: "boy",
+      chatMode: "direct",
+      characters: [...sampleProject.characters, friend, lawyer],
+      chatSessions: [
+        { id: "date", title: "林夏", kind: "direct", participantIds: ["boy", "girl"] },
+        { id: "case-group", title: "合同应急群", kind: "group", participantIds: ["boy", "friend", "lawyer"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[0], id: "date-message", sessionId: "date" },
+        { ...sampleProject.messages[1], id: "friend-message", senderId: "friend", roleId: "friend", sessionId: "case-group" },
+        { ...sampleProject.messages[1], id: "lawyer-message", senderId: "lawyer", roleId: "lawyer", sessionId: "case-group" }
+      ]
+    });
+    const [directSession, groupSession] = getChatSessions(project);
+
+    expect(isGroupChatSession(project, directSession)).toBe(false);
+    expect(isGroupChatSession(project, groupSession)).toBe(true);
+    expect(projectForChatSession(project, directSession.id)).toMatchObject({
+      chatMode: "direct",
+      selfCharacterId: "boy"
+    });
+    expect(projectForChatSession(project, groupSession.id)).toMatchObject({
+      chatMode: "group",
+      selfCharacterId: "boy"
+    });
+    expect(projectForChatSession(project, groupSession.id).characters.map((character) => character.id)).toEqual([
+      "boy", "friend", "lawyer"
+    ]);
+    expect(projectForChatSession(project, groupSession.id).messages.map((message) => message.id)).toEqual([
+      "friend-message", "lawyer-message"
+    ]);
+  });
+
+  it("does not downgrade an existing group when generated topology calls it direct", () => {
+    const friend = { ...sampleProject.characters[1], id: "friend", name: "周雨", avatarInitial: "雨" };
+    const characters = [...sampleProject.characters, friend];
+    const project = parseProject({
+      ...sampleProject,
+      schemaVersion: 2,
+      characters,
+      chatSessions: [
+        { id: "case-group", title: "合同群", kind: "group", participantIds: ["boy", "girl", "friend"] }
+      ],
+      messages: []
+    });
+    const generatedProject = parseProject({
+      ...project,
+      chatSessions: [
+        { id: "case-group", title: "合同群", kind: "direct", participantIds: ["boy", "girl"] }
+      ]
+    });
+
+    expect(mergeChatSessions(project, generatedProject, characters)).toEqual([{
+      id: "case-group",
+      title: "合同群",
+      kind: "group",
+      participantIds: ["boy", "girl", "friend"]
+    }]);
   });
 });

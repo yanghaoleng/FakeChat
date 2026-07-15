@@ -86,6 +86,15 @@ body {
   font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
 }
 
+.app-status-announcer {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 button,
 a,
 input,
@@ -4897,6 +4906,11 @@ button[disabled],
   font-weight: 720;
 }
 
+.video-loading-frame {
+  min-height: 360px;
+  background: rgba(238, 243, 249, 0.72);
+}
+
 .video-preview-stack {
   display: grid;
   gap: 12px;
@@ -4998,6 +5012,49 @@ button[disabled],
   font-weight: 720;
   line-height: 1;
   text-align: center;
+}
+
+.wechat-group-avatar {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 2px;
+  background: #d8d8d8;
+}
+
+.wechat-group-avatar[data-member-count="1"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.wechat-group-avatar[data-member-count="2"] {
+  grid-template-rows: 1fr;
+}
+
+.wechat-group-avatar[data-member-count="3"] .wechat-group-avatar-cell:first-child {
+  grid-row: 1 / 3;
+}
+
+.wechat-group-avatar-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 1px;
+  object-fit: cover;
+}
+
+.wechat-group-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  font-size: 0.42em;
+  font-weight: 720;
+  line-height: 1;
 }
 
 .wechat-session-rail-avatar.wechat-contact-avatar-fallback {
@@ -5130,6 +5187,27 @@ button[disabled],
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wechat-topbar-title-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.wechat-topbar-group-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wechat-topbar-group-avatar {
+  flex: 0 0 29px;
+  width: 29px;
+  height: 29px;
+  border-radius: 5px;
 }
 
 .wechat-session-list-screen {
@@ -5382,6 +5460,10 @@ button[disabled],
 
 .wechat-row-right .wechat-message-stack {
   align-items: flex-end;
+}
+
+.wechat-row-right .wechat-speaker-name {
+  text-align: right;
 }
 
 .wechat-speaker-name {

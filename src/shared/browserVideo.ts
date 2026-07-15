@@ -1,8 +1,11 @@
-import { getCharacter, messageVoiceText, type ChatMessage, type DramaProject } from "./schema";
-import { imageNarrativeCopy, imageSourceForMessage } from "./imageNarrative";
-import { jojoCssMemeCardForMessage, type JojoCssMemeCard, type JojoCssMemeTone } from "./jojoMemeCards";
-import { musicTrackForMessage } from "./musicLibrary";
+import { messageVoiceText, type ChatMessage, type DramaProject } from "./schema";
+import type { JojoCssMemeCard, JojoCssMemeTone } from "./jojoMemeCards";
 import { isJojoProject } from "./jojoProject";
+import {
+  avatarPresentationForCharacter,
+  messagePresentationFor,
+  type MessagePresentation
+} from "./messagePresentation";
 import { resolvePublicAssetPath } from "./publicPath";
 import { buildTimeline, getDurationInFrames, getScrollY, type TimelineEntry } from "./timing";
 import type { TtsClipMap } from "./edgeTts";
@@ -12,6 +15,7 @@ export type VideoExportResult = {
   url: string;
   extension: "mp4" | "webm";
   mimeType: string;
+  dispose?: () => void;
 };
 
 export type VideoExportProgress = {
@@ -26,11 +30,21 @@ const videoMimeTypes = [
   { mimeType: "video/webm", extension: "webm" as const }
 ];
 const exportSize = { width: 1280, height: 720 };
+const progressUpdateIntervalMs = 200;
+const disposedVideoExportResults = new WeakSet<VideoExportResult>();
 type VisualSide = "left" | "right";
 type ImageCache = {
   avatars: Map<string, HTMLImageElement>;
   media: Map<string, HTMLImageElement>;
+  presentations: Map<string, MessagePresentation>;
 };
+
+export function disposeVideoExportResult(result: VideoExportResult | null | undefined) {
+  if (!result || disposedVideoExportResults.has(result)) return;
+  disposedVideoExportResults.add(result);
+  if (result.dispose) result.dispose();
+  else URL.revokeObjectURL(result.url);
+}
 
 function pickMimeType() {
   return videoMimeTypes.find((item) => MediaRecorder.isTypeSupported(item.mimeType)) || videoMimeTypes.at(-1)!;
@@ -70,13 +84,6 @@ function loadCanvasImage(src: string): Promise<HTMLImageElement | undefined> {
   });
 }
 
-function visualSideFor(project: DramaProject, message: ChatMessage): ChatMessage["side"] {
-  if (!isJojoProject(project)) return message.side;
-  if (message.side === "center") return "center";
-  const character = message.roleId ? project.characters.find((item) => item.id === message.roleId) : undefined;
-  return character?.side || message.side;
-}
-
 function parseGradientColors(value: string | undefined, fallback: [string, string]): [string, string] {
   const colors = value?.match(/#[0-9a-f]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)/gi);
   return [colors?.[0] || fallback[0], colors?.[1] || colors?.[0] || fallback[1]];
@@ -105,20 +112,23 @@ function drawImageContain(ctx: CanvasRenderingContext2D, image: HTMLImageElement
 async function preloadRenderImages(project: DramaProject) {
   const cache: ImageCache = {
     avatars: new Map(),
-    media: new Map()
+    media: new Map(),
+    presentations: new Map()
   };
 
   await Promise.all(project.characters.map(async (character) => {
-    const src = resolvePublicAssetPath(character.avatarUrl);
+    const src = resolvePublicAssetPath(avatarPresentationForCharacter(character).source);
     if (!src) return;
     const image = await loadCanvasImage(src);
     if (image) cache.avatars.set(character.id, image);
   }));
 
   await Promise.all(project.messages.map(async (message) => {
-    if (message.type !== "image" && message.type !== "meme" && message.type !== "music") return;
-    const track = message.type === "music" ? musicTrackForMessage(message) : undefined;
-    const src = resolvePublicAssetPath(message.type === "music" ? message.musicCoverUrl || track?.coverUrl : imageSourceForMessage(project, message));
+    const presentation = messagePresentationFor(project, message, "canvas");
+    cache.presentations.set(message.id, presentation);
+    const src = presentation.media.kind === "image" || presentation.media.kind === "meme" || presentation.media.kind === "music"
+      ? resolvePublicAssetPath(presentation.media.source)
+      : undefined;
     if (!src) return;
     const image = await loadCanvasImage(src);
     if (image) cache.media.set(message.id, image);
@@ -127,9 +137,18 @@ async function preloadRenderImages(project: DramaProject) {
   return cache;
 }
 
-function drawAvatar(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
-  const character = getCharacter(project, message);
-  const avatarImage = imageCache.avatars.get(character.id);
+function drawAvatar(
+  ctx: CanvasRenderingContext2D,
+  project: DramaProject,
+  message: ChatMessage,
+  presentation: MessagePresentation,
+  x: number,
+  y: number,
+  imageCache: ImageCache
+) {
+  const avatar = presentation.avatar;
+  if (!avatar) return;
+  const avatarImage = imageCache.avatars.get(avatar.characterId);
   const background = isJojoProject(project) ? "#eef3f9" : "#ebebeb";
   const radius = isJojoProject(project) ? 18 : 12;
   ctx.save();
@@ -148,7 +167,7 @@ function drawAvatar(ctx: CanvasRenderingContext2D, project: DramaProject, messag
   }
   if (!drewAvatarImage) {
     const fallbackColors: [string, string] = message.side === "left" ? ["#f9a8d4", "#64748b"] : ["#0f172a", "#7c2d12"];
-    const [startColor, endColor] = parseGradientColors(character.avatarGradient, fallbackColors);
+    const [startColor, endColor] = parseGradientColors(avatar.gradient, fallbackColors);
     const gradient = ctx.createLinearGradient(x, y, x + 112, y + 112);
     gradient.addColorStop(0, startColor);
     gradient.addColorStop(1, endColor);
@@ -158,7 +177,7 @@ function drawAvatar(ctx: CanvasRenderingContext2D, project: DramaProject, messag
     ctx.font = "700 48px PingFang SC, Microsoft YaHei, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(character.avatarInitial || character.name.slice(0, 1), x + 56, y + 57);
+    ctx.fillText(avatar.initial || avatar.name.slice(0, 1), x + 56, y + 57);
   }
   ctx.restore();
 }
@@ -217,8 +236,15 @@ function drawTransfer(ctx: CanvasRenderingContext2D, message: ChatMessage, x: nu
   return { width: 700, height: 228 };
 }
 
-function drawImageCard(ctx: CanvasRenderingContext2D, project: DramaProject, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
-  const copy = imageNarrativeCopy(project, message);
+function drawImageCard(
+  ctx: CanvasRenderingContext2D,
+  message: ChatMessage,
+  presentation: MessagePresentation,
+  x: number,
+  y: number,
+  imageCache: ImageCache
+) {
+  if (presentation.media.kind !== "image") return { width: 700, height: 430 };
   const image = imageCache.media.get(message.id);
   const gradient = ctx.createLinearGradient(x, y, x + 700, y + 430);
   gradient.addColorStop(0, "#7c2d12");
@@ -246,7 +272,7 @@ function drawImageCard(ctx: CanvasRenderingContext2D, project: DramaProject, mes
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#ffffff";
     ctx.font = "650 44px PingFang SC, Microsoft YaHei, sans-serif";
-    wrapText(ctx, copy.description, 610).slice(0, 4).forEach((line, index) => {
+    wrapText(ctx, presentation.media.description, 610).slice(0, 4).forEach((line, index) => {
       ctx.fillText(line, x + 42, y + 164 + index * 56);
     });
   }
@@ -310,13 +336,21 @@ function drawJojoCssMemeCard(ctx: CanvasRenderingContext2D, card: JojoCssMemeCar
   ctx.restore();
 }
 
-function drawMeme(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
+function drawMeme(
+  ctx: CanvasRenderingContext2D,
+  message: ChatMessage,
+  presentation: MessagePresentation,
+  x: number,
+  y: number,
+  imageCache: ImageCache
+) {
+  if (presentation.media.kind !== "meme") return { width: 520, height: 360 };
   ctx.fillStyle = "#ffffff";
   roundRect(ctx, x, y, 520, 360, 10);
   ctx.fill();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const cssCard = jojoCssMemeCardForMessage(message);
+  const cssCard = presentation.media.cssCard;
   if (cssCard) {
     drawJojoCssMemeCard(ctx, cssCard, x + 135, y + 48);
     return { width: 520, height: 360 };
@@ -341,8 +375,16 @@ function drawMeme(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number
   return { width: 520, height: 360 };
 }
 
-function drawMusic(ctx: CanvasRenderingContext2D, message: ChatMessage, x: number, y: number, imageCache: ImageCache) {
-  const track = musicTrackForMessage(message);
+function drawMusic(
+  ctx: CanvasRenderingContext2D,
+  message: ChatMessage,
+  presentation: MessagePresentation,
+  x: number,
+  y: number,
+  imageCache: ImageCache
+) {
+  if (presentation.media.kind !== "music") return;
+  const media = presentation.media;
   const cover = imageCache.media.get(message.id);
   ctx.fillStyle = "#ffffff";
   roundRect(ctx, x, y, 700, 360, 10);
@@ -373,13 +415,13 @@ function drawMusic(ctx: CanvasRenderingContext2D, message: ChatMessage, x: numbe
   ctx.textBaseline = "top";
   ctx.fillStyle = "#111111";
   ctx.font = "650 46px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText((message.musicTitle || track.title).slice(0, 18), x + 38, y + 38);
+  ctx.fillText(media.title.slice(0, 18), x + 38, y + 38);
   ctx.fillStyle = "#707070";
   ctx.font = "31px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText((message.musicArtist || track.artist).slice(0, 22), x + 38, y + 108);
+  ctx.fillText(media.artist.slice(0, 22), x + 38, y + 108);
   ctx.fillStyle = "#929292";
   ctx.font = "27px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText((message.musicLyric || track.lyric).slice(0, 27), x + 38, y + 218);
+  ctx.fillText(media.lyric.slice(0, 27), x + 38, y + 218);
 
   ctx.strokeStyle = "#eeeeee";
   ctx.lineWidth = 2;
@@ -399,12 +441,29 @@ function drawMusic(ctx: CanvasRenderingContext2D, message: ChatMessage, x: numbe
   ctx.fillText("网易云音乐", x + 82, y + 308);
 }
 
+function drawGroupSpeakerName(
+  ctx: CanvasRenderingContext2D,
+  presentation: MessagePresentation,
+  visualSide: VisualSide,
+  x: number,
+  y: number,
+  width = 0
+) {
+  if (!presentation.speakerName) return;
+  ctx.fillStyle = "#777777";
+  ctx.font = "400 30px PingFang SC, Microsoft YaHei, sans-serif";
+  ctx.textBaseline = "top";
+  ctx.textAlign = visualSide === "right" ? "right" : "left";
+  ctx.fillText(presentation.speakerName, visualSide === "right" ? x + width : x, y + 4);
+}
+
 function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry: TimelineEntry, y: number, imageCache: ImageCache) {
   const message = entry.message;
+  const presentation = imageCache.presentations.get(message.id) ?? messagePresentationFor(project, message, "canvas");
   const opacity = 1;
   ctx.globalAlpha = opacity;
 
-  if (message.type === "system" || message.side === "center") {
+  if (presentation.isSystem) {
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     roundRect(ctx, 560, y, 400, 70, 12);
     ctx.fill();
@@ -417,18 +476,19 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
   }
 
   const avatarY = y;
-  const bubbleY = y;
+  const bubbleY = y + (presentation.speakerName ? 44 : 0);
   const leftAvatarX = 70;
   const rightAvatarX = project.canvas.width - 70 - 112;
   const leftBubbleX = leftAvatarX + 112 + 52;
-  const visualSide: VisualSide = visualSideFor(project, message) === "right" ? "right" : "left";
+  const visualSide: VisualSide = presentation.visualSide === "right" ? "right" : "left";
 
   if (visualSide === "left") {
-    drawAvatar(ctx, project, message, leftAvatarX, avatarY, imageCache);
+    drawAvatar(ctx, project, message, presentation, leftAvatarX, avatarY, imageCache);
+    drawGroupSpeakerName(ctx, presentation, visualSide, leftBubbleX, y);
     if (message.type === "transfer") drawTransfer(ctx, message, leftBubbleX, bubbleY);
-    else if (message.type === "image") drawImageCard(ctx, project, message, leftBubbleX, bubbleY, imageCache);
-    else if (message.type === "meme") drawMeme(ctx, message, leftBubbleX, bubbleY, imageCache);
-    else if (message.type === "music") drawMusic(ctx, message, leftBubbleX, bubbleY, imageCache);
+    else if (message.type === "image") drawImageCard(ctx, message, presentation, leftBubbleX, bubbleY, imageCache);
+    else if (message.type === "meme") drawMeme(ctx, message, presentation, leftBubbleX, bubbleY, imageCache);
+    else if (message.type === "music") drawMusic(ctx, message, presentation, leftBubbleX, bubbleY, imageCache);
     else drawTextBubble(ctx, project, message, visualSide, leftBubbleX, bubbleY, 980);
   } else {
     const maxBubbleWidth = 980;
@@ -447,26 +507,32 @@ function drawMessage(ctx: CanvasRenderingContext2D, project: DramaProject, entry
       };
     }
     const bubbleX = rightAvatarX - 52 - size.width;
+    drawGroupSpeakerName(ctx, presentation, visualSide, bubbleX, y, size.width);
     if (message.type === "transfer") drawTransfer(ctx, message, bubbleX, bubbleY);
-    else if (message.type === "image") drawImageCard(ctx, project, message, bubbleX, bubbleY, imageCache);
-    else if (message.type === "meme") drawMeme(ctx, message, bubbleX, bubbleY, imageCache);
-    else if (message.type === "music") drawMusic(ctx, message, bubbleX, bubbleY, imageCache);
+    else if (message.type === "image") drawImageCard(ctx, message, presentation, bubbleX, bubbleY, imageCache);
+    else if (message.type === "meme") drawMeme(ctx, message, presentation, bubbleX, bubbleY, imageCache);
+    else if (message.type === "music") drawMusic(ctx, message, presentation, bubbleX, bubbleY, imageCache);
     else drawTextBubble(ctx, project, message, visualSide, bubbleX || probeX, bubbleY, maxBubbleWidth);
-    drawAvatar(ctx, project, message, rightAvatarX, avatarY, imageCache);
+    drawAvatar(ctx, project, message, presentation, rightAvatarX, avatarY, imageCache);
   }
 
   ctx.globalAlpha = 1;
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, project: DramaProject, frame: number, imageCache: ImageCache) {
+function drawFrame(
+  ctx: CanvasRenderingContext2D,
+  project: DramaProject,
+  frame: number,
+  imageCache: ImageCache,
+  timeline: readonly TimelineEntry[]
+) {
   ctx.clearRect(0, 0, project.canvas.width, project.canvas.height);
   const background = isJojoProject(project) ? "#eef3f9" : "#ebebeb";
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, project.canvas.width, project.canvas.height);
-  const scrollY = getScrollY(project, frame);
-  const timeline = buildTimeline(project);
+  const scrollY = getScrollY(project, frame, timeline);
   for (const entry of timeline) {
-    if (frame < entry.startFrame - 3) continue;
+    if (frame < entry.startFrame - 3) break;
     const y = entry.y - scrollY;
     if (y > project.canvas.height + 100 || y + entry.height < -100) continue;
     drawMessage(ctx, project, entry, y, imageCache);
@@ -485,12 +551,17 @@ async function decodeClip(audioContext: AudioContext, clip?: { blob: Blob }) {
 
 async function resumeAudioContext(audioContext: AudioContext) {
   if (audioContext.state !== "suspended") return;
-  await Promise.race([
-    audioContext.resume(),
-    new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 1200);
-    })
-  ]);
+  let timeoutId: number | undefined;
+  try {
+    await Promise.race([
+      audioContext.resume(),
+      new Promise<void>((resolve) => {
+        timeoutId = window.setTimeout(resolve, 1200);
+      })
+    ]);
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  }
 }
 
 function stopAudioNode(node: AudioScheduledSourceNode) {
@@ -501,8 +572,13 @@ function stopAudioNode(node: AudioScheduledSourceNode) {
   }
 }
 
-function scheduleSfx(audioContext: AudioContext, destination: AudioNode, type: ChatMessage["sendSfx"], time: number) {
-  if (!type || type === "none") return;
+type ScheduledAudio = {
+  source: AudioScheduledSourceNode;
+  nodes: AudioNode[];
+};
+
+function scheduleSfx(audioContext: AudioContext, destination: AudioNode, type: ChatMessage["sendSfx"], time: number): ScheduledAudio | undefined {
+  if (!type || type === "none") return undefined;
   const oscillator = audioContext.createOscillator();
   const gain = audioContext.createGain();
   oscillator.connect(gain);
@@ -515,6 +591,7 @@ function scheduleSfx(audioContext: AudioContext, destination: AudioNode, type: C
   gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
   oscillator.start(time);
   oscillator.stop(time + 0.2);
+  return { source: oscillator, nodes: [oscillator, gain] };
 }
 
 export async function exportBrowserVideo(
@@ -530,82 +607,222 @@ export async function exportBrowserVideo(
   const scaleX = canvas.width / project.canvas.width;
   const scaleY = canvas.height / project.canvas.height;
   const imageCache = await preloadRenderImages(project);
-
-  const audioContext = new AudioContext({ sampleRate: 48000 });
-  const audioDestination = audioContext.createMediaStreamDestination();
-  const stream = canvas.captureStream(project.fps);
-  audioDestination.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
-
-  const silent = audioContext.createOscillator();
-  const silentGain = audioContext.createGain();
-  silentGain.gain.value = 0.00001;
-  silent.connect(silentGain).connect(audioDestination);
-
-  const { mimeType, extension } = pickMimeType();
-  const recorder = new MediaRecorder(stream, {
-    mimeType,
-    audioBitsPerSecond: 128000,
-    videoBitsPerSecond: 2500000
-  });
-  const chunks: BlobPart[] = [];
-  recorder.addEventListener("dataavailable", (event) => {
-    if (event.data.size) chunks.push(event.data);
-  });
-
-  const durationInFrames = getDurationInFrames(project);
   const timeline = buildTimeline(project);
-  onProgress?.({ phase: "preparing", progress: 0 });
+  const durationInFrames = getDurationInFrames(project, timeline);
   const decodedClips = new Map<string, AudioBuffer>();
-  for (const entry of timeline) {
-    const decoded = await decodeClip(audioContext, clips[entry.message.id]);
-    if (decoded) decodedClips.set(entry.message.id, decoded);
-  }
+  const chunks: BlobPart[] = [];
+  const scheduledSources = new Set<AudioScheduledSourceNode>();
+  const connectedAudioNodes = new Set<AudioNode>();
+  const mediaTracks = new Set<MediaStreamTrack>();
+  let audioContext: AudioContext | undefined;
+  let stream: MediaStream | undefined;
+  let recorder: MediaRecorder | undefined;
+  let animationFrameId: number | undefined;
+  let recorderStopTimerId: number | undefined;
+  let detachRecorderListeners = () => undefined;
+  let runtimeDisposed = false;
+  let lastProgressUpdateAt = Number.NEGATIVE_INFINITY;
 
-  await resumeAudioContext(audioContext);
-  return new Promise((resolve, reject) => {
-    recorder.addEventListener("error", () => reject(new Error("浏览器视频录制失败")));
-    recorder.addEventListener("stop", () => {
-      stopAudioNode(silent);
-      audioContext.close().catch(() => undefined);
-      const blob = new Blob(chunks, { type: mimeType });
-      resolve({ blob, url: URL.createObjectURL(blob), extension, mimeType });
-    });
+  const notifyProgress = (progress: VideoExportProgress, force = false) => {
+    if (!onProgress) return;
+    const now = performance.now();
+    if (progress.phase === "recording" && !force && now - lastProgressUpdateAt < progressUpdateIntervalMs) return;
+    if (progress.phase === "recording") lastProgressUpdateAt = now;
+    try {
+      onProgress(progress);
+    } catch {
+      // Progress observers must not interrupt a long-running export.
+    }
+  };
 
-    const audioStart = audioContext.currentTime + 0.2;
-    const startedAt = performance.now() + 200;
-    silent.start(audioStart);
-    silent.stop(audioStart + durationInFrames / project.fps + 1);
-
-    for (const entry of timeline) {
-      const startTime = audioStart + entry.startFrame / project.fps;
-      scheduleSfx(audioContext, audioDestination, entry.message.sendSfx, startTime);
-      const audioBuffer = decodedClips.get(entry.message.id);
-      if (audioBuffer) {
-        const source = audioContext.createBufferSource();
-        const gain = audioContext.createGain();
-        source.buffer = audioBuffer;
-        gain.gain.value = project.audioMix.ttsVolume;
-        source.connect(gain).connect(audioDestination);
-        source.start(startTime + 0.12);
+  const cleanupRuntime = () => {
+    if (runtimeDisposed) return;
+    runtimeDisposed = true;
+    detachRecorderListeners();
+    if (animationFrameId !== undefined) window.cancelAnimationFrame(animationFrameId);
+    if (recorderStopTimerId !== undefined) window.clearTimeout(recorderStopTimerId);
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        // MediaRecorder may already be stopping after an error.
       }
     }
-
-    recorder.start(1000);
-    const draw = () => {
-      const elapsedMs = Math.max(0, performance.now() - startedAt);
-      const frame = Math.min(durationInFrames - 1, Math.floor((elapsedMs / 1000) * project.fps));
-      ctx.save();
-      ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-      drawFrame(ctx, project, frame, imageCache);
-      ctx.restore();
-      onProgress?.({ phase: "recording", progress: frame / durationInFrames });
-      if (frame >= durationInFrames - 1) {
-        onProgress?.({ phase: "done", progress: 1 });
-        window.setTimeout(() => recorder.stop(), 350);
-      } else {
-        window.requestAnimationFrame(draw);
+    for (const source of scheduledSources) stopAudioNode(source);
+    for (const node of connectedAudioNodes) {
+      try {
+        node.disconnect();
+      } catch {
+        // Disconnected nodes are already safe to release.
       }
-    };
-    window.requestAnimationFrame(draw);
-  });
+    }
+    for (const track of new Set([...(stream?.getTracks() || []), ...mediaTracks])) {
+      try {
+        track.stop();
+      } catch {
+        // A track can already be ended by the recorder or browser.
+      }
+    }
+    if (audioContext && audioContext.state !== "closed") {
+      try {
+        void audioContext.close().catch(() => undefined);
+      } catch {
+        // Closing a context twice is harmless for cleanup purposes.
+      }
+    }
+    decodedClips.clear();
+    imageCache.avatars.clear();
+    imageCache.media.clear();
+    imageCache.presentations.clear();
+    canvas.width = 0;
+    canvas.height = 0;
+  };
+
+  notifyProgress({ phase: "preparing", progress: 0 }, true);
+  try {
+    audioContext = new AudioContext({ sampleRate: 48000 });
+    const audioDestination = audioContext.createMediaStreamDestination();
+    connectedAudioNodes.add(audioDestination);
+    stream = canvas.captureStream(project.fps);
+    stream.getTracks().forEach((track) => mediaTracks.add(track));
+    audioDestination.stream.getAudioTracks().forEach((track) => {
+      mediaTracks.add(track);
+      stream?.addTrack(track);
+    });
+
+    const silent = audioContext.createOscillator();
+    const silentGain = audioContext.createGain();
+    silentGain.gain.value = 0.00001;
+    silent.connect(silentGain).connect(audioDestination);
+    scheduledSources.add(silent);
+    connectedAudioNodes.add(silent);
+    connectedAudioNodes.add(silentGain);
+
+    const { mimeType, extension } = pickMimeType();
+    recorder = new MediaRecorder(stream, {
+      mimeType,
+      audioBitsPerSecond: 128000,
+      videoBitsPerSecond: 2500000
+    });
+
+    for (const entry of timeline) {
+      const decoded = await decodeClip(audioContext, clips[entry.message.id]);
+      if (decoded) decodedClips.set(entry.message.id, decoded);
+    }
+
+    await resumeAudioContext(audioContext);
+    return await new Promise<VideoExportResult>((resolve, reject) => {
+      if (!audioContext || !recorder || !stream) {
+        cleanupRuntime();
+        reject(new Error("浏览器视频录制初始化失败"));
+        return;
+      }
+
+      let settled = false;
+      const activeAudioContext = audioContext;
+      const activeRecorder = recorder;
+      const handleDataAvailable = (event: BlobEvent) => {
+        if (event.data.size) chunks.push(event.data);
+      };
+      const handleError = () => {
+        if (settled) return;
+        settled = true;
+        cleanupRuntime();
+        reject(new Error("浏览器视频录制失败"));
+      };
+      const handleStop = () => {
+        if (settled) return;
+        settled = true;
+        try {
+          const blob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          let urlDisposed = false;
+          notifyProgress({ phase: "done", progress: 1 }, true);
+          cleanupRuntime();
+          resolve({
+            blob,
+            url,
+            extension,
+            mimeType,
+            dispose: () => {
+              if (urlDisposed) return;
+              urlDisposed = true;
+              URL.revokeObjectURL(url);
+            }
+          });
+        } catch (error) {
+          cleanupRuntime();
+          reject(error instanceof Error ? error : new Error("浏览器视频结果创建失败"));
+        }
+      };
+      activeRecorder.addEventListener("dataavailable", handleDataAvailable);
+      activeRecorder.addEventListener("error", handleError);
+      activeRecorder.addEventListener("stop", handleStop);
+      detachRecorderListeners = () => {
+        activeRecorder.removeEventListener("dataavailable", handleDataAvailable);
+        activeRecorder.removeEventListener("error", handleError);
+        activeRecorder.removeEventListener("stop", handleStop);
+      };
+
+      try {
+        const audioStart = activeAudioContext.currentTime + 0.2;
+        const startedAt = performance.now() + 200;
+        silent.start(audioStart);
+        silent.stop(audioStart + durationInFrames / project.fps + 1);
+
+        for (const entry of timeline) {
+          const startTime = audioStart + entry.startFrame / project.fps;
+          const sfx = scheduleSfx(activeAudioContext, audioDestination, entry.message.sendSfx, startTime);
+          if (sfx) {
+            scheduledSources.add(sfx.source);
+            sfx.nodes.forEach((node) => connectedAudioNodes.add(node));
+          }
+          const audioBuffer = decodedClips.get(entry.message.id);
+          if (audioBuffer) {
+            const source = activeAudioContext.createBufferSource();
+            const gain = activeAudioContext.createGain();
+            source.buffer = audioBuffer;
+            gain.gain.value = project.audioMix.ttsVolume;
+            source.connect(gain).connect(audioDestination);
+            source.start(startTime + 0.12);
+            scheduledSources.add(source);
+            connectedAudioNodes.add(source);
+            connectedAudioNodes.add(gain);
+          }
+        }
+
+        activeRecorder.start(1000);
+        const draw = () => {
+          try {
+            const elapsedMs = Math.max(0, performance.now() - startedAt);
+            const frame = Math.min(durationInFrames - 1, Math.floor((elapsedMs / 1000) * project.fps));
+            ctx.save();
+            ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+            drawFrame(ctx, project, frame, imageCache, timeline);
+            ctx.restore();
+            notifyProgress({ phase: "recording", progress: frame / durationInFrames });
+            if (frame >= durationInFrames - 1) {
+              recorderStopTimerId = window.setTimeout(() => {
+                try {
+                  if (activeRecorder.state !== "inactive") activeRecorder.stop();
+                } catch {
+                  handleError();
+                }
+              }, 350);
+            } else {
+              animationFrameId = window.requestAnimationFrame(draw);
+            }
+          } catch {
+            handleError();
+          }
+        };
+        animationFrameId = window.requestAnimationFrame(draw);
+      } catch {
+        handleError();
+      }
+    });
+  } catch (error) {
+    cleanupRuntime();
+    throw error;
+  }
 }

@@ -7,7 +7,7 @@ export interface DefaultAvatar {
   title: string;
   vibe: string;
   gender: DefaultAvatarGender | "neutral";
-  group?: "western-student" | "neutral-editorial" | "journey-character";
+  group?: "western-student" | "neutral-editorial" | "journey-character" | "gta-character";
   url: string;
   sourceName: string;
   sourceUrl: string;
@@ -153,6 +153,25 @@ export const defaultAvatars: DefaultAvatar[] = [
     url: localAvatar(`${id}.webp`),
     ...generatedSource
   })),
+  ...[
+    ["gta-lucia", "Lucia Caminos", "GTA 角色 / Lucia / Vice City 暮色", "girl"],
+    ["gta-jason", "Jason Duval", "GTA 角色 / Jason / Leonida 海岸", "boy"],
+    ["gta-michael", "Michael De Santa", "GTA 角色 / Michael / Los Santos 豪宅", "boy"],
+    ["gta-franklin", "Franklin Clinton", "GTA 角色 / Franklin / Los Santos 城区", "boy"],
+    ["gta-trevor", "Trevor Philips", "GTA 角色 / Trevor / Blaine County 荒漠", "boy"],
+    ["gta-niko", "Niko Bellic", "GTA 角色 / Niko / Liberty City", "boy"],
+    ["gta-cj", "Carl Johnson", "GTA 角色 / CJ / 90 年代 Los Santos", "boy"],
+    ["gta-tommy", "Tommy Vercetti", "GTA 角色 / Tommy / 80 年代 Vice City", "boy"],
+    ["gta-claude", "Claude", "GTA 角色 / Claude / Liberty City 雨夜", "boy"]
+  ].map(([id, title, vibe, gender]) => ({
+    id,
+    title,
+    vibe,
+    gender: gender as DefaultAvatarGender,
+    group: "gta-character" as const,
+    url: localAvatar(`${id}.webp`),
+    ...generatedSource
+  })),
   {
     id: "western-student-male-cafe",
     title: "Campus Coffee",
@@ -185,11 +204,6 @@ export function neutralEditorialAvatars(): DefaultAvatar[] {
   return defaultAvatars.filter((avatar) => avatar.gender === "neutral" && avatar.group === "neutral-editorial");
 }
 
-function randomAvatar(gender: DefaultAvatarGender): DefaultAvatar | undefined {
-  const avatars = avatarsByGender(gender);
-  return avatars[Math.floor(Math.random() * avatars.length)];
-}
-
 export function avatarGenderForCharacter(character: DramaProject["characters"][number]): DefaultAvatarGender {
   if (character.avatarGender) return character.avatarGender;
   if (character.id === "girl") return "girl";
@@ -220,17 +234,40 @@ export function genderMatchedAvatarUrl(character: DramaProject["characters"][num
   return stableAvatar(gender, `${character.id}:${character.name}`, configured.group ?? "asian")?.url ?? character.avatarUrl;
 }
 
-export function randomizeViralCharacterAvatars(project: DramaProject): DramaProject {
-  const selectedAvatars: Record<DefaultAvatarGender, DefaultAvatar | undefined> = {
-    boy: randomAvatar("boy"),
-    girl: randomAvatar("girl")
-  };
+export function assignDistinctCharacterAvatars(
+  characters: DramaProject["characters"],
+  {
+    random = Math.random,
+    randomizeCharacterIds = []
+  }: {
+    random?: () => number;
+    randomizeCharacterIds?: Iterable<string>;
+  } = {}
+): DramaProject["characters"] {
+  const forceRandom = new Set(randomizeCharacterIds);
+  const usedAvatarUrls = new Set<string>();
 
+  return characters.map((character) => {
+    const currentAvatarUrl = genderMatchedAvatarUrl(character);
+    const shouldReplace = forceRandom.has(character.id)
+      || !currentAvatarUrl
+      || usedAvatarUrls.has(currentAvatarUrl);
+    const candidates = avatarsByGender(avatarGenderForCharacter(character))
+      .filter((avatar) => !usedAvatarUrls.has(avatar.url));
+    const selected = shouldReplace && candidates.length
+      ? candidates[Math.min(candidates.length - 1, Math.floor(random() * candidates.length))]
+      : undefined;
+    const avatarUrl = selected?.url || currentAvatarUrl;
+    if (avatarUrl) usedAvatarUrls.add(avatarUrl);
+    return avatarUrl ? { ...character, avatarUrl } : character;
+  });
+}
+
+export function randomizeViralCharacterAvatars(project: DramaProject): DramaProject {
   return {
     ...project,
-    characters: project.characters.map((character) => {
-      const avatar = selectedAvatars[avatarGenderForCharacter(character)];
-      return avatar ? { ...character, avatarUrl: avatar.url } : character;
+    characters: assignDistinctCharacterAvatars(project.characters, {
+      randomizeCharacterIds: project.characters.map((character) => character.id)
     })
   };
 }

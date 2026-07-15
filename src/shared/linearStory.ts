@@ -8,6 +8,7 @@ import { pickJojoPhotoAssetId, pickViralPhotoAssetId } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
 import { applyPromptJourneyRoster, groupTitleForPrompt, isGroupChatPrompt } from "./storyIdentity.js";
+import { attachStorySegment, parseStorySegment, type StorySegment } from "./storySegments.js";
 import { randomizeViralCharacterProfiles } from "./viralPersona.js";
 
 export type PromptCard = {
@@ -17,10 +18,11 @@ export type PromptCard = {
   messageIds: string[];
   summary: string;
   suggestedPrompt?: string;
+  segment?: StorySegment;
 };
 
 export type StoryArchive = {
-  version: 1;
+  version: 2;
   exportedAt: string;
   promptCards: PromptCard[];
   project: DramaProject;
@@ -344,7 +346,7 @@ export function generateStorySegment({
   }
   messages = injectRomanticMusicMessage(messages, workingProject, [premise, previousPrompt, contextHook].join(" "), makeId("segment"));
 
-  const card: PromptCard = {
+  const cardWithoutSegment: PromptCard = {
     id: makeId("prompt"),
     prompt: premise,
     createdAt: new Date().toISOString(),
@@ -357,6 +359,7 @@ export function generateStorySegment({
     brief: [...promptCards.map((cardItem) => cardItem.prompt), premise].join("\n"),
     messages: [...project.messages, ...messages]
   });
+  const card = attachStorySegment(cardWithoutSegment, project, nextProject);
 
   return { card, messages, project: nextProject };
 }
@@ -445,7 +448,7 @@ export function suggestNextStoryPrompt({
 
 export function makeStoryArchive(project: DramaProject, promptCards: PromptCard[]): StoryArchive {
   return {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     promptCards,
     project
@@ -454,11 +457,44 @@ export function makeStoryArchive(project: DramaProject, promptCards: PromptCard[
 
 export function parseStoryArchive(value: unknown): StoryArchive {
   if (!value || typeof value !== "object") throw new Error("导入文件不是有效 JSON 对象");
-  const archive = value as Partial<StoryArchive>;
+  const archive = value as Partial<StoryArchive> & { version?: unknown };
+  const project = parseProject(archive.project);
+  const exportedAt = typeof archive.exportedAt === "string" ? archive.exportedAt : new Date().toISOString();
+  const validMessageIds = new Set(project.messages.map((message) => message.id));
+  const promptCards = Array.isArray(archive.promptCards)
+    ? archive.promptCards.flatMap((rawCard, index): PromptCard[] => {
+        if (!rawCard || typeof rawCard !== "object") return [];
+        const candidate = rawCard as Partial<PromptCard>;
+        const prompt = typeof candidate.prompt === "string" ? candidate.prompt.trim() : "";
+        if (!prompt) return [];
+        const rawMessageIds = Array.isArray(candidate.messageIds)
+          ? candidate.messageIds.filter((id): id is string => typeof id === "string" && validMessageIds.has(id))
+          : [];
+        const parsedSegment = parseStorySegment(candidate.segment, rawMessageIds);
+        const messageIds = [...new Set(
+          (rawMessageIds.length ? rawMessageIds : parsedSegment?.messageIds ?? []).filter((id) => validMessageIds.has(id))
+        )];
+        const segment = parsedSegment ? { ...parsedSegment, messageIds } : undefined;
+        const suggestedPrompt = normalizeSuggestedPrompt(
+          typeof candidate.suggestedPrompt === "string" ? candidate.suggestedPrompt : undefined
+        );
+        return [{
+          id: typeof candidate.id === "string" && candidate.id.trim() ? candidate.id : `imported-prompt-${index + 1}`,
+          prompt,
+          createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : exportedAt,
+          messageIds,
+          summary: typeof candidate.summary === "string" && candidate.summary.trim()
+            ? candidate.summary
+            : `导入故事卡 ${index + 1}，共 ${messageIds.length} 条消息`,
+          ...(suggestedPrompt ? { suggestedPrompt } : {}),
+          ...(segment ? { segment } : {})
+        }];
+      })
+    : [];
   return {
-    version: 1,
-    exportedAt: typeof archive.exportedAt === "string" ? archive.exportedAt : new Date().toISOString(),
-    promptCards: Array.isArray(archive.promptCards) ? archive.promptCards as PromptCard[] : [],
-    project: parseProject(archive.project)
+    version: 2,
+    exportedAt,
+    promptCards,
+    project
   };
 }

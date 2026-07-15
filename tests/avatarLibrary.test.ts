@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignDistinctCharacterAvatars,
   avatarById,
   avatarGenderForCharacter,
   avatarsByGender,
@@ -56,5 +57,17 @@ describe("微信角色头像性别", () => {
     const neutralAvatar = neutralEditorialAvatars()[0];
 
     expect(genderMatchedAvatarUrl({ ...girl, avatarUrl: neutralAvatar.url })).toBe(neutralAvatar.url);
+  });
+
+  it("多人角色头像重复时会从对应头像池随机补成不同头像", () => {
+    const girl = sampleProject.characters.find((character) => character.id === "girl")!;
+    const characters = assignDistinctCharacterAvatars([
+      girl,
+      { ...girl, id: "friend", name: "周雨" },
+      { ...girl, id: "lawyer", name: "周律师" }
+    ], { random: () => 0 });
+
+    expect(new Set(characters.map((character) => character.avatarUrl)).size).toBe(3);
+    expect(characters.every((character) => genderMatchedAvatarUrl(character) === character.avatarUrl)).toBe(true);
   });
 });

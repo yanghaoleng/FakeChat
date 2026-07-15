@@ -6,7 +6,6 @@ import { isGroupChatPrompt } from "./storyIdentity.js";
 import {
   messageTypes,
   parseProject,
-  sides,
   type Character,
   type ChatMessage,
   type ChatSession,
@@ -377,15 +376,6 @@ function normalizeSfx(value: unknown): DramaProject["sfx"] {
     meme: stringValue(value.meme),
     ambient: stringValue(value.ambient)
   };
-}
-
-function replacementIndexFor(messages: ChatMessage[], preferredIndex: number): number {
-  if (!["transfer", "image", "meme", "music"].includes(messages[preferredIndex]?.type)) {
-    return preferredIndex;
-  }
-
-  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme", "music"].includes(message.type));
-  return fallbackIndex === -1 ? preferredIndex : fallbackIndex;
 }
 
 function limitMessages(messages: ChatMessage[], request: ScriptGenerateRequest): ChatMessage[] {
