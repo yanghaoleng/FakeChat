@@ -5,6 +5,8 @@ import {
   archiveFooterTitle,
   archiveFooterUrl,
   archiveImageHeight,
+  archiveMediaCount,
+  archiveParticipantTitle,
   archiveSquareCrop,
   embedArchiveInPngBytes,
   extractArchiveFromPngBytes,
@@ -28,6 +30,19 @@ describe("PNG story archive", () => {
     expect(archiveFooterUrl).toBe("ququ.mikeywa.icu");
     expect(archiveSquareCrop(800, 1400)).toEqual({ size: 800, x: 0, y: 412 });
     expect(archiveSquareCrop(1400, 800)).toEqual({ size: 800, x: 300, y: 0 });
+  });
+
+  it("summarizes two-person and multi-person archive covers", () => {
+    expect(archiveParticipantTitle([{ name: "叫叫" }, { name: "铃铛" }])).toBe("叫叫、铃铛的聊天");
+    expect(archiveParticipantTitle([{ name: "叫叫" }, { name: "铃铛" }, { name: "系统" }, { name: "猪小弟" }]))
+      .toBe("叫叫、铃铛等 4 人的聊天");
+    expect(archiveMediaCount([
+      { type: "text" },
+      { type: "system" },
+      { type: "image" },
+      { type: "meme" },
+      { type: "music" }
+    ])).toBe(3);
   });
 
   it("embeds and extracts UTF-8 archive data from a viewable PNG", () => {

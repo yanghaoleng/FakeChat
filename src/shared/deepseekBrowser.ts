@@ -1,5 +1,7 @@
 import { normalizeDeepSeekProject, extractJson } from "./deepseekProject.js";
+import { avatarGenderForCharacter, avatarsByGender } from "./avatarLibrary.js";
 import { resolveFirstViralPeerCharacters } from "./chatPeerName.js";
+import { chatSessionIdForMessage, chatSessionTitle, getChatSessions, mergeChatSessions } from "./chatSessions.js";
 import { isGenericImageCopy } from "./imageNarrative.js";
 import { isJojoProject } from "./jojoProject.js";
 import {
@@ -12,8 +14,13 @@ import {
 } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject, type ScriptGenerateRequest } from "./schema.js";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
+import {
+  applyGeneratedJourneyIdentities,
+  applyPromptJourneyRoster,
+  groupTitleForPrompt,
+  isGroupChatPrompt
+} from "./storyIdentity.js";
 import type { PromptCard } from "./linearStory.js";
-import { viralRegionalInstruction } from "./viralPersona.js";
 
 declare const __DEEPSEEK_BROWSER_CONFIG__: {
   apiKey?: string;
@@ -130,8 +137,8 @@ function roleForSide(project: DramaProject, side: ChatMessage["side"]) {
 
 function roleForGeneratedMessage(project: DramaProject, message: ChatMessage, index: number) {
   if (message.side === "center") return undefined;
-  if (!isJojoProject(project)) return roleForSide(project, message.side);
   const validRole = message.roleId && project.characters.some((character) => character.id === message.roleId) ? message.roleId : undefined;
+  if (!isJojoProject(project)) return validRole || roleForSide(project, message.side);
   if (validRole) return validRole;
   const corpus = `${message.roleId || ""} ${message.text || ""} ${message.ttsText || ""}`;
   const playerRole = project.characters.find((character) => character.side === "right")?.id || "jiaojiao";
@@ -278,10 +285,121 @@ function mergeAssets(project: DramaProject, generated: DramaProject) {
   return next;
 }
 
+function mergeGeneratedCharacters(project: DramaProject, generated: DramaProject, premise: string, groupIntent: boolean) {
+  const baseCharacters = resolveFirstViralPeerCharacters(project, generated, premise);
+  if (isJojoProject(project)) return baseCharacters;
+  if (groupIntent && project.chatMode !== "group" && !project.messages.length) {
+    const generatedRoster = generated.characters.slice(0, 6);
+    const roster = generatedRoster.length >= 2 ? generatedRoster : baseCharacters;
+    const rightCharacter = roster.find((character) => character.side === "right") ?? roster[0];
+    const normalizedRoster = roster.map((character) => ({
+      ...character,
+      side: character.id === rightCharacter.id ? "right" as const : "left" as const
+    }));
+    return applyGeneratedJourneyIdentities(normalizedRoster, generated.characters, premise);
+  }
+  if (project.chatMode === "group") {
+    return applyGeneratedJourneyIdentities(baseCharacters, generated.characters, premise);
+  }
+
+  const merged = new Map(baseCharacters.map((character) => [character.id, { ...character }]));
+  const knownNames = new Set(baseCharacters.map((character) => character.name.trim()).filter(Boolean));
+  const referencedRoleIds = new Set([
+    ...generated.messages.map((message) => message.roleId || ""),
+    ...generated.chatSessions.flatMap((session) => session.participantIds)
+  ]);
+
+  for (const character of generated.characters) {
+    if (merged.size >= 6) break;
+    if (merged.has(character.id)) continue;
+    if (!referencedRoleIds.has(character.id) || character.side === "right") continue;
+    if (knownNames.has(character.name.trim())) continue;
+    const usedAvatarUrls = new Set([...merged.values()].map((item) => item.avatarUrl).filter(Boolean));
+    const avatarCandidates = avatarsByGender(avatarGenderForCharacter(character));
+    const avatarOffset = avatarCandidates.length ? Math.abs(hashText(`${character.id}:${character.name}`)) % avatarCandidates.length : 0;
+    const uniqueAvatar = avatarCandidates.length
+      ? [...avatarCandidates.slice(avatarOffset), ...avatarCandidates.slice(0, avatarOffset)]
+        .find((avatar) => !usedAvatarUrls.has(avatar.url))
+      : undefined;
+    merged.set(character.id, {
+      ...character,
+      side: "left",
+      avatarUrl: character.avatarUrl && !usedAvatarUrls.has(character.avatarUrl)
+        ? character.avatarUrl
+        : uniqueAvatar?.url || character.avatarUrl
+    });
+    knownNames.add(character.name.trim());
+  }
+  return applyGeneratedJourneyIdentities([...merged.values()].slice(0, 6), generated.characters, premise);
+}
+
+function mergeGeneratedChatSessions(project: DramaProject, generated: DramaProject, characters: DramaProject["characters"], groupIntent: boolean) {
+  if (isJojoProject(project) || groupIntent) return project.chatMode === "group" ? project.chatSessions : [];
+  const existing = new Map(project.chatSessions.map((session) => [session.id, session]));
+  return mergeChatSessions(project, generated, characters).map((session) => {
+    const previous = existing.get(session.id);
+    return previous ? { ...session, title: previous.title, participantIds: previous.participantIds } : session;
+  }).slice(0, 4);
+}
+
+function assignGeneratedMessageSessions(
+  project: DramaProject,
+  characters: DramaProject["characters"],
+  chatSessions: DramaProject["chatSessions"],
+  messages: ChatMessage[],
+  groupIntent: boolean
+) {
+  const effectiveProject = { ...project, chatMode: groupIntent ? "group" as const : project.chatMode, characters, chatSessions };
+  const effectiveSessions = getChatSessions(effectiveProject);
+  const validSessionIds = new Set(effectiveSessions.map((session) => session.id));
+  const singleSessionId = effectiveSessions[0]?.id;
+  let previousSessionId = singleSessionId;
+
+  return messages.map((message) => {
+    let sessionId = message.sessionId && validSessionIds.has(message.sessionId) ? message.sessionId : undefined;
+    if (isJojoProject(project) || groupIntent) sessionId = singleSessionId;
+    if (!sessionId && message.roleId) {
+      const matches = effectiveSessions.filter((session) => session.participantIds.includes(message.roleId!));
+      if (matches.length === 1) sessionId = matches[0].id;
+    }
+    sessionId = sessionId || previousSessionId || singleSessionId;
+    if (sessionId) previousSessionId = sessionId;
+    return sessionId ? { ...message, sessionId } : message;
+  });
+}
+
 function serializeMessage(project: DramaProject, message: ChatMessage, index: number) {
   const character = message.roleId ? project.characters.find((item) => item.id === message.roleId) : undefined;
   const speaker = character?.name || (message.side === "right" ? "男主" : message.side === "left" ? "女主" : "系统");
-  return `${index + 1}. ${speaker}/${message.type}: ${scrubStaleMotifs(message.text || message.ttsText || "媒体消息")}`;
+  const sessionId = chatSessionIdForMessage(project, message);
+  const session = getChatSessions(project).find((item) => item.id === sessionId);
+  const sessionLabel = session ? `${chatSessionTitle(project, session)}/${session.id}` : sessionId;
+  return `${index + 1}. [会话:${sessionLabel}] ${speaker}(roleId=${message.roleId || "system"})/${message.type}: ${scrubStaleMotifs(message.text || message.ttsText || "媒体消息")}`;
+}
+
+function chatSessionCatalog(project: DramaProject) {
+  return getChatSessions(project).map((session, index) => {
+    const participants = session.participantIds.map((roleId) => {
+      const character = project.characters.find((item) => item.id === roleId);
+      return character ? `${character.name}(roleId=${character.id})` : roleId;
+    }).join("、");
+    return `${index + 1}. ${chatSessionTitle(project, session)} (sessionId=${session.id})：${participants}`;
+  }).join("\n");
+}
+
+function chatSessionGenerationInstruction(project: DramaProject, groupIntent = project.chatMode === "group") {
+  if (isJojoProject(project) || groupIntent) {
+    return [
+      "这个项目只有一个群聊会话：禁止新建其他会话，禁止将群成员拆成私聊。",
+      "chatSessions 最多输出当前这一个会话；所有 messages 都必须使用同一个 sessionId。"
+    ].join("\n");
+  }
+  return [
+    "这是微信 direct 多会话故事。根据当前剧情可以只推进原会话，也可以自然新建私聊；整个项目保持 1-4 个 chatSessions，不要为了凑数建群。",
+    "chatSessions 每项必须有 id、title、participantIds；新联系人必须先追加到 characters，所有会话都必须包含右侧玩家，联系人在左侧，characters 总数不得超过 6。",
+    "每条 message 必须有有效 sessionId。messages 仍是全局剧情时间线：不同会话的消息可以按发生顺序交错排列，用会话切换同时推进同一剧情；不要把 messages 嵌套进 chatSessions。",
+    "沿用已有会话和角色的 id、姓名与参与关系；只有剧情明确需要新联系人时才新建 id。"
+  ].join("\n");
 }
 
 function targetMessageRange(project: DramaProject) {
@@ -305,9 +423,33 @@ function leftSideCharacter(project: DramaProject) {
   return project.characters.find((character) => character.side === "left") || project.characters[1] || project.characters[0];
 }
 
-function viralPerspectiveInstruction(project: DramaProject) {
+function viralPerspectiveInstruction(project: DramaProject, groupIntent = project.chatMode === "group") {
   const rightCharacter = rightSideCharacter(project);
   const leftCharacter = leftSideCharacter(project);
+  if (groupIntent) {
+    const leftCharacters = project.characters.filter((character) => character.side === "left");
+    const roleList = project.characters.map((character) => `${character.name}(roleId=${character.id}, side=${character.side})`).join("、");
+    if (project.chatMode !== "group") {
+      return {
+        rightLabel: rightCharacter.name,
+        leftLabel: "其他群成员",
+        rightCharacter,
+        leftCharacter,
+        tone: "群里每个人都要有明显不同的说话节奏；围观者可以追问、起哄、截图和补刀，但不能抢走主线。",
+        sideRule: `当前 Prompt 明确要求微信多人群聊。右侧只保留一名玩家，Prompt 里的其他具名成员全部在左侧。`,
+        roleRule: "characters 必须按当前 Prompt 收齐 3-6 名群成员，每人使用独立 roleId；恰好一名玩家 side=right，其余成员 side=left。每条非 system 消息必须使用准确 roleId。"
+      };
+    }
+    return {
+      rightLabel: rightCharacter.name,
+      leftLabel: "其他群成员",
+      rightCharacter,
+      leftCharacter,
+      tone: "群里每个人都要有明显不同的说话节奏；围观者可以追问、起哄、截图和补刀，但不能抢走主线。",
+      sideRule: `这是微信多人群聊。用户/玩家/我方扮演${rightCharacter.name}（roleId=${rightCharacter.id}），永远在右侧；${leftCharacters.map((character) => character.name).join("、")}永远在左侧。`,
+      roleRule: `固定群成员只有这 ${project.characters.length} 人：${roleList}。每条非 system 消息必须填写其中一个准确 roleId，禁止新增、删除、合并或改名。`
+    };
+  }
   const rightLabel = rightCharacter.id === "girl" ? "女主" : "男主";
   const leftLabel = leftCharacter.id === "girl" ? "女主" : "男主";
   const tone = rightCharacter.id === "girl"
@@ -320,7 +462,7 @@ function viralPerspectiveInstruction(project: DramaProject) {
     leftCharacter,
     tone,
     sideRule: `用户/玩家/我方永远扮演${rightLabel}：${rightLabel} side=right，${leftLabel} side=left。哪怕你先写${leftLabel}开口，也不能把左右写反。`,
-    roleRule: `角色必须是两个：右侧${rightLabel}（roleId=${rightCharacter.id}）、左侧${leftLabel}（roleId=${leftCharacter.id}）；语音描述要利于 TTS 表演。`
+    roleRule: `右侧玩家固定是${rightLabel}（roleId=${rightCharacter.id}）；左侧已有联系人是${leftLabel}（roleId=${leftCharacter.id}）。direct 多会话只能按剧情需要追加左侧联系人，不得替换或复制玩家，characters 总数 2-6 个；每条非 system 消息必须使用准确 roleId。`
   };
 }
 
@@ -330,8 +472,9 @@ export function viralNamedCharacterStyleInstruction(project: DramaProject) {
   return [
     `角色“峰哥”（roleId=${fengge.id}）是左侧聊天对象，不是玩家；续写时必须保持这一身份和位置。`,
     "峰哥的回答要像在解答世间万物：先迅速给出一个高确定性结论，再用“恰恰相反”式的反向翻转拆掉对方的预设，最后落到一句接地气的判断。",
-    "表达节奏用短句断言与稍长的生活化比喻交替；可以自然使用“这是好事呀”“我跟你说”“说白了”“话又说回来”，但不要机械重复口头禅。",
-    "他不做温柔情感导师，也不只抖机灵；要从红包、已读不回、见面、工作和日常小事里提炼出一套看似能解释万物的民间逻辑，偶尔自我拆台。",
+    "表达节奏用短句断言与稍长的生活化比喻交替；可以自然使用“这是好事”“我跟你说”“说白了”“话又说回来”，但不要机械重复口头禅。",
+    "他的典型观点必须进入回答：先看对方做了什么，不替任何人自我感动；不强行给小事上意义；人是矛盾的，也要为自己的选择负责；没有现场就保留判断；真正解决问题靠行动和执行。",
+    "他不做温柔情感导师，也不只抖机灵；要从红包、已读不回、见面、工作和日常小事里提炼出一套看似能解释万物的民间逻辑，观点要具体，偶尔自我拆台。",
     "如果没有足够信息，就说得到现场看看，不能凭空把猜测说成事实；不要输出性别羞辱、群体贬损或极端社会理论。"
   ].join("\n");
 }
@@ -358,8 +501,9 @@ function jojoRoleListInstruction(project: DramaProject) {
   }).join("；");
 }
 
-function repairInstruction(project: DramaProject, attempt: number) {
-  const viralInstruction = viralPerspectiveInstruction(project);
+function repairInstruction(project: DramaProject, attempt: number, prompt = "") {
+  const groupIntent = project.chatMode === "group" || isGroupChatPrompt(prompt);
+  const viralInstruction = viralPerspectiveInstruction(project, groupIntent);
   const hardTemplate = attempt > 1
     ? [
         "第二次返工，必须按这个密度写：3句内有动作，5句内出现可视化证据，8句内发生关系反转。",
@@ -373,6 +517,7 @@ function repairInstruction(project: DramaProject, attempt: number) {
     "重新输出严格 JSON：第一条不得问候，不得问“聊什么”，不得写“声音好熟悉/声音像谁/同学很像/像一个人/大众脸/大众嗓/认错人”。",
     viralInstruction.sideRule,
     `${viralInstruction.leftLabel}永远在左边 side=left，${viralInstruction.rightLabel}永远在右边 side=right，绝对不要反过来。`,
+    ...(groupIntent ? ["title 必须是群名，不能使用某个群成员的人名；chatMode 必须是 group。"] : []),
     "第一屏必须直接出现当前 Prompt 里的具体事件：下单、金额/定金、现场照片、截图备注、只有两人知道的旧细节、误会被翻出。",
     "图片消息必须写清照片/截图里到底是什么，禁止只写“关键照片/证据/图片”。图片内容只能服务当前剧情，不要复用固定例子。",
     "每 2-3 条消息就要推进一次信息，不要原地追问。",
@@ -403,7 +548,7 @@ function removeDuplicateMessages(messages: ChatMessage[]) {
   });
 }
 
-function systemPrompt(project: DramaProject) {
+function systemPrompt(project: DramaProject, prompt = "") {
   if (isJojoProject(project)) {
     const jojoInstruction = jojoPerspectiveInstruction(project);
     return [
@@ -424,20 +569,25 @@ function systemPrompt(project: DramaProject) {
       "transfer 很少出现：平均 3-5 段最多 1 段；本段最多 1 条；只有当前 Prompt 明确涉及会议室费、报销、垫付、早餐、车费、发票等公司费用时才用，否则用普通 text 推进。",
       "叫叫公司群聊不要生成 music 类型。",
       "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme。",
-      "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
-      "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色、语言、地域、方言或口音设定；没有自然建议就留空。",
+      chatSessionGenerationInstruction(project),
+      "输出结构必须匹配 DramaProject：id,title,brief,chatMode,stylePreset,fps,canvas,characters,chatSessions,assets,messages,sfx,audioMix。",
+      "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色或语言设定；没有自然建议就留空。",
       "stylePreset 必须是 jojo-company-chat；assets 必须是数组；messages 必须是数组；sfx 必须是对象。"
     ].join("\n");
   }
-  const viralInstruction = viralPerspectiveInstruction(project);
+  const groupIntent = project.chatMode === "group" || isGroupChatPrompt(prompt);
+  const viralInstruction = viralPerspectiveInstruction(project, groupIntent);
   const englishStory = /\bLanguage:\s*English\b/i.test(project.brief);
   return [
     "你是爆款聊天记录短剧编剧，擅长写高密度微信聊天短剧。输出必须是严格 JSON，不要 markdown。",
+    groupIntent
+      ? "当前故事是多人群聊：chatMode 必须是 group；title 必须像真实群名，使用 3-18 个字符，不能填某个成员的人名，也不能写成“某某和某某的聊天”。"
+      : "当前故事是私聊或多会话故事：chatMode 保持 direct；每个 chatSessions.title 使用对应联系人的名字。",
     englishStory
-      ? "This story is in English. Write every chat message, ttsText, transferNote, image description, character name, and suggestedPrompt in concise, natural conversational English. Do not insert Chinese dialogue or Chinese regional slang."
+      ? "This story is in English. Write every chat message, ttsText, transferNote, image description, character name, and suggestedPrompt in concise, natural conversational English. Do not insert Chinese dialogue."
       : "所有聊天内容使用自然中文。",
     "成片观感：横向聊天画布，大字号短消息，连续滚屏，像真实聊天局部放大。用户只看聊天，不看旁白，也必须看懂剧情。",
-    project.messages.length ? "你正在续写同一条线。只输出新段落，不要重复已有对话。" : "你正在写第一段。它要一次性生成到位，像能直接剪成短视频的完整开局。",
+    project.messages.length ? "你正在续写同一条全局剧情时间线。只输出新段落，不要重复已有对话，不要混淆会话边界。" : "你正在写第一段。它要一次性生成到位，像能直接剪成短视频的完整开局。",
     `本段节拍：${storyBeats.join(" -> ")}。`,
     targetMessageRange(project),
     mediaRule(project),
@@ -447,29 +597,34 @@ function systemPrompt(project: DramaProject) {
     "每一句都要有信息量：试探、隐瞒、证据、反问、误会、旧称呼、金额、截图、沉默、钩子。不要写寒暄废话。",
     "网红版要更暧昧、更情绪化：多写拉扯、吃醋、克制、欲言又止、嘴硬心软、旧关系刺痛；情绪要递进，不要只靠大吵。",
     "当前新 Prompt 的明确修改优先级最高。用户如果更改名字、职业、性格、关系、性别、前史或世界设定，立即以新设定为准；默认用秘密、误会或身份揭露自然承接，不要反驳前后矛盾。只有用户明确说从头重写或重新开始时，才把修改视为硬重置。",
-    englishStory ? "The international-student story should use natural campus English without forced regional slang." : viralRegionalInstruction(project),
+    englishStory ? "The international-student story should use natural campus English." : "使用自然、清楚的普通中文。",
     "第一条消息不得是问候，必须直接进入事件：下单、账单备注、现场照片、误会、旧称呼、截图、备注。",
     "如果 Prompt 里有陪聊/旧关系：第一屏必须出现下单、订单备注、只有两人知道的具体细节、现场照片或备注，不许从陌生人闲聊开始。",
     viralInstruction.sideRule,
     "transfer 是低频可选消息类型，本段最多 1 条，只在剧情确实把付款、补偿、订单、押金、红包作为核心冲突时出现；出现时必须给合理 amount 和 transferNote，不要默认 200。",
     "meme 是可选消息类型，只用于真实聊天里的表情反应；text 写情绪或表情名，如“流汗”“白眼”“偷笑”“委屈”，不要写固定口头禅。",
-    "music 是低频可选消息类型，只在两个人关系明显升温、暧昧确认或分享心情时出现，text 写分享歌曲时的自然语气。不要每段都发音乐，具体曲目由系统匹配。",
+    groupIntent ? "群聊不要生成 music 类型。" : "music 是低频可选消息类型，只在两个人关系明显升温、暧昧确认或分享心情时出现，text 写分享歌曲时的自然语气。不要每段都发音乐，具体曲目由系统匹配。",
     "image 类型消息的 text 必须描述照片/截图的实际内容：主体是谁、在哪里、出现了什么关键物件/备注/动作。禁止只写“关键照片/证据/图片/截图”。",
     "image 类型只用 text 一个字段描述图片内容，写清这张图里具体有什么；不要拆成 label/title/detail，也不要输出额外图片文案字段。",
     "不要复用上一轮或示例里的固定图片梗、固定关系梗、固定备注梗；除非用户当前 Prompt 明确要求，否则完全按当前剧情生成新照片内容。",
     "禁止低质套话：不要写“你好”“想聊什么”“你声音好熟悉”“声音跟同学很像”“大众脸/大众嗓”“认错人”“真的吗”“你是谁呀”这类平铺直叙；要用具体细节和压迫感推动。",
     `${viralInstruction.leftLabel}永远在左边 side=left，${viralInstruction.rightLabel}永远在右边 side=right，绝对不要反过来。system 只用于时间/提示，少用。`,
-    `${viralInstruction.tone}两个人的语气要明显不同。`,
+    groupIntent ? viralInstruction.tone : `${viralInstruction.tone}两个人的语气要明显不同。`,
     viralNamedCharacterStyleInstruction(project),
     "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme；music 使用 send。",
     viralInstruction.roleRule,
-    project.messages.length
-      ? "沿用已经确定的人物姓名，不要在续写中擅自改名。"
+    chatSessionGenerationInstruction(project, groupIntent),
+    groupIntent
+      ? project.chatMode === "group" && project.messages.length
+        ? "沿用已经确定的人物姓名和群成员，不要在续写中擅自改名、删人或新增角色。"
+        : "从当前 Prompt 提取所有具名群成员，characters 中必须完整列出；群名写入 title，不要把任一成员姓名直接当作 title。"
+      : project.messages.length
+        ? "沿用已经确定的人物姓名与 roleId；仅当新会话是推进剧情所必需时，才可追加左侧新联系人。"
       : `第一段必须在 characters 中确定左侧聊天对象（${viralInstruction.leftLabel}）的真实姓名：当前 Prompt 明确写了名字就原样采用；没有写名字就由你编一个自然的中文姓名。不要用“男主”“女主”“对方”等占位词。`,
-    "输出结构必须匹配 DramaProject：id,title,brief,stylePreset,fps,canvas,characters,assets,messages,sfx,audioMix。",
+    "输出结构必须匹配 DramaProject：id,title,brief,chatMode,stylePreset,fps,canvas,characters,chatSessions,assets,messages,sfx,audioMix。",
     englishStory
-      ? "For suggestedPrompt, write only the next core plot beat in 1-2 concise sentences. Do not prefix it with 'Continue' and do not repeat language, locale, accent, or fixed character setup."
-      : "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色、语言、地域、方言或口音设定；没有自然建议就留空。",
+      ? "For suggestedPrompt, write only the next core plot beat in 1-2 concise sentences. Do not prefix it with 'Continue' and do not repeat language or fixed character setup."
+      : "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色或语言设定；没有自然建议就留空。",
     "assets 必须是数组；messages 必须是数组；sfx 必须是对象，不要输出数组。"
   ].join("\n");
 }
@@ -493,13 +648,19 @@ function userPrompt(project: DramaProject, prompt: string, promptCards: PromptCa
   return [
     `当前新 Prompt：${prompt}`,
     "",
+    "当前角色：",
+    project.characters.map((character) => `${character.name}(roleId=${character.id}, side=${character.side})`).join("、"),
+    "",
+    "当前聊天会话：",
+    chatSessionCatalog(project),
+    "",
     "此前 Prompt 卡片：",
     promptCards.length ? promptCards.map((card, index) => `${index + 1}. ${scrubStaleMotifs(card.prompt)}`).join("\n") : "无",
     "",
     "目前已经生成的所有对话：",
     project.messages.length ? project.messages.map((message, index) => serializeMessage(project, message, index)).join("\n") : "无",
     "",
-    "上面的历史只用于承接人物关系和已发生事实；如果当前新 Prompt 明确修改旧设定，以当前新 Prompt 为准，把旧设定视为被覆盖或可解释的误会。不要复用上一轮图片文案或固定例子。",
+    "上面的历史按全局发生顺序排列，[会话:名称/id] 是不可混淆的聊天线。历史只用于承接人物关系和已发生事实；如果当前新 Prompt 明确修改旧设定，以当前新 Prompt 为准，把旧设定视为被覆盖或可解释的误会。不要复用上一轮图片文案或固定例子。",
     "请只续写下一段，不要重写整条线。输出严格 JSON。"
   ].join("\n");
 }
@@ -510,9 +671,9 @@ function makeDeepSeekBody(project: DramaProject, prompt: string, promptCards: Pr
     temperature: repairAttempt ? 0.94 : 0.86,
     response_format: { type: "json_object" },
     messages: [
-      { role: "system", content: systemPrompt(project) },
+      { role: "system", content: systemPrompt(project, prompt) },
       { role: "user", content: userPrompt(project, prompt, promptCards) },
-      ...(repairAttempt ? [{ role: "user", content: repairInstruction(project, repairAttempt) }] : [])
+      ...(repairAttempt ? [{ role: "user", content: repairInstruction(project, repairAttempt, prompt) }] : [])
     ]
   };
 }
@@ -562,6 +723,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
   const premise = prompt.replace(/\s+/g, " ").trim();
   if (!premise) throw new Error("Prompt 为空");
   if (!normalizedConfig.apiKey) throw new Error("DeepSeek API key 未配置");
+  const groupIntent = project.chatMode === "group" || (!isJojoProject(project) && isGroupChatPrompt(premise));
 
   const request: ScriptGenerateRequest = {
     brief: [...promptCards.map((card) => card.prompt), premise].join("\n"),
@@ -615,7 +777,9 @@ export async function generateDeepSeekStorySegmentWithConfig({
     console.warn(`[${logLabel}] low-quality opening; retrying with repair prompt`, { repairAttempt });
     generated = await fetchGeneratedProject(repairAttempt);
   }
-  const baseCharacters = resolveFirstViralPeerCharacters(project, generated.project, premise);
+  const mergedCharacters = mergeGeneratedCharacters(project, generated.project, premise, groupIntent);
+  const baseCharacters = applyPromptJourneyRoster(mergedCharacters, premise, groupIntent);
+  const chatSessions = mergeGeneratedChatSessions(project, generated.project, baseCharacters, groupIntent);
   const cardId = makeId("prompt");
   const normalizedMessages = removeDuplicateMessages(generated.project.messages)
     .map((message, index) => ({
@@ -624,13 +788,19 @@ export async function generateDeepSeekStorySegmentWithConfig({
       roleId: roleForGeneratedMessage({ ...project, characters: baseCharacters }, message, index)
     }))
     .map((message) => {
-      if (!isJojoProject(project) || !message.roleId) return message;
+      if (!message.roleId) return message;
       const character = baseCharacters.find((item) => item.id === message.roleId);
       return character ? { ...message, side: character.side } : message;
     })
     .map((message) => normalizeGeneratedImageMessage(project, message))
     .map((message) => isJojoProject(project) ? normalizeJojoGeneratedMessage(message) : message);
-  const messages = tuneGeneratedMediaDensity(project, normalizedMessages, premise);
+  const messages = assignGeneratedMessageSessions(
+    project,
+    baseCharacters,
+    chatSessions,
+    tuneGeneratedMediaDensity(project, normalizedMessages, premise),
+    groupIntent
+  );
   const card: PromptCard = {
     id: cardId,
     prompt: premise,
@@ -641,9 +811,15 @@ export async function generateDeepSeekStorySegmentWithConfig({
 
   const nextProject = parseProject({
     ...project,
-    title: nextProjectTitle(project, generated.project),
+    title: !isJojoProject(project) && groupIntent
+      ? project.chatMode === "group" && project.messages.length
+        ? project.title
+        : groupTitleForPrompt(premise, generated.project.title, baseCharacters.map((character) => character.name))
+      : nextProjectTitle(project, generated.project),
     brief: request.brief,
+    chatMode: !isJojoProject(project) && groupIntent ? "group" : project.chatMode,
     characters: baseCharacters,
+    chatSessions,
     assets: mergeAssets(project, generated.project),
     messages: [...project.messages, ...messages],
     sfx: { ...project.sfx, ...generated.project.sfx },

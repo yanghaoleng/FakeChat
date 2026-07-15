@@ -231,7 +231,7 @@ export function injectRomanticMusicMessage(
   context: string,
   idPrefix = "music"
 ) {
-  if (isJojoProject(project) || project.messages.some((message) => message.type === "music") || messages.some((message) => message.type === "music")) return messages;
+  if (isJojoProject(project) || project.chatMode === "group" || project.messages.some((message) => message.type === "music") || messages.some((message) => message.type === "music")) return messages;
   if (/不要(?:加|发|用)?音乐|无音乐/.test(context) || !romanticContextPattern.test(context)) return messages;
 
   const lowerBound = Math.max(1, Math.floor(messages.length * 0.42));

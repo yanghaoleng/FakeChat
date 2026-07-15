@@ -45,6 +45,7 @@ export const characterSchema = z.object({
 
 export const chatMessageSchema = z.object({
   id: z.string(),
+  sessionId: z.string().optional(),
   roleId: z.string().optional(),
   side: z.enum(sides),
   type: z.enum(messageTypes),
@@ -71,10 +72,17 @@ export const chatMessageSchema = z.object({
   durationMs: z.number().int().positive().optional()
 });
 
+export const chatSessionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  participantIds: z.array(z.string()).min(1)
+});
+
 export const projectSchema = z.object({
   id: z.string(),
   title: z.string(),
   brief: z.string(),
+  chatMode: z.enum(["direct", "group"]).default("direct"),
   stylePreset: z.enum(stylePresets).default("kuaishou-horizontal-chat"),
   fps: z.number().int().min(24).max(60).default(30),
   canvas: z.object({
@@ -82,6 +90,7 @@ export const projectSchema = z.object({
     height: z.number().int().default(852)
   }),
   characters: z.array(characterSchema).min(2),
+  chatSessions: z.array(chatSessionSchema).default([]),
   messages: z.array(chatMessageSchema),
   assets: z.array(assetSchema).default([]),
   sfx: z.object({
@@ -113,6 +122,7 @@ export const scriptGenerateRequestSchema = z.object({
 export type MemeAsset = z.infer<typeof assetSchema>;
 export type Character = z.infer<typeof characterSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
+export type ChatSession = z.infer<typeof chatSessionSchema>;
 export type DramaProject = z.infer<typeof projectSchema>;
 export type ScriptGenerateRequest = z.infer<typeof scriptGenerateRequestSchema>;
 

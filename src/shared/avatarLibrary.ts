@@ -7,7 +7,7 @@ export interface DefaultAvatar {
   title: string;
   vibe: string;
   gender: DefaultAvatarGender | "neutral";
-  group?: "western-student" | "neutral-editorial";
+  group?: "western-student" | "neutral-editorial" | "journey-character";
   url: string;
   sourceName: string;
   sourceUrl: string;
@@ -134,6 +134,22 @@ export const defaultAvatars: DefaultAvatar[] = [
     vibe: `中性插画 / ${vibe}`,
     gender: "neutral" as const,
     group: "neutral-editorial" as const,
+    url: localAvatar(`${id}.webp`),
+    ...generatedSource
+  })),
+  ...[
+    ["journey-1986-tang", "唐玄奘", "西游角色 / 唐玄奘 / 86 版妆造语言", "boy"],
+    ["journey-1986-queen", "女儿国国王", "西游角色 / 女儿国国王 / 86 版妆造语言", "girl"],
+    ["journey-1986-wukong", "孙悟空", "西游角色 / 孙悟空 / 86 版妆造语言", "boy"],
+    ["journey-1986-baigujing", "白骨精", "西游角色 / 白骨精 / 86 版妆造语言", "girl"],
+    ["journey-1986-shaseng", "沙僧", "西游角色 / 沙僧 / 86 版妆造语言", "boy"],
+    ["journey-1986-bajie", "猪八戒", "西游角色 / 猪八戒 / 86 版妆造语言", "boy"]
+  ].map(([id, title, vibe, gender]) => ({
+    id,
+    title,
+    vibe,
+    gender: gender as DefaultAvatarGender,
+    group: "journey-character" as const,
     url: localAvatar(`${id}.webp`),
     ...generatedSource
   })),

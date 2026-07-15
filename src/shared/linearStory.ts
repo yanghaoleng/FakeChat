@@ -7,10 +7,8 @@ import { randomJojoNpcProfile } from "./jojoNpcProfiles.js";
 import { pickJojoPhotoAssetId, pickViralPhotoAssetId } from "./photoLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
-import {
-  applyViralRegionalFlavorToMessages,
-  randomizeViralCharacterProfiles
-} from "./viralPersona.js";
+import { applyPromptJourneyRoster, groupTitleForPrompt, isGroupChatPrompt } from "./storyIdentity.js";
+import { randomizeViralCharacterProfiles } from "./viralPersona.js";
 
 export type PromptCard = {
   id: string;
@@ -127,15 +125,24 @@ function jojoCharacterForTurn(project: DramaProject, index: number, type: ChatMe
   return project.characters.find((character) => character.id === id) ?? project.characters[0];
 }
 
+function viralGroupCharacterForTurn(project: DramaProject, index: number) {
+  const player = project.characters.find((character) => character.side === "right") ?? project.characters[0];
+  const others = project.characters.filter((character) => character.id !== player.id);
+  const sequence = [others[0], others[1], player, others[2], others[3], player, others[4], others[0]].filter(Boolean);
+  return sequence[Math.abs(index) % sequence.length] ?? player;
+}
+
 function roleForMessage(project: DramaProject, side: ChatMessage["side"], index: number, type: ChatMessage["type"]) {
   if (side === "center") return undefined;
   if (isJojoProject(project)) return jojoCharacterForTurn(project, index, type)?.id;
+  if (project.chatMode === "group") return viralGroupCharacterForTurn(project, index)?.id;
   return roleForSide(project, side);
 }
 
 function sideForMessage(project: DramaProject, index: number, type: ChatMessage["type"]): ChatMessage["side"] {
   if (type === "system") return "center";
   if (isJojoProject(project)) return jojoCharacterForTurn(project, index, type)?.side ?? "left";
+  if (project.chatMode === "group") return viralGroupCharacterForTurn(project, index)?.side ?? "left";
   return nextSide(index);
 }
 
@@ -240,6 +247,19 @@ export function generateStorySegment({
   const lastText = project.messages.at(-1)?.text || "";
   const previousPrompt = promptCards.at(-1)?.prompt || "";
   const premise = prompt.replace(/\s+/g, " ").trim();
+  const viralGroupMode = !jojoMode && (project.chatMode === "group" || isGroupChatPrompt(premise));
+  const workingProject: DramaProject = viralGroupMode ? {
+    ...project,
+    title: project.chatMode === "group" && project.messages.length
+      ? project.title
+      : groupTitleForPrompt(premise, project.title, project.characters.map((character) => character.name)),
+    chatMode: "group",
+    characters: applyPromptJourneyRoster(project.characters, premise, true),
+    chatSessions: []
+  } : {
+    ...project,
+    characters: applyPromptJourneyRoster(project.characters, premise, false)
+  };
   const contextHook = lastText ? `接上：${lastText.slice(0, 12)}` : premise.slice(0, 14) || (jojoMode ? "公司日常" : "新的开场");
   const explicitImageRequest = /照片|图片|截图|证据|现场/.test(premise);
   const jojoPhotoContext = /工位|会议|办公室|老板|需求|排期|周报|咖啡|电梯|通勤|地铁|迟到|雨天|工牌|走廊|加班|日程|客户|打卡/.test(premise);
@@ -268,7 +288,23 @@ export function generateStorySegment({
         "猪小弟先别垫钱",
         `${premise.slice(0, 10) || "今天"}先记周报`
       ]
-    : [
+    : viralGroupMode
+      ? [
+          premise.slice(0, 18) || "这个小群是谁建的？",
+          previousPrompt ? `上次那句还没解释` : "先别急着退群。",
+          "大群里已经有人看见了。",
+          contextHook,
+          "谁把截图发出去了？",
+          "不是我，但我保存了。",
+          "你们两个先统一口径。",
+          "统一口径更像有事。",
+          "师父是不是也在这个群？",
+          "刚才不在，现在在了。",
+          "那就当什么都没说。",
+          "来不及，群名暴露了。",
+          `${premise.slice(0, 10) || "这件事"}还没结束`
+        ]
+      : [
         premise.slice(0, 18) || base[0],
         previousPrompt ? `你上次那句${previousPrompt.slice(0, 8)}` : base[1],
         "你是在躲我吗",
@@ -284,18 +320,18 @@ export function generateStorySegment({
         `${premise.slice(0, 10) || "这件事"}不是结束`
       ];
 
-  let messages: ChatMessage[] = texts.map((text, index) => makeMessage(project, project.messages.length + index, "text", text));
+  let messages: ChatMessage[] = texts.map((text, index) => makeMessage(workingProject, project.messages.length + index, "text", text));
 
   if (shouldAddTransfer) {
     const transferText = /账单|差额|订单/.test(premise) ? "我先把差额补给你" : /道歉|赔/.test(premise) ? "我赔你这一单" : "我先转你一笔";
-    messages.splice(Math.min(2, messages.length), 0, makeMessage(project, project.messages.length + messages.length, "transfer", transferText));
+    messages.splice(Math.min(2, messages.length), 0, makeMessage(workingProject, project.messages.length + messages.length, "transfer", transferText));
   }
   if (shouldAddMedia) {
     messages.splice(
       Math.min(4, messages.length),
       0,
       makeMessage(
-        project,
+        workingProject,
         project.messages.length + messages.length,
         "image",
         jojoMode ? imageHintFromContext(`公司 办公室 ${premise} ${previousPrompt} ${contextHook}`) : imageHintFromContext([premise, previousPrompt, contextHook].join(" "))
@@ -303,11 +339,10 @@ export function generateStorySegment({
     );
   }
   if (shouldAddMeme) {
-    const rawMeme = makeMessage(project, project.messages.length + messages.length, "meme", jojoMode ? "公司群表情包" : "表情包");
+    const rawMeme = makeMessage(workingProject, project.messages.length + messages.length, "meme", jojoMode ? "公司群表情包" : "表情包");
     messages.push(jojoMode ? rawMeme : normalizeMemeMessage(rawMeme, [premise, contextHook].join(" ")));
   }
-  if (!jojoMode) messages = applyViralRegionalFlavorToMessages(messages, project);
-  messages = injectRomanticMusicMessage(messages, project, [premise, previousPrompt, contextHook].join(" "), makeId("segment"));
+  messages = injectRomanticMusicMessage(messages, workingProject, [premise, previousPrompt, contextHook].join(" "), makeId("segment"));
 
   const card: PromptCard = {
     id: makeId("prompt"),
@@ -318,7 +353,7 @@ export function generateStorySegment({
   };
 
   const nextProject = parseProject({
-    ...project,
+    ...workingProject,
     brief: [...promptCards.map((cardItem) => cardItem.prompt), premise].join("\n"),
     messages: [...project.messages, ...messages]
   });
@@ -379,6 +414,15 @@ export function suggestNextStoryPrompt({
           "接着写一个同事群里的荒诞小危机，让叫叫先接锅，再由铃铛把真正的问题翻出来。"
         ];
     return normalizeSuggestedPrompt(jojoRoutes[index % jojoRoutes.length]);
+  }
+
+  if (project.chatMode === "group") {
+    const groupRoutes = [
+      "八戒另建一个不带师父的小群复盘证据，女儿国国王刚进群就指出群名有问题，孙悟空和白骨精被迫同时解释。",
+      "白骨精误把只发给孙悟空的截图发进大群，沙僧默默保存，唐僧开始追问两人为何共享同一个定位。",
+      "孙悟空和白骨精切进秘密双人群统一口径，大群里的八戒却用一条旧消息把他们的时间线彻底对上。"
+    ];
+    return normalizeSuggestedPrompt(groupRoutes[index % groupRoutes.length]);
   }
 
   if (/张阿姨|相亲|小学|林夏|暗恋|毕业照|铅笔盒|小卖部/.test(context)) {

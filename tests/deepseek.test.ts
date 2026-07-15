@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { normalizeDeepSeekProject } from "../src/shared/deepseekProject";
+import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/deepseekBrowser";
+import { sampleProject } from "../src/shared/sampleProject";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("normalizeDeepSeekProject", () => {
   it("accepts object assets and array sfx from model JSON", () => {
@@ -126,5 +132,138 @@ describe("normalizeDeepSeekProject", () => {
     expect(project.messages[0].assetId).toMatch(/^qface-/);
     expect(project.assets.some((asset) => asset.id === project.messages[0].assetId && asset.localPath?.startsWith("/memes/qface/"))).toBe(true);
     expect(project.messages[0].text).not.toBe("破防");
+  });
+
+  it("normalizes session aliases, message conversation ids, and at most six characters", () => {
+    const project = normalizeDeepSeekProject(
+      {
+        title: "多线聊天",
+        characters: [
+          { id: "boy", name: "阿泽", side: "right" },
+          { id: "girl", name: "林夏", side: "left" },
+          { id: "lawyer", name: "周律师", side: "left" },
+          { id: "boss", name: "王总", side: "left" },
+          { id: "friend", name: "老陈", side: "left" },
+          { id: "mother", name: "妈妈", side: "left" },
+          { id: "coworker", name: "小李", side: "left" }
+        ],
+        conversations: [
+          { conversationId: "chat-main", name: "林夏", participants: ["boy", "girl"] },
+          { sessionId: "chat-lawyer", title: "周律师", memberIds: ["boy", "lawyer"] }
+        ],
+        messages: [
+          { conversationId: "chat-main", roleId: "girl", side: "left", type: "text", text: "你先看合同" },
+          { conversationId: "chat-lawyer", roleId: "lawyer", side: "left", type: "text", text: "第七条有问题" }
+        ],
+        sfx: {}
+      },
+      { brief: "合同纠纷分两个会话推进", durationSeconds: 75 }
+    );
+
+    expect(project.characters).toHaveLength(6);
+    expect(project.characters.some((character) => character.id === "lawyer" && character.name === "周律师")).toBe(true);
+    expect(project.chatSessions.map((session) => session.id)).toEqual(["chat-main", "chat-lawyer"]);
+    expect(project.chatSessions[1].participantIds).toEqual(expect.arrayContaining(["boy", "lawyer"]));
+    expect(project.messages.map((message) => message.sessionId)).toEqual(["chat-main", "chat-lawyer"]);
+  });
+
+  it("atomically merges new direct-chat contacts and sessions while serializing named session history", async () => {
+    const currentProject = {
+      ...sampleProject,
+      chatSessions: [{ id: "chat-main", title: "旧聊天", participantIds: ["boy", "girl"] }],
+      messages: [{ ...sampleProject.messages[0], sessionId: "chat-main" }]
+    };
+    const modelProject = {
+      title: "模型试图改标题",
+      characters: [
+        { id: "boy", name: "被改名的玩家", side: "right" },
+        { id: "girl", name: "林夏", side: "left" },
+        { id: "lawyer", name: "周律师", side: "left" }
+      ],
+      sessions: [
+        { id: "chat-main", title: "不应覆盖旧标题", participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "周律师", participantIds: ["boy", "lawyer"] }
+      ],
+      messages: [
+        { conversationId: "chat-lawyer", roleId: "lawyer", side: "left", type: "text", text: "合同第七条隐藏了违约金" },
+        { conversationId: "chat-main", roleId: "girl", side: "left", type: "text", text: "我刚拿到对方的补充协议" },
+        { conversationId: "chat-lawyer", roleId: "boy", side: "right", type: "text", text: "两份文件的时间对上了" }
+      ],
+      assets: [],
+      sfx: {}
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(modelProject) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: currentProject,
+      prompt: "让律师和林夏两个会话交错推进合同真相",
+      promptCards: [],
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.characters.find((character) => character.id === "boy")?.name).toBe(sampleProject.characters.find((character) => character.id === "boy")?.name);
+    expect(result.project.characters.some((character) => character.id === "lawyer" && character.name === "周律师")).toBe(true);
+    expect(result.project.characters.find((character) => character.id === "lawyer")?.avatarUrl)
+      .not.toBe(result.project.characters.find((character) => character.id === "girl")?.avatarUrl);
+    expect(result.project.chatSessions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "chat-main", title: "旧聊天" }),
+      expect.objectContaining({ id: "chat-lawyer", title: "周律师" })
+    ]));
+    expect(result.messages.map((message) => message.sessionId)).toEqual(["chat-lawyer", "chat-main", "chat-lawyer"]);
+
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{ content: string }> };
+    expect(request.messages[0].content).toContain("1-4 个 chatSessions");
+    expect(request.messages[0].content).toContain("全局剧情时间线");
+    expect(request.messages[1].content).toContain("旧聊天 (sessionId=chat-main)");
+    expect(request.messages[1].content).toContain("[会话:旧聊天/chat-main]");
+  });
+
+  it("repairs a person-like title for a group prompt and binds Journey avatars", async () => {
+    const modelProject = {
+      title: "唐僧",
+      chatMode: "direct",
+      characters: [
+        { id: "tang", name: "唐僧", side: "right" },
+        { id: "wukong", name: "孙悟空", side: "left" },
+        { id: "queen", name: "女儿国国王", side: "left" },
+        { id: "baigujing", name: "白骨精", side: "left" },
+        { id: "shaseng", name: "沙僧", side: "left" },
+        { id: "bajie", name: "猪八戒", side: "left" }
+      ],
+      messages: [
+        { roleId: "tang", side: "right", type: "text", text: "群规先看一下" },
+        { roleId: "bajie", side: "left", type: "text", text: "群名谁取的" },
+        { roleId: "wukong", side: "left", type: "text", text: "先说正事" }
+      ],
+      assets: [],
+      sfx: {}
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(modelProject) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: { ...sampleProject, messages: [] },
+      prompt: "写唐僧、孙悟空、女儿国国王、白骨精、沙僧和猪八戒的微信群聊。",
+      promptCards: [],
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.chatMode).toBe("group");
+    expect(result.project.title).toBe("取经项目总群");
+    expect(result.project.characters.map((character) => character.avatarUrl)).toEqual([
+      "/avatars/journey-1986-tang.webp",
+      "/avatars/journey-1986-wukong.webp",
+      "/avatars/journey-1986-queen.webp",
+      "/avatars/journey-1986-baigujing.webp",
+      "/avatars/journey-1986-shaseng.webp",
+      "/avatars/journey-1986-bajie.webp"
+    ]);
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{ content: string }> };
+    expect(request.messages[0].content).toContain("title 必须像真实群名");
+    expect(request.messages[0].content).toContain("chatMode 必须是 group");
+    expect(request.messages[0].content).not.toMatch(/莫急|搞么事|东北口语|方言/);
   });
 });

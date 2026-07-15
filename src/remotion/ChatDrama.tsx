@@ -172,6 +172,8 @@ function MessageRow({ project, entry }: { project: DramaProject; entry: Timeline
 
   const visualSide = visualSideFor(project, entry.message);
   const jojoMode = isJojoProject(project);
+  const wechatGroupMode = !jojoMode && project.chatMode === "group";
+  const character = getCharacter(project, entry.message);
 
   return (
     <div
@@ -179,7 +181,10 @@ function MessageRow({ project, entry }: { project: DramaProject; entry: Timeline
       style={{ top: entry.y, opacity, transform: `translateY(${translateY}px) scale(${scale})` }}
     >
       {visualSide === "left" ? <Avatar project={project} message={entry.message} /> : null}
-      <MessageBody project={project} message={entry.message} />
+      <div className={`message-stack ${visualSide === "right" ? "message-stack-right" : ""}`}>
+        {wechatGroupMode && visualSide === "left" ? <div className="group-speaker-name">{character.name}</div> : null}
+        <MessageBody project={project} message={entry.message} />
+      </div>
       {visualSide === "right" ? <Avatar project={project} message={entry.message} /> : null}
     </div>
   );

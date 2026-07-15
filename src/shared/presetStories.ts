@@ -6,10 +6,7 @@ import { injectRomanticMusicMessage } from "./musicLibrary.js";
 import { parseProject, type ChatMessage, type DramaProject } from "./schema.js";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt.js";
 import type { PromptCard, StoryPackage } from "./linearStory.js";
-import {
-  applyViralRegionalFlavorToMessages,
-  randomizeViralCharacterProfiles
-} from "./viralPersona.js";
+import { randomizeViralCharacterProfiles } from "./viralPersona.js";
 import { viralPresetStories } from "./viralPresetStories.js";
 
 type PresetMessageSpec = {
@@ -26,6 +23,15 @@ type PresetMessageSpec = {
   sendSfx?: ChatMessage["sendSfx"];
 };
 
+type PresetCharacterSpec = {
+  id: string;
+  name: string;
+  side: "left" | "right";
+  avatarGender: DefaultAvatarGender;
+  avatarId: string;
+  voiceDescription: string;
+};
+
 export type ViralPresetRole = "any" | "male" | "female";
 export type JojoPresetRole = "jiaojiao" | "npc";
 
@@ -36,10 +42,13 @@ export type PresetStory = {
   nextPrompt: string;
   messages: PresetMessageSpec[];
   language?: "zh" | "en";
+  chatMode?: "direct" | "group";
   viralRole?: ViralPresetRole;
   viralRoles?: Array<Exclude<ViralPresetRole, "any">>;
+  presetCharacters?: PresetCharacterSpec[];
   peerAvatarSet?: "western-student";
   characterAvatarSet?: "neutral-editorial";
+  characterAvatarIds?: Partial<Record<"boy" | "girl", string>>;
   characterNames?: Partial<Record<"boy" | "girl", string>>;
   characterGenders?: Partial<Record<"boy" | "girl", DefaultAvatarGender>>;
   characterVoiceDescriptions?: Partial<Record<"boy" | "girl", string>>;
@@ -1012,11 +1021,27 @@ function cloneBaseProject(project: DramaProject): DramaProject {
   });
 }
 
+const viralPresetPriority = [
+  "viral-journey-secret-cp-group",
+  "viral-daughter-kingdom-520",
+  "viral-baigujing-third-account",
+  "viral-fengge-female-fan-private-chat",
+  "viral-fengge-male-b-friend-advice"
+];
+
+const orderedViralPresetStories = [...viralPresetStories].sort((left, right) => {
+  const leftPriority = viralPresetPriority.indexOf(left.id);
+  const rightPriority = viralPresetPriority.indexOf(right.id);
+  const leftRank = leftPriority < 0 ? viralPresetPriority.length + viralPresetStories.indexOf(left) : leftPriority;
+  const rightRank = rightPriority < 0 ? viralPresetPriority.length + viralPresetStories.indexOf(right) : rightPriority;
+  return leftRank - rightRank;
+});
+
 function presetStoriesFor(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
   const role = normalizePresetRoleSelection(roleSelection);
   if (packageId === "jojo") return role.jojoRole === "npc" ? jojoNpcPresetStories : jojoPresetStories;
-  if (role.viralRole === "any") return viralPresetStories;
-  return viralPresetStories.filter((story) => (
+  if (role.viralRole === "any") return orderedViralPresetStories;
+  return orderedViralPresetStories.filter((story) => (
     story.viralRole === role.viralRole || story.viralRoles?.includes(role.viralRole as "male" | "female")
   ));
 }
@@ -1038,7 +1063,7 @@ function initialsForPresetName(name: string) {
 }
 
 function applyPresetCharacterOverrides(project: DramaProject, preset: PresetStory) {
-  if (!preset.characterNames && !preset.characterGenders && !preset.characterVoiceDescriptions && !preset.peerAvatarSet && !preset.characterAvatarSet) return project;
+  if (!preset.characterNames && !preset.characterGenders && !preset.characterVoiceDescriptions && !preset.peerAvatarSet && !preset.characterAvatarSet && !preset.characterAvatarIds) return project;
   return parseProject({
     ...project,
     characters: project.characters.map((character) => {
@@ -1048,6 +1073,9 @@ function applyPresetCharacterOverrides(project: DramaProject, preset: PresetStor
         : character.name;
       const avatarGender = presetCharacterId ? preset.characterGenders?.[presetCharacterId] : undefined;
       const voiceDescription = presetCharacterId ? preset.characterVoiceDescriptions?.[presetCharacterId] : undefined;
+      const exactAvatar = presetCharacterId && preset.characterAvatarIds?.[presetCharacterId]
+        ? avatarById(preset.characterAvatarIds[presetCharacterId]!)
+        : undefined;
       const genderAvatars = avatarGender ? avatarsByGender(avatarGender) : [];
       const avatarHash = [...`${character.id}:${name}`]
         .reduce((total, item) => total + item.charCodeAt(0), 17);
@@ -1066,7 +1094,7 @@ function applyPresetCharacterOverrides(project: DramaProject, preset: PresetStor
         name,
         avatarGender: avatarGender || character.avatarGender,
         avatarInitial: initialsForPresetName(name),
-        avatarUrl: neutralAvatar?.url || genderAvatar?.url || peerAvatar?.url || character.avatarUrl,
+        avatarUrl: exactAvatar?.url || neutralAvatar?.url || genderAvatar?.url || peerAvatar?.url || character.avatarUrl,
         voicePreset: avatarGender === "girl"
           ? "young_real_female"
           : avatarGender === "boy"
@@ -1079,6 +1107,31 @@ function applyPresetCharacterOverrides(project: DramaProject, preset: PresetStor
             : character.voiceDescription)
       };
     })
+  });
+}
+
+function applyPresetCharacters(project: DramaProject, preset: PresetStory) {
+  if (!preset.presetCharacters?.length && !preset.chatMode) return project;
+  return parseProject({
+    ...project,
+    chatMode: preset.chatMode || project.chatMode,
+    characters: preset.presetCharacters?.map((character) => {
+      const avatar = avatarById(character.avatarId);
+      return {
+        id: character.id,
+        name: character.name,
+        side: character.side,
+        avatarGender: character.avatarGender,
+        avatarUrl: avatar?.url,
+        avatarInitial: initialsForPresetName(character.name),
+        avatarGradient: character.avatarGender === "girl"
+          ? "linear-gradient(145deg, #cc7a9b, #713e68)"
+          : "linear-gradient(145deg, #7d9470, #344b3c)",
+        voiceId: `viral-${character.id}`,
+        voicePreset: character.avatarGender === "girl" ? "young_real_female" : "young_male",
+        voiceDescription: character.voiceDescription
+      };
+    }) || project.characters
   });
 }
 
@@ -1147,6 +1200,14 @@ function baseProjectFor(packageId: StoryPackage, roleSelection: PresetRoleSelect
     : randomizeViralCharacterProfiles(applyViralRole(baseProject, roleSelection.viralRole));
 }
 
+function effectiveViralRoleForPreset(roleSelection: PresetRoleSelection, preset: PresetStory): ViralPresetRole {
+  if (roleSelection.viralRole !== "any") return roleSelection.viralRole;
+  if (preset.viralRole === "male" || preset.viralRole === "female") return preset.viralRole;
+  if (preset.viralRoles?.includes("male")) return "male";
+  if (preset.viralRoles?.includes("female")) return "female";
+  return "any";
+}
+
 function messageSide(project: DramaProject, roleId: string): ChatMessage["side"] {
   return project.characters.find((character) => character.id === roleId)?.side ?? "left";
 }
@@ -1184,10 +1245,7 @@ function buildPresetMessages(project: DramaProject, preset: PresetStory): ChatMe
       transferNote: message.transferNote
     };
   });
-  const flavoredMessages = project.stylePreset === "kuaishou-horizontal-chat" && preset.language !== "en"
-    ? applyViralRegionalFlavorToMessages(messages, project)
-    : messages;
-  return injectRomanticMusicMessage(flavoredMessages, project, preset.prompt, preset.id);
+  return injectRomanticMusicMessage(messages, project, preset.prompt, preset.id);
 }
 
 export function presetStoryCount(packageId: StoryPackage, roleSelection: Partial<PresetRoleSelection> = {}) {
@@ -1215,9 +1273,13 @@ export function createPresetInitialArchive(
   const stories = presetStoriesFor(packageId, resolvedRoleSelection);
   const selectedIndex = requestedIndex ?? randomPresetStoryIndex(packageId, resolvedRoleSelection);
   const presetIndex = ((selectedIndex % stories.length) + stories.length) % stories.length;
-  const initialBaseProject = baseProjectFor(packageId, resolvedRoleSelection);
   const rawPreset = stories[presetIndex];
-  const baseProject = applyPresetCharacterOverrides(initialBaseProject, rawPreset);
+  const layoutRoleSelection = packageId === "viral"
+    ? { ...resolvedRoleSelection, viralRole: effectiveViralRoleForPreset(resolvedRoleSelection, rawPreset) }
+    : resolvedRoleSelection;
+  const initialBaseProject = baseProjectFor(packageId, layoutRoleSelection);
+  const presetCharacterProject = applyPresetCharacters(initialBaseProject, rawPreset);
+  const baseProject = applyPresetCharacterOverrides(presetCharacterProject, rawPreset);
   const preset = packageId === "jojo"
     ? { ...rawPreset, nextPrompt: normalizeSuggestedPrompt(rawPreset.nextPrompt) }
     : {

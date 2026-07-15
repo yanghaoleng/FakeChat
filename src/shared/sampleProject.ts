@@ -7,6 +7,7 @@ export const sampleProject: DramaProject = {
   id: "sample-blind-date-classmate",
   title: "张阿姨的相亲局",
   brief: "张阿姨给男主介绍了一个相亲对象，两人聊了半天，男主发现对方竟是小时候暗恋过的小学同学。女生一边装不熟，一边用旧绰号和小学毕业照把回忆翻出来。",
+  chatMode: "direct",
   stylePreset: "kuaishou-horizontal-chat",
   fps: 30,
   canvas: {
@@ -37,6 +38,7 @@ export const sampleProject: DramaProject = {
       voiceDescription: "非常年轻的真实女生，18到22岁，声音清亮自然，有轻微气声，冷静克制但带一点试探，像真人微信语音"
     }
   ],
+  chatSessions: [],
   assets: [
     ...localMemeAssets,
     ...viralPhotoAssets,

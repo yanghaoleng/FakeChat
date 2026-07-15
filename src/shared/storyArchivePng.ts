@@ -189,53 +189,49 @@ type ArchiveCoverCharacter = {
 };
 
 type ArchiveCoverProject = {
+  title?: string;
+  chatMode?: "direct" | "group";
   stylePreset: string;
   characters: ArchiveCoverCharacter[];
+  messages: Array<{ type?: string }>;
 };
 
-type ArchiveBubble = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-  colored: boolean;
-  tail: "left" | "right";
+type ArchiveCover = {
+  exportedAt?: string;
+  promptCards: unknown[];
+  project: ArchiveCoverProject;
 };
 
-const archiveBubbleCloud: ArchiveBubble[] = [
-  { x: 58, y: 116, width: 78, height: 29, rotation: -4, colored: false, tail: "left" },
-  { x: 142, y: 111, width: 72, height: 28, rotation: 3, colored: true, tail: "right" },
-  { x: 82, y: 137, width: 106, height: 36, rotation: 2, colored: true, tail: "right" },
-  { x: 183, y: 139, width: 67, height: 29, rotation: -5, colored: false, tail: "left" },
-  { x: 39, y: 155, width: 78, height: 30, rotation: -2, colored: true, tail: "right" },
-  { x: 112, y: 160, width: 96, height: 38, rotation: -3, colored: false, tail: "left" },
-  { x: 204, y: 171, width: 61, height: 27, rotation: 5, colored: true, tail: "right" },
-  { x: 58, y: 187, width: 86, height: 33, rotation: 4, colored: false, tail: "left" },
-  { x: 137, y: 191, width: 111, height: 39, rotation: 2, colored: true, tail: "right" },
-  { x: 31, y: 217, width: 66, height: 27, rotation: -6, colored: true, tail: "right" },
-  { x: 87, y: 219, width: 91, height: 34, rotation: -2, colored: false, tail: "left" },
-  { x: 174, y: 228, width: 78, height: 30, rotation: 5, colored: false, tail: "left" },
-  { x: 66, y: 248, width: 75, height: 28, rotation: 4, colored: true, tail: "right" },
-  { x: 133, y: 252, width: 103, height: 35, rotation: -4, colored: true, tail: "right" },
-  { x: 224, y: 248, width: 49, height: 24, rotation: 6, colored: false, tail: "left" },
-  { x: 24, y: 128, width: 42, height: 22, rotation: 5, colored: true, tail: "right" },
-  { x: 236, y: 122, width: 39, height: 21, rotation: -5, colored: false, tail: "left" },
-  { x: 17, y: 263, width: 43, height: 22, rotation: -3, colored: false, tail: "left" }
-];
-
-function getArchiveCoverProject(archive: unknown): ArchiveCoverProject {
+function getArchiveCover(archive: unknown): ArchiveCover {
   if (!archive || typeof archive !== "object") throw new Error("存档内容无效，无法生成封面");
-  const project = (archive as { project?: unknown }).project;
+  const candidateArchive = archive as { exportedAt?: unknown; promptCards?: unknown; project?: unknown };
+  const project = candidateArchive.project;
   if (!project || typeof project !== "object") throw new Error("存档缺少聊天项目");
   const candidate = project as Partial<ArchiveCoverProject>;
   if (!Array.isArray(candidate.characters) || candidate.characters.length < 2) {
     throw new Error("存档缺少聊天角色");
   }
   return {
-    stylePreset: typeof candidate.stylePreset === "string" ? candidate.stylePreset : "kuaishou-horizontal-chat",
-    characters: candidate.characters
+    exportedAt: typeof candidateArchive.exportedAt === "string" ? candidateArchive.exportedAt : undefined,
+    promptCards: Array.isArray(candidateArchive.promptCards) ? candidateArchive.promptCards : [],
+    project: {
+      title: typeof candidate.title === "string" ? candidate.title : undefined,
+      chatMode: candidate.chatMode === "group" ? "group" : "direct",
+      stylePreset: typeof candidate.stylePreset === "string" ? candidate.stylePreset : "kuaishou-horizontal-chat",
+      characters: candidate.characters,
+      messages: Array.isArray(candidate.messages) ? candidate.messages : []
+    }
   };
+}
+
+export function archiveParticipantTitle(characters: Array<{ name: string }>) {
+  const names = characters.map((character) => character.name.trim()).filter(Boolean);
+  if (names.length <= 2) return `${names.join("、") || "聊天对象"}的聊天`;
+  return `${names.slice(0, 2).join("、")}等 ${names.length} 人的聊天`;
+}
+
+export function archiveMediaCount(messages: Array<{ type?: string }>) {
+  return messages.filter((message) => ![undefined, "text", "system"].includes(message.type)).length;
 }
 
 function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
@@ -279,7 +275,7 @@ function drawArchiveAvatar(
   y: number,
   accent: string
 ) {
-  const size = 48;
+  const size = 52;
   context.save();
   context.beginPath();
   context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
@@ -309,28 +305,6 @@ function drawArchiveAvatar(
   context.stroke();
 }
 
-function drawArchiveBubble(context: CanvasRenderingContext2D, bubble: ArchiveBubble, accent: string) {
-  context.save();
-  context.translate(bubble.x + bubble.width / 2, bubble.y + bubble.height / 2);
-  context.rotate((bubble.rotation * Math.PI) / 180);
-  context.shadowColor = "rgba(0,0,0,0.28)";
-  context.shadowBlur = 8;
-  context.shadowOffsetY = 4;
-  const fill = bubble.colored ? accent : "#f3f5f7";
-  context.fillStyle = fill;
-  roundedRectPath(context, -bubble.width / 2, -bubble.height / 2, bubble.width, bubble.height, 9);
-  context.fill();
-  context.shadowColor = "transparent";
-  context.beginPath();
-  const tailX = bubble.tail === "left" ? -bubble.width / 2 + 12 : bubble.width / 2 - 12;
-  context.moveTo(tailX - (bubble.tail === "left" ? 5 : 0), bubble.height / 2 - 2);
-  context.lineTo(tailX + (bubble.tail === "left" ? -2 : 7), bubble.height / 2 + 8);
-  context.lineTo(tailX + (bubble.tail === "left" ? 8 : -5), bubble.height / 2 - 1);
-  context.closePath();
-  context.fill();
-  context.restore();
-}
-
 function fitArchiveName(context: CanvasRenderingContext2D, name: string, maximumWidth: number) {
   const trimmed = name.trim() || "聊天对象";
   if (context.measureText(trimmed).width <= maximumWidth) return trimmed;
@@ -340,15 +314,12 @@ function fitArchiveName(context: CanvasRenderingContext2D, name: string, maximum
 }
 
 async function renderArchiveCover(archive: unknown) {
-  const project = getArchiveCoverProject(archive);
-  const leftCharacter = project.characters.find((character) => character.side === "left") ?? project.characters[0];
-  const rightCharacter = project.characters.find((character) => character.side === "right") ?? project.characters[1];
+  const cover = getArchiveCover(archive);
+  const { project } = cover;
   const isDingTalk = project.stylePreset === "jojo-company-chat";
   const accent = isDingTalk ? "#1677ff" : "#07c160";
-  const [leftAvatar, rightAvatar] = await Promise.all([
-    loadArchiveAvatar(leftCharacter.avatarUrl),
-    loadArchiveAvatar(rightCharacter.avatarUrl)
-  ]);
+  const coverCharacters = project.characters;
+  const avatars = await Promise.all(coverCharacters.map((character) => loadArchiveAvatar(character.avatarUrl)));
 
   const canvas = document.createElement("canvas");
   canvas.width = archiveCoverSize;
@@ -370,22 +341,63 @@ async function renderArchiveCover(archive: unknown) {
     context.fillRect(x, y, 1, 1);
   }
 
-  drawArchiveAvatar(context, leftCharacter, leftAvatar, 20, 18, accent);
-  drawArchiveAvatar(context, rightCharacter, rightAvatar, 232, 18, accent);
+  const avatarStep = coverCharacters.length > 1 ? Math.min(37, 208 / (coverCharacters.length - 1)) : 0;
+  const avatarRowWidth = 52 + (coverCharacters.length - 1) * avatarStep;
+  const avatarStartX = (archiveCoverSize - avatarRowWidth) / 2;
+  coverCharacters.forEach((character, index) => {
+    drawArchiveAvatar(context, character, avatars[index], avatarStartX + index * avatarStep, 28, accent);
+  });
 
-  roundedRectPath(context, 84, 24, 132, 42, 11);
-  context.fillStyle = "rgba(3,8,13,0.78)";
-  context.fill();
-  context.strokeStyle = "rgba(255,255,255,0.1)";
-  context.lineWidth = 1;
-  context.stroke();
   context.fillStyle = "rgba(255,255,255,0.96)";
-  context.font = '700 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.font = '700 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(fitArchiveName(context, leftCharacter.name, 104), archiveCoverSize / 2, 45);
+  context.fillText(fitArchiveName(context, archiveParticipantTitle(project.characters), 256), archiveCoverSize / 2, 106);
+  context.fillStyle = "rgba(190,202,211,0.76)";
+  context.font = '400 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillText(fitArchiveName(context, project.title || (project.chatMode === "group" ? "群聊存档" : "私聊存档"), 230), archiveCoverSize / 2, 128);
 
-  archiveBubbleCloud.forEach((bubble) => drawArchiveBubble(context, bubble, accent));
+  const chips = [
+    project.chatMode === "group" ? "群聊" : "私聊",
+    `${cover.promptCards.length} 个章节`,
+    `${archiveMediaCount(project.messages)} 个媒体`
+  ];
+  context.font = '500 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const chipWidths = chips.map((chip) => Math.ceil(context.measureText(chip).width) + 18);
+  const chipGap = 6;
+  let chipX = (archiveCoverSize - chipWidths.reduce((sum, width) => sum + width, 0) - chipGap * (chips.length - 1)) / 2;
+  chips.forEach((chip, index) => {
+    roundedRectPath(context, chipX, 146, chipWidths[index], 25, 12.5);
+    context.fillStyle = "rgba(255,255,255,0.06)";
+    context.fill();
+    context.strokeStyle = "rgba(255,255,255,0.09)";
+    context.stroke();
+    context.fillStyle = "rgba(220,226,231,0.82)";
+    context.fillText(chip, chipX + chipWidths[index] / 2, 159);
+    chipX += chipWidths[index] + chipGap;
+  });
+
+  context.fillStyle = "rgba(255,255,255,0.08)";
+  context.fillRect(20, 188, 260, 1);
+  context.fillStyle = accent;
+  context.font = '750 38px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillText(String(project.messages.length), 132, 222);
+  context.fillStyle = "rgba(207,216,223,0.74)";
+  context.font = '400 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.textAlign = "left";
+  context.fillText("条聊天记录", 168, 226);
+  context.fillStyle = "rgba(255,255,255,0.08)";
+  context.fillRect(20, 251, 260, 1);
+
+  context.textAlign = "center";
+  context.fillStyle = "rgba(255,255,255,0.95)";
+  context.font = '650 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillText(`${project.characters.length} 人参与`, 85, 271);
+  context.fillText("今天", 215, 271);
+  context.fillStyle = "rgba(171,184,193,0.72)";
+  context.font = '400 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillText("聊天人数", 85, 287);
+  context.fillText("最后更新", 215, 287);
 
   const vignette = context.createRadialGradient(150, 145, 76, 150, 145, 214);
   vignette.addColorStop(0, "rgba(0,0,0,0)");
