@@ -55,10 +55,17 @@ export async function generateBackendStorySegment({
   promptCards: PromptCard[];
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
+  const promptContextCards = promptCards.map((card) => ({
+    id: card.id,
+    prompt: card.prompt,
+    createdAt: card.createdAt,
+    messageIds: [],
+    summary: card.summary
+  }));
   const response = await fetch("/api/story/continue", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ project, prompt, promptCards }),
+    body: JSON.stringify({ project, prompt, promptCards: promptContextCards }),
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50000)]) : AbortSignal.timeout(50000)
   });
 

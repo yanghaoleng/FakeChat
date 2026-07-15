@@ -127,6 +127,10 @@ test.describe("关键用户流程", () => {
     await expect(page.locator(".wechat-speaker-name")).toContainText(["周律师", "王总"]);
 
     await page.setViewportSize({ width: 390, height: 844 });
+    const storyPanelBackdrop = page.locator(".story-panel-backdrop");
+    if (await storyPanelBackdrop.isVisible()) {
+      await storyPanelBackdrop.click();
+    }
     await page.getByRole("button", { name: /返回消息列表/ }).click();
     const messageList = page.getByRole("navigation", { name: "消息列表" });
     await expect(messageList.getByRole("button", { name: /打开林夏/ })).toBeVisible();
