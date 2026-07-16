@@ -722,7 +722,10 @@ export default function App({ storyPackage }: AppProps) {
   const [videoResult, setVideoResult] = useState<VideoExportResult | null>(null);
   const [videoProgress, setVideoProgress] = useState(0);
   const [visibleMessageCount, setVisibleMessageCount] = useState(0);
+  const [allowMultiSession, setAllowMultiSession] = useState(false);
+  const allowMultiSessionRef = useRef(false);
   const [activeChatSessionId, setActiveChatSessionId] = useState(() => getChatSessions(initialPresetArchiveRef.current!.project)[0].id);
+  const activeChatSessionIdRef = useRef(activeChatSessionId);
   const [readChatMessageIds, setReadChatMessageIds] = useState<Set<string>>(() => new Set());
   const [storyPanelOpen, setStoryPanelOpen] = useState(() => !shouldUseStoryModal());
   const [mobileStoryCoachPhase, setMobileStoryCoachPhase] = useState<MobileStoryCoachPhase>("idle");
@@ -853,6 +856,7 @@ export default function App({ storyPackage }: AppProps) {
       messages: projectRef.current.messages.slice(0, visibleMessageCount)
     };
     markChatSessionRead(visibleProjectSnapshot, sessionId);
+    activeChatSessionIdRef.current = sessionId;
     setActiveChatSessionId(sessionId);
     setVideoResult(null);
     setFocusedPromptCardId(null);
@@ -862,8 +866,22 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function resetChatSessionState(nextProject: DramaProject) {
-    setActiveChatSessionId(getChatSessions(nextProject)[0].id);
+    const firstSessionId = getChatSessions(nextProject)[0].id;
+    activeChatSessionIdRef.current = firstSessionId;
+    setActiveChatSessionId(firstSessionId);
     setReadChatMessageIds(new Set());
+  }
+
+  function toggleMultiSessionMode() {
+    if (storyPackage !== "viral" || status === "loading") return;
+    const nextValue = !allowMultiSessionRef.current;
+    allowMultiSessionRef.current = nextValue;
+    setAllowMultiSession(nextValue);
+    if (!nextValue) {
+      const firstSession = getChatSessions(projectRef.current)[0];
+      if (firstSession) selectChatSession(firstSession.id);
+    }
+    setStatusText(nextValue ? "多会话（测试版）已开启" : "多会话（测试版）已关闭");
   }
 
   function handleLeftPanelScroll() {
@@ -1001,6 +1019,7 @@ export default function App({ storyPackage }: AppProps) {
 
   useEffect(() => {
     if (activeChatSessionId !== resolvedActiveChatSessionId) {
+      activeChatSessionIdRef.current = resolvedActiveChatSessionId;
       setActiveChatSessionId(resolvedActiveChatSessionId);
     }
   }, [activeChatSessionId, resolvedActiveChatSessionId]);
@@ -1762,12 +1781,16 @@ export default function App({ storyPackage }: AppProps) {
     prompt,
     projectSnapshot,
     promptCardsSnapshot,
+    allowMultiSession: allowMultiSessionSnapshot,
+    activeSessionId: activeSessionIdSnapshot,
     runId,
     signal
   }: {
     prompt: string;
     projectSnapshot: DramaProject;
     promptCardsSnapshot: PromptCard[];
+    allowMultiSession: boolean;
+    activeSessionId: string;
     runId: number;
     signal: AbortSignal;
   }) {
@@ -1775,7 +1798,14 @@ export default function App({ storyPackage }: AppProps) {
     setStatusText("正在请求后端 DeepSeek 续写...");
     try {
       const { generateBackendStorySegment } = await import("./shared/deepseekBackend");
-      const result = await generateBackendStorySegment({ project: projectSnapshot, prompt, promptCards: promptCardsSnapshot, signal });
+      const result = await generateBackendStorySegment({
+        project: projectSnapshot,
+        prompt,
+        promptCards: promptCardsSnapshot,
+        allowMultiSession: allowMultiSessionSnapshot,
+        activeSessionId: activeSessionIdSnapshot,
+        signal
+      });
       if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
       return { result, statusText: `DeepSeek 后端已追加 ${result.messages.length} 条消息` };
     } catch (error) {
@@ -1788,7 +1818,14 @@ export default function App({ storyPackage }: AppProps) {
     if (hasBrowserDeepSeekKey()) {
       setStatusText("后端不可用，正在尝试浏览器公开配置...");
       try {
-        const result = await generateDeepSeekStorySegment({ project: projectSnapshot, prompt, promptCards: promptCardsSnapshot, signal });
+        const result = await generateDeepSeekStorySegment({
+          project: projectSnapshot,
+          prompt,
+          promptCards: promptCardsSnapshot,
+          allowMultiSession: allowMultiSessionSnapshot,
+          activeSessionId: activeSessionIdSnapshot,
+          signal
+        });
         if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
         return { result, statusText: `DeepSeek 前端已追加 ${result.messages.length} 条消息` };
       } catch (browserError) {
@@ -1827,6 +1864,11 @@ export default function App({ storyPackage }: AppProps) {
 
         const projectSnapshot = projectRef.current;
         const promptCardsSnapshot = promptCardsRef.current;
+        const snapshotSessions = getChatSessions(projectSnapshot);
+        const activeSessionIdSnapshot = snapshotSessions.some((session) => session.id === activeChatSessionIdRef.current)
+          ? activeChatSessionIdRef.current
+          : snapshotSessions[0].id;
+        const allowMultiSessionSnapshot = storyPackage === "viral" && allowMultiSessionRef.current;
         const controller = new AbortController();
         const runId = generationRunRef.current + 1;
         generationRunRef.current = runId;
@@ -1843,6 +1885,8 @@ export default function App({ storyPackage }: AppProps) {
             prompt: activeCard.prompt,
             projectSnapshot,
             promptCardsSnapshot,
+            allowMultiSession: allowMultiSessionSnapshot,
+            activeSessionId: activeSessionIdSnapshot,
             runId,
             signal
           });
@@ -2469,6 +2513,7 @@ export default function App({ storyPackage }: AppProps) {
         <WechatStoryPreview
           key={resolvedActiveChatSessionId}
           project={previewProject}
+          allowMultiSession={storyPackage === "viral" && allowMultiSession}
           activeSessionId={resolvedActiveChatSessionId}
           unreadCounts={unreadCounts}
           onSelectSession={selectChatSessionForPreview}
@@ -2695,6 +2740,7 @@ export default function App({ storyPackage }: AppProps) {
       if (event.isComposing) return;
       const key = event.key;
       const primaryShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+      if (aboutDialogOpen) return;
       if (primaryShortcut && key.toLowerCase() === "k") {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -2714,7 +2760,6 @@ export default function App({ storyPackage }: AppProps) {
         return;
       }
       if (event.defaultPrevented) return;
-      if (aboutDialogOpen) return;
       if (settingsMenuOpen) {
         if (key === "Escape") {
           event.preventDefault();
@@ -2834,6 +2879,7 @@ export default function App({ storyPackage }: AppProps) {
       <SettingsDialog
         open={settingsMenuOpen}
         closing={settingsMenuClosing}
+        suspended={aboutDialogOpen}
         dialogRef={settingsDialogRef}
         previewMode={previewMode}
         storyPackage={storyPackage}
@@ -2842,12 +2888,15 @@ export default function App({ storyPackage }: AppProps) {
         viralRoleChoices={viralRoleChoices}
         ambientSkins={ambientSkins}
         ambientSkin={ambientSkin}
+        allowMultiSession={storyPackage === "viral" && allowMultiSession}
+        multiSessionToggleDisabled={status === "loading"}
         switchLink={switchLink}
         onClose={closeSettingsMenu}
         onKeyDown={handleSettingsDialogKeyDown}
         onChoosePreviewMode={choosePreviewMode}
         onSwitchPresetRole={switchPresetRole}
         onSelectAmbientSkin={selectAmbientSkin}
+        onToggleMultiSession={toggleMultiSessionMode}
         onOpenAbout={openAboutDialog}
         onExportArchive={() => {
           closeSettingsMenu();

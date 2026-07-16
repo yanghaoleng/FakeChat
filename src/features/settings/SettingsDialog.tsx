@@ -1,4 +1,4 @@
-import { ArrowUpRight, FileDown, FileUp, Info, Settings, Smartphone, Sparkles, Video, X } from "lucide-react";
+import { ArrowUpRight, FileDown, FileUp, Info, MessageSquarePlus, Settings, Smartphone, Sparkles, Video, X } from "lucide-react";
 import type { KeyboardEventHandler, RefObject } from "react";
 import type { StoryPackage } from "../../shared/linearStory";
 import { resolvePublicAssetPath } from "../../shared/publicPath";
@@ -27,6 +27,7 @@ type ViralRoleChoice = {
 type SettingsDialogProps = {
   open: boolean;
   closing: boolean;
+  suspended: boolean;
   dialogRef: RefObject<HTMLElement | null>;
   previewMode: SettingsPreviewMode;
   storyPackage: StoryPackage;
@@ -35,12 +36,15 @@ type SettingsDialogProps = {
   viralRoleChoices: ViralRoleChoice[];
   ambientSkins: Array<{ id: SettingsAmbientSkinId; label: string }>;
   ambientSkin: SettingsAmbientSkinId;
+  allowMultiSession: boolean;
+  multiSessionToggleDisabled: boolean;
   switchLink: { href: string; label: string };
   onClose: () => void;
   onKeyDown: KeyboardEventHandler<HTMLElement>;
   onChoosePreviewMode: (mode: SettingsPreviewMode) => void;
   onSwitchPresetRole: (selection: Partial<PresetRoleSelection>) => void;
   onSelectAmbientSkin: (skin: SettingsAmbientSkinId) => void;
+  onToggleMultiSession: () => void;
   onOpenAbout: () => void;
   onExportArchive: () => void;
   onImportArchive: () => void;
@@ -49,6 +53,7 @@ type SettingsDialogProps = {
 export function SettingsDialog({
   open,
   closing,
+  suspended,
   dialogRef,
   previewMode,
   storyPackage,
@@ -57,12 +62,15 @@ export function SettingsDialog({
   viralRoleChoices,
   ambientSkins,
   ambientSkin,
+  allowMultiSession,
+  multiSessionToggleDisabled,
   switchLink,
   onClose,
   onKeyDown,
   onChoosePreviewMode,
   onSwitchPresetRole,
   onSelectAmbientSkin,
+  onToggleMultiSession,
   onOpenAbout,
   onExportArchive,
   onImportArchive
@@ -77,7 +85,9 @@ export function SettingsDialog({
         id="settings-dialog"
         className="settings-dialog"
         role="dialog"
-        aria-modal="true"
+        aria-modal={suspended ? undefined : true}
+        aria-hidden={suspended || undefined}
+        inert={suspended}
         aria-labelledby="settings-dialog-title"
         aria-describedby="settings-dialog-hint"
         onKeyDown={onKeyDown}
@@ -169,6 +179,28 @@ export function SettingsDialog({
               ))}
             </div>
           </div>
+          {storyPackage === "viral" ? (
+            <button
+              className={allowMultiSession ? "title-menu-item title-menu-toggle title-menu-item-active" : "title-menu-item title-menu-toggle"}
+              type="button"
+              role="switch"
+              aria-label="多会话（测试版）"
+              aria-checked={allowMultiSession}
+              aria-describedby="multi-session-beta-description"
+              disabled={multiSessionToggleDisabled}
+              onClick={onToggleMultiSession}
+            >
+              <MessageSquarePlus size={16} />
+              <span className="title-menu-toggle-copy">
+                <strong>多会话（测试版）</strong>
+                <small id="multi-session-beta-description">允许 DeepSeek 按剧情新增私聊或群聊</small>
+              </span>
+              <span
+                className={allowMultiSession ? "title-menu-toggle-indicator title-menu-toggle-indicator-active" : "title-menu-toggle-indicator"}
+                aria-hidden="true"
+              />
+            </button>
+          ) : null}
           <a className="title-menu-item" href={switchLink.href} target="_blank" rel="noreferrer" onClick={onClose}>
             <ArrowUpRight size={16} />
             <span>{switchLink.label}</span>

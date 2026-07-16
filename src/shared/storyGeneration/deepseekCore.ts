@@ -1,7 +1,7 @@
 import { extractJson } from "../deepseekProject.js";
 import { assignDistinctCharacterAvatars } from "../avatarLibrary.js";
 import { resolveFirstViralPeerCharacters } from "../chatPeerName.js";
-import { defaultChatSessionId, getChatSessions } from "../chatSessions.js";
+import { defaultChatSessionId, getChatSessions, projectForChatSession } from "../chatSessions.js";
 import { isGenericImageCopy } from "../imageNarrative.js";
 import { isJojoProject } from "../jojoProject.js";
 import {
@@ -15,6 +15,7 @@ import {
 import { parseProject, type ChatMessage, type DramaProject, type ScriptGenerateRequest } from "../schema.js";
 import {
   assignMessagesToMultiSessions,
+  generationTargetSession,
   multiSessionGenerationInstruction,
   reconcileGeneratedMultiSessions
 } from "../multiSession.js";
@@ -286,19 +287,29 @@ function assignGeneratedMessageSessions(
   });
 }
 
-function currentPromptUsesGroupSession(project: DramaProject, prompt: string) {
-  return project.chatMode === "group" || (!isJojoProject(project) && isGroupChatPrompt(prompt));
+function currentPromptUsesGroupSession(
+  project: DramaProject,
+  prompt: string,
+  allowMultiSession = false,
+  activeSessionId?: string
+) {
+  if (generationTargetSession(project, activeSessionId).kind === "group") return true;
+  if (isJojoProject(project) || !isGroupChatPrompt(prompt)) return false;
+  return allowMultiSession || (project.messages.length === 0 && project.chatSessions.length === 0);
 }
 
 function replacesWholeProjectWithGroup(project: DramaProject, prompt: string) {
-  if (project.chatMode === "group" || isJojoProject(project)) return true;
+  if (isJojoProject(project)) return true;
+  if (project.chatMode === "group") return getChatSessions(project).length <= 1;
   return isGroupChatPrompt(prompt) && project.messages.length === 0 && project.chatSessions.length === 0;
 }
 
 function chatSessionGenerationInstruction(
   project: DramaProject,
   prompt = "",
-  standaloneGroupIntent = replacesWholeProjectWithGroup(project, prompt)
+  standaloneGroupIntent = replacesWholeProjectWithGroup(project, prompt),
+  allowMultiSession = false,
+  activeSessionId?: string
 ) {
   if (isJojoProject(project) || standaloneGroupIntent) {
     return [
@@ -307,11 +318,19 @@ function chatSessionGenerationInstruction(
       "群名要根据人物关系和当前剧情起得像真实群聊、有记忆点；禁止使用“新群聊”“群聊”“多人群聊”“未命名群聊”“新建群聊”等默认名。续写时沿用已有创意群名，除非用户明确要求改名。"
     ].join("\n");
   }
+  if (!allowMultiSession) {
+    const targetSession = generationTargetSession(project, activeSessionId);
+    return [
+      "多会话测试版未开启：禁止新增、复制、拆分或替换 chatSession。",
+      `本段只能推进当前会话 sessionId=${targetSession.id}（${targetSession.title}）；所有 newMessages 必须使用该 sessionId，不得写入其他会话。`,
+      "topologyChanges.chatSessions 必须省略；不得创建仅用于新会话的联系人或群成员。沿用当前会话的参与者、姓名和 senderId。"
+    ].join("\n");
+  }
   return [
     multiSessionGenerationInstruction(),
     "chatSessions.kind 是每个会话的真实类型：可为 direct 或 group，同一个多会话项目允许两者混合；chatMode 只是旧数据兼容字段。",
     "direct 会话通常是玩家与一名联系人；group 会话可有多名左侧成员。每条 newMessage 使用 senderId（兼容旧 roleId），且 senderId 必须属于对应 sessionId。",
-    ...(currentPromptUsesGroupSession(project, prompt) ? [
+    ...(currentPromptUsesGroupSession(project, prompt, allowMultiSession, activeSessionId) ? [
       "当前 Prompt 要求在多会话项目中新建或推进一个 kind=group 会话。必须保留其他已有 direct/group 会话，禁止把整个项目替换成单一群聊。",
       "topologyChanges.chatSessions 如有输出，必须包含所有旧会话和当前群会话；项目级 title 不变，群名写在该 chatSession.title。"
     ] : [])
@@ -341,13 +360,26 @@ function leftSideCharacter(project: DramaProject) {
   return project.characters.find((character) => character.side === "left") || project.characters[1] || project.characters[0];
 }
 
-function viralPerspectiveInstruction(project: DramaProject, groupIntent = project.chatMode === "group") {
+function viralPerspectiveInstruction(
+  project: DramaProject,
+  groupIntent = project.chatMode === "group",
+  allowMultiSession = false,
+  activeSessionId?: string
+) {
   const rightCharacter = rightSideCharacter(project);
-  const leftCharacter = leftSideCharacter(project);
+  const activeSession = generationTargetSession(project, activeSessionId);
+  const leftCharacter = project.characters.find((character) => (
+    character.side === "left" && activeSession.participantIds.includes(character.id)
+  )) ?? leftSideCharacter(project);
   if (groupIntent) {
-    const leftCharacters = project.characters.filter((character) => character.side === "left");
-    const roleList = project.characters.map((character) => `${character.name}(senderId=${character.id}, side=${character.side})`).join("、");
-    if (project.chatMode !== "group") {
+    const activeGroupSession = activeSession.kind === "group";
+    const activeParticipantIds = new Set(activeSession.participantIds);
+    const groupCharacters = activeGroupSession
+      ? project.characters.filter((character) => activeParticipantIds.has(character.id))
+      : project.characters;
+    const leftCharacters = groupCharacters.filter((character) => character.side === "left");
+    const roleList = groupCharacters.map((character) => `${character.name}(senderId=${character.id}, side=${character.side})`).join("、");
+    if (!activeGroupSession) {
       return {
         rightLabel: rightCharacter.name,
         leftLabel: "其他群成员",
@@ -365,7 +397,7 @@ function viralPerspectiveInstruction(project: DramaProject, groupIntent = projec
       leftCharacter,
       tone: "群里每个人都要有明显不同的说话节奏；围观者可以追问、起哄、截图和补刀，但不能抢走主线。",
       sideRule: `这是微信多人群聊。用户/玩家/我方扮演${rightCharacter.name}（senderId=${rightCharacter.id}），永远在右侧；${leftCharacters.map((character) => character.name).join("、")}永远在左侧。`,
-      roleRule: `固定群成员只有这 ${project.characters.length} 人：${roleList}。每条非 system 新消息必须填写其中一个准确 senderId，禁止新增、删除、合并或改名。`
+      roleRule: `固定群成员只有这 ${groupCharacters.length} 人：${roleList}。每条非 system 新消息必须填写其中一个准确 senderId，禁止新增、删除、合并或改名。`
     };
   }
   const rightLabel = rightCharacter.id === "girl" ? "女主" : "男主";
@@ -380,7 +412,9 @@ function viralPerspectiveInstruction(project: DramaProject, groupIntent = projec
     leftCharacter,
     tone,
     sideRule: `用户/玩家/我方永远扮演${rightLabel}：${rightLabel} side=right，${leftLabel} side=left。哪怕你先写${leftLabel}开口，也不能把左右写反。`,
-    roleRule: `右侧玩家固定是${rightLabel}（senderId=${rightCharacter.id}）；左侧已有联系人是${leftLabel}（senderId=${leftCharacter.id}）。direct 多会话只能按剧情需要追加左侧联系人，不得替换或复制玩家，characters 总数 2-6 个；每条非 system 新消息必须使用准确 senderId。`
+    roleRule: allowMultiSession
+      ? `右侧玩家固定是${rightLabel}（senderId=${rightCharacter.id}）；左侧已有联系人是${leftLabel}（senderId=${leftCharacter.id}）。direct 多会话只能按剧情需要追加左侧联系人，不得替换或复制玩家，characters 总数 2-6 个；每条非 system 新消息必须使用准确 senderId。`
+      : `右侧玩家固定是${rightLabel}（senderId=${rightCharacter.id}）；左侧联系人固定是${leftLabel}（senderId=${leftCharacter.id}）。单会话模式禁止追加联系人或为其他会话创建角色；每条非 system 新消息必须使用这两个 senderId 之一。`
   };
 }
 
@@ -419,10 +453,16 @@ function jojoRoleListInstruction(project: DramaProject) {
   }).join("；");
 }
 
-function repairInstruction(project: DramaProject, attempt: number, prompt = "") {
-  const groupIntent = currentPromptUsesGroupSession(project, prompt);
+function repairInstruction(
+  project: DramaProject,
+  attempt: number,
+  prompt = "",
+  allowMultiSession = false,
+  activeSessionId?: string
+) {
+  const groupIntent = currentPromptUsesGroupSession(project, prompt, allowMultiSession, activeSessionId);
   const standaloneGroupIntent = replacesWholeProjectWithGroup(project, prompt);
-  const viralInstruction = viralPerspectiveInstruction(project, groupIntent);
+  const viralInstruction = viralPerspectiveInstruction(project, groupIntent, allowMultiSession, activeSessionId);
   const hardTemplate = attempt > 1
     ? [
         "第二次返工，必须按这个密度写：3句内有动作，5句内出现可视化证据，8句内发生关系反转。",
@@ -436,9 +476,12 @@ function repairInstruction(project: DramaProject, attempt: number, prompt = "") 
     "重新输出严格 JSON：第一条不得问候，不得问“聊什么”，不得写“声音好熟悉/声音像谁/同学很像/像一个人/大众脸/大众嗓/认错人”。",
     viralInstruction.sideRule,
     `${viralInstruction.leftLabel}永远在左边 side=left，${viralInstruction.rightLabel}永远在右边 side=right，绝对不要反过来。`,
+    chatSessionGenerationInstruction(project, prompt, standaloneGroupIntent, allowMultiSession, activeSessionId),
     ...(groupIntent ? [standaloneGroupIntent
       ? "topologyChanges.title 必须是群名，不能使用某个群成员的人名；chatMode 必须是 group。"
-      : "当前群名写入 kind=group 的 chatSession.title；保留其他已有会话和项目级 title。"] : []),
+      : allowMultiSession
+        ? "当前群名写入 kind=group 的 chatSession.title；保留其他已有会话和项目级 title。"
+        : "当前活动会话已是群聊；沿用现有群名、群成员和 sessionId，不得新建群或改写其他会话。"] : []),
     "第一屏必须直接出现当前 Prompt 里的具体事件：下单、金额/定金、现场照片、截图备注、只有两人知道的旧细节、误会被翻出。",
     "图片消息必须写清照片/截图里到底是什么，禁止只写“关键照片/证据/图片”。图片内容只能服务当前剧情，不要复用固定例子。",
     "每 2-3 条消息就要推进一次信息，不要原地追问。",
@@ -469,7 +512,12 @@ function removeDuplicateMessages(messages: ChatMessage[]) {
   });
 }
 
-function systemPrompt(project: DramaProject, prompt = "") {
+function systemPrompt(
+  project: DramaProject,
+  prompt = "",
+  allowMultiSession = false,
+  activeSessionId?: string
+) {
   if (isJojoProject(project)) {
     const jojoInstruction = jojoPerspectiveInstruction(project);
     return [
@@ -490,23 +538,27 @@ function systemPrompt(project: DramaProject, prompt = "") {
       "transfer 很少出现：平均 3-5 段最多 1 段；本段最多 1 条；只有当前 Prompt 明确涉及会议室费、报销、垫付、早餐、车费、发票等公司费用时才用，否则用普通 text 推进。",
       "叫叫公司群聊不要生成 music 类型。",
       "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme。",
-      chatSessionGenerationInstruction(project, prompt),
+      chatSessionGenerationInstruction(project, prompt, undefined, allowMultiSession, activeSessionId),
       generatedStoryDeltaInstruction(),
       "suggestedPrompt 只写 1-2 句下一步核心剧情，不要以“接着写”或“继续写”开头，不要重复角色或语言设定；没有自然建议就留空。",
       "当前 stylePreset 固定为 jojo-company-chat，不要在增量里重复 stylePreset、fps、canvas、sfx 或 audioMix。"
     ].join("\n");
   }
-  const groupIntent = currentPromptUsesGroupSession(project, prompt);
+  const groupIntent = currentPromptUsesGroupSession(project, prompt, allowMultiSession, activeSessionId);
   const standaloneGroupIntent = replacesWholeProjectWithGroup(project, prompt);
-  const viralInstruction = viralPerspectiveInstruction(project, groupIntent);
+  const viralInstruction = viralPerspectiveInstruction(project, groupIntent, allowMultiSession, activeSessionId);
   const englishStory = /\bLanguage:\s*English\b/i.test(project.brief);
   return [
     "你是爆款聊天记录短剧编剧，擅长写高密度微信聊天短剧。输出必须是严格 JSON，不要 markdown。",
     standaloneGroupIntent
       ? "当前故事是多人群聊：chatMode 必须是 group；title 必须像真实群名，使用 3-18 个字符，不能填某个成员的人名，也不能写成“某某和某某的聊天”。"
       : groupIntent
-        ? "当前段落在已有多会话故事中新建或推进一个 kind=group 会话；保留其他会话，群名写入 chatSession.title，不要改项目级 title。"
-        : "当前故事是私聊或多会话故事：以 chatSessions.kind 为准，每个 direct 会话的 title 使用对应联系人的名字。",
+        ? allowMultiSession
+          ? "当前段落在已有多会话故事中新建或推进一个 kind=group 会话；保留其他会话，群名写入 chatSession.title，不要改项目级 title。"
+          : "当前活动会话是已有群聊；只续写该群聊，沿用现有群名、群成员和 sessionId。"
+        : allowMultiSession
+          ? "当前故事是私聊或多会话故事：以 chatSessions.kind 为准，每个 direct 会话的 title 使用对应联系人的名字。"
+          : "当前故事使用单会话模式：只推进当前私聊，禁止创建第二个会话。",
     englishStory
       ? "This story is in English. Write every chat message, ttsText, transferNote, image description, character name, and suggestedPrompt in concise, natural conversational English. Do not insert Chinese dialogue."
       : "所有聊天内容使用自然中文。",
@@ -537,15 +589,19 @@ function systemPrompt(project: DramaProject, prompt = "") {
     viralNamedCharacterStyleInstruction(project),
     "每条消息都要带 emotion、sendSfx、pauseMs、holdMs，sendSfx 只能是 none/send/image/transfer/meme；music 使用 send。",
     viralInstruction.roleRule,
-    chatSessionGenerationInstruction(project, prompt, standaloneGroupIntent),
+    chatSessionGenerationInstruction(project, prompt, standaloneGroupIntent, allowMultiSession, activeSessionId),
     groupIntent
       ? standaloneGroupIntent && project.chatMode === "group" && project.messages.length
         ? "沿用已经确定的人物姓名和群成员，不要在续写中擅自改名、删人或新增角色。"
         : standaloneGroupIntent
           ? "从当前 Prompt 提取所有具名群成员，characters 中必须完整列出；群名写入 topologyChanges.title，不要把任一成员姓名直接当作 title。"
-          : "从当前 Prompt 提取当前群会话所有具名成员，必要时在 topologyChanges 中输出变更后的完整 characters 与 chatSessions；保留所有旧会话。"
+          : allowMultiSession
+            ? "从当前 Prompt 提取当前群会话所有具名成员，必要时在 topologyChanges 中输出变更后的完整 characters 与 chatSessions；保留所有旧会话。"
+            : "沿用当前群会话已经确定的群成员、姓名与 senderId；禁止新增角色或会话。"
       : project.messages.length
-        ? "沿用已经确定的人物姓名与 senderId；仅当新会话是推进剧情所必需时，才可追加左侧新联系人。"
+        ? allowMultiSession
+          ? "沿用已经确定的人物姓名与 senderId；仅当新会话是推进剧情所必需时，才可追加左侧新联系人。"
+          : "沿用已经确定的人物姓名与 senderId；单会话模式禁止追加联系人或会话。"
       : `第一段必须在 characters 中确定左侧聊天对象（${viralInstruction.leftLabel}）的真实姓名：当前 Prompt 明确写了名字就原样采用；没有写名字就由你编一个自然的中文姓名。不要用“男主”“女主”“对方”等占位词。`,
     generatedStoryDeltaInstruction(),
     englishStory
@@ -573,9 +629,18 @@ function nextProjectTitle(project: DramaProject, generated: DramaProject) {
   return project.messages.length ? project.title : generated.title;
 }
 
-function userPrompt(project: DramaProject, prompt: string, promptCards: PromptCard[]) {
+function userPrompt(
+  project: DramaProject,
+  prompt: string,
+  promptCards: PromptCard[],
+  allowMultiSession = false,
+  activeSessionId?: string
+) {
+  const promptProject = allowMultiSession
+    ? project
+    : projectForChatSession(project, generationTargetSession(project, activeSessionId).id);
   return buildBoundedUserPrompt({
-    project,
+    project: promptProject,
     prompt,
     promptCards,
     sanitize: scrubStaleMotifs
@@ -591,6 +656,8 @@ export function buildDeepSeekRequest({
   prompt,
   promptCards,
   model,
+  allowMultiSession = false,
+  activeSessionId,
   repairAttempt = 0
 }: DeepSeekRequestInput): DeepSeekRequestBody {
   return {
@@ -598,9 +665,12 @@ export function buildDeepSeekRequest({
     temperature: repairAttempt ? 0.94 : 0.86,
     response_format: { type: "json_object" as const },
     messages: [
-      { role: "system", content: systemPrompt(project, prompt) },
-      { role: "user", content: userPrompt(project, prompt, promptCards) },
-      ...(repairAttempt ? [{ role: "user" as const, content: repairInstruction(project, repairAttempt, prompt) }] : [])
+      { role: "system", content: systemPrompt(project, prompt, allowMultiSession, activeSessionId) },
+      { role: "user", content: userPrompt(project, prompt, promptCards, allowMultiSession, activeSessionId) },
+      ...(repairAttempt ? [{
+        role: "user" as const,
+        content: repairInstruction(project, repairAttempt, prompt, allowMultiSession, activeSessionId)
+      }] : [])
     ]
   };
 }
@@ -610,6 +680,8 @@ export async function generateDeepSeekStorySegmentWithConfig({
   prompt,
   promptCards,
   config,
+  allowMultiSession = false,
+  activeSessionId,
   logLabel = "deepseek",
   signal
 }: GenerateDeepSeekSegmentInput): Promise<DeepSeekSegmentResult> {
@@ -656,6 +728,8 @@ export async function generateDeepSeekStorySegmentWithConfig({
         prompt: premise,
         promptCards,
         model: normalizedConfig.model,
+        allowMultiSession,
+        activeSessionId,
         repairAttempt
       })),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45000)]) : AbortSignal.timeout(45000)
@@ -672,7 +746,13 @@ export async function generateDeepSeekStorySegmentWithConfig({
     const content = json.choices?.[0]?.message?.content;
     if (!content) throw new Error("DeepSeek 响应没有 content");
     const extracted = extractJson(content);
-    const normalized = normalizeGeneratedStoryOutput({ value: extracted, project, request });
+    const normalized = normalizeGeneratedStoryOutput({
+      value: extracted,
+      project,
+      request,
+      allowMultiSession,
+      activeSessionId
+    });
     console.info(`[${logLabel}] normalized response`, {
       format: normalized.format,
       newMessages: normalized.project.messages.length,
@@ -690,7 +770,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
     ? mergeGeneratedGroupCharacters(project, generated.project, premise)
     : resolveFirstViralPeerCharacters(project, generated.project, premise);
   const promptedCharacters = applyPromptJourneyRoster(identityCharacters, premise, standaloneGroupIntent);
-  const multiSessionTopology = !isJojoProject(project) && !standaloneGroupIntent
+  const multiSessionTopology = allowMultiSession && !isJojoProject(project) && !standaloneGroupIntent
     ? reconcileGeneratedMultiSessions({
         project,
         generatedProject: generated.project,

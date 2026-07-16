@@ -12,12 +12,19 @@ function section(content: string, start: string, end: string) {
   return content.split(start)[1]?.split(end)[0]?.trim();
 }
 
-function promptParts(project: DramaProject, prompt: string) {
+function promptParts(
+  project: DramaProject,
+  prompt: string,
+  allowMultiSession = false,
+  activeSessionId?: string
+) {
   const request = buildDeepSeekRequest({
     project,
     prompt,
     promptCards: [],
-    model: "deepseek-test"
+    model: "deepseek-test",
+    allowMultiSession,
+    activeSessionId
   });
   return {
     request,
@@ -38,22 +45,22 @@ describe("DeepSeek prompt contract", () => {
       temperature: request.temperature,
       roles: request.messages.map((message) => message.role),
       lead: system.split("\n")[0],
-      mode: lineContaining(system, "私聊或多会话故事"),
-      sessions: lineContaining(system, "这是微信多会话故事"),
+      mode: lineContaining(system, "单会话模式"),
+      sessions: lineContaining(system, "多会话测试版未开启"),
       delta: lineContaining(system, "只输出 GeneratedStoryDelta"),
       prompt: user.split("\n")[0]
     }).toMatchInlineSnapshot(`
       {
         "delta": "只输出 GeneratedStoryDelta，绝对不要输出完整 DramaProject，不要复制历史 messages、旧 assets 或未变化的拓扑。",
         "lead": "你是爆款聊天记录短剧编剧，擅长写高密度微信聊天短剧。输出必须是严格 JSON，不要 markdown。",
-        "mode": "当前故事是私聊或多会话故事：以 chatSessions.kind 为准，每个 direct 会话的 title 使用对应联系人的名字。",
+        "mode": "当前故事使用单会话模式：只推进当前私聊，禁止创建第二个会话。",
         "model": "deepseek-test",
         "prompt": "当前新 Prompt：让阿泽发现相亲对象就是小学同学",
         "roles": [
           "system",
           "user",
         ],
-        "sessions": "这是微信多会话故事。根据剧情可以只推进原会话，也可以自然新建私聊或群聊；整个项目保持 1-4 个 chatSessions，不要为了凑数建群。",
+        "sessions": "多会话测试版未开启：禁止新增、复制、拆分或替换 chatSession。",
         "temperature": 0.86,
       }
     `);
@@ -84,7 +91,7 @@ describe("DeepSeek prompt contract", () => {
         }
       ]
     };
-    const { system, user } = promptParts(project, "让两个会话交错查清合同真相");
+    const { system, user } = promptParts(project, "让两个会话交错查清合同真相", true);
 
     expect({
       topologyRule: lineContaining(system, "每个会话必须创建一名不同的左侧联系人"),
@@ -103,6 +110,35 @@ describe("DeepSeek prompt contract", () => {
         "topologyRule": "chatSessions 每项必须有 id、title、kind(direct|group)、participantIds；输出多个 direct 会话时，每个会话必须创建一名不同的左侧联系人角色，不能让两个会话复用同一个 roleId；group 会话保留所有参与者。所有会话都包含同一名右侧玩家，characters 总数不得超过 6。",
       }
     `);
+  });
+
+  it("projects only the active group session into the model context when multi-session is off", () => {
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "周" };
+    const boss = { ...sampleProject.characters[1], id: "boss", name: "王总", avatarInitial: "王" };
+    const project: DramaProject = {
+      ...sampleProject,
+      characters: [...sampleProject.characters, lawyer, boss],
+      chatSessions: [
+        { id: "chat-main", title: "林夏", kind: "direct", participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "合同核对群", kind: "group", participantIds: ["boy", "girl", "lawyer"] },
+        { id: "chat-boss", title: "王总", kind: "direct", participantIds: ["boy", "boss"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[0], id: "main-history", sessionId: "chat-main", text: "私聊隐藏线索" },
+        { ...sampleProject.messages[1], id: "group-history", senderId: "lawyer", roleId: "lawyer", sessionId: "chat-lawyer", text: "群聊活动线索" },
+        { ...sampleProject.messages[1], id: "boss-history", senderId: "boss", roleId: "boss", sessionId: "chat-boss", text: "王总隐藏线索" }
+      ]
+    };
+    const { system, user } = promptParts(project, "让当前群继续核对第七条", false, "chat-lawyer");
+
+    expect(system).toContain("当前活动会话是已有群聊");
+    expect(system).toContain("sessionId=chat-lawyer");
+    expect(system).toContain("周律师(senderId=lawyer");
+    expect(system).not.toContain("王总(senderId=boss");
+    expect(user).toContain("(sessionId=chat-lawyer, kind=group)");
+    expect(user).toContain("群聊活动线索");
+    expect(user).not.toContain("私聊隐藏线索");
+    expect(user).not.toContain("王总隐藏线索");
   });
 
   it("snapshots the group-chat prompt policy", () => {

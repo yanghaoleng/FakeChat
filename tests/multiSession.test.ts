@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assignMessagesToMultiSessions,
+  constrainGeneratedProjectSessions,
   multiSessionGenerationInstruction,
   reconcileGeneratedMultiSessions
 } from "../src/shared/multiSession";
@@ -154,5 +155,124 @@ describe("multi-session topology", () => {
     expect(instruction).toContain("不能让两个会话复用同一个 roleId");
     expect(instruction).toContain("新联系人必须使用不同头像");
     expect(instruction).toContain("禁止使用“新群聊”");
+  });
+
+  it("keeps hidden-session history intact while forcing only new messages into the active session", () => {
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "周" };
+    const boss = { ...sampleProject.characters[1], id: "boss", name: "王总", avatarInitial: "王" };
+    const project = parseProject({
+      ...sampleProject,
+      schemaVersion: 2,
+      characters: [...sampleProject.characters, lawyer],
+      chatSessions: [
+        { id: "chat-main", title: "林夏", kind: "direct", participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "合同应急群", kind: "group", participantIds: ["boy", "girl", "lawyer"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[0], id: "history-main", sessionId: "chat-main" },
+        {
+          ...sampleProject.messages[1],
+          id: "history-lawyer",
+          senderId: "lawyer",
+          roleId: "lawyer",
+          sessionId: "chat-lawyer",
+          text: "第七条需要复核"
+        }
+      ]
+    });
+    const generatedProject = parseProject({
+      ...project,
+      characters: [...project.characters, boss],
+      chatSessions: [
+        ...project.chatSessions,
+        { id: "chat-boss", title: "王总", kind: "direct", participantIds: ["boy", "boss"] }
+      ],
+      messages: [
+        { ...project.messages[0], sessionId: "chat-boss", senderId: "boss", roleId: "boss", text: "模型试图改写历史" },
+        project.messages[1],
+        {
+          ...sampleProject.messages[1],
+          id: "new-boss-message",
+          senderId: "boss",
+          roleId: "boss",
+          sessionId: "chat-boss",
+          text: "这句只能落在当前群"
+        }
+      ]
+    });
+
+    const result = constrainGeneratedProjectSessions({
+      project,
+      generatedProject,
+      activeSessionId: "chat-lawyer"
+    });
+
+    expect(result.chatSessions).toEqual(project.chatSessions);
+    expect(result.characters).toEqual(project.characters);
+    expect(result.messages.find((message) => message.id === "history-main")).toEqual(project.messages[0]);
+    expect(result.messages.find((message) => message.id === "history-lawyer")).toEqual(project.messages[1]);
+    expect(result.messages.find((message) => message.id === "new-boss-message")).toMatchObject({
+      sessionId: "chat-lawyer",
+      senderId: "girl",
+      roleId: "girl"
+    });
+  });
+
+  it("collapses a malicious blank-story response to its first generated session", () => {
+    const baseProject = parseProject({ ...sampleProject, messages: [], chatSessions: [] });
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "周" };
+    const generatedProject = parseProject({
+      ...baseProject,
+      characters: [...sampleProject.characters, lawyer],
+      chatSessions: [
+        { id: "chat-main", title: "林夏", kind: "direct", participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "周律师", kind: "direct", participantIds: ["boy", "lawyer"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[1], id: "blank-main", sessionId: "chat-main" },
+        { ...sampleProject.messages[1], id: "blank-lawyer", senderId: "lawyer", roleId: "lawyer", sessionId: "chat-lawyer" }
+      ]
+    });
+
+    const result = constrainGeneratedProjectSessions({ project: baseProject, generatedProject });
+
+    expect(result.chatSessions.map((session) => session.id)).toEqual(["chat-main"]);
+    expect(result.characters.map((character) => character.id)).toEqual(["boy", "girl"]);
+    expect(result.messages.every((message) => message.sessionId === "chat-main")).toBe(true);
+  });
+
+  it("retains one explicit generated group session for a blank story", () => {
+    const baseProject = parseProject({ ...sampleProject, messages: [], chatSessions: [] });
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "周" };
+    const generatedProject = parseProject({
+      ...baseProject,
+      chatMode: "group",
+      title: "合同核对群",
+      characters: [...sampleProject.characters, lawyer],
+      chatSessions: [{
+        id: "chat-contract-group",
+        title: "合同核对群",
+        kind: "group",
+        participantIds: ["boy", "girl", "lawyer"]
+      }],
+      messages: [{
+        ...sampleProject.messages[1],
+        id: "blank-group-message",
+        senderId: "lawyer",
+        roleId: "lawyer",
+        sessionId: "chat-contract-group"
+      }]
+    });
+
+    const result = constrainGeneratedProjectSessions({ project: baseProject, generatedProject });
+
+    expect(result.chatSessions).toEqual([expect.objectContaining({
+      id: "chat-contract-group",
+      title: "合同核对群",
+      kind: "group",
+      participantIds: ["boy", "girl", "lawyer"]
+    })]);
+    expect(result.characters.map((character) => character.id)).toEqual(["boy", "girl", "lawyer"]);
+    expect(result.messages[0].sessionId).toBe("chat-contract-group");
   });
 });

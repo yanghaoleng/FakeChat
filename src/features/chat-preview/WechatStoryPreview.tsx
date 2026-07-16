@@ -318,6 +318,7 @@ function WechatSessionList({
 
 function WechatStoryPreviewComponent({
   project,
+  allowMultiSession = false,
   activeSessionId,
   unreadCounts = {},
   onSelectSession,
@@ -327,6 +328,7 @@ function WechatStoryPreviewComponent({
   phoneRef
 }: {
   project: DramaProject;
+  allowMultiSession?: boolean;
   activeSessionId?: string;
   unreadCounts?: Record<string, number>;
   onSelectSession?: (sessionId: string) => void;
@@ -341,7 +343,7 @@ function WechatStoryPreviewComponent({
   const wechatGroupMode = !jojoMode && isGroupChatSession(project, activeSession);
   const conversationProject = useMemo(() => projectForChatSession(project, activeSession.id), [activeSession.id, project]);
   const peer = chatSessionPeer(project, activeSession);
-  const multiSessionMode = !jojoMode && sessions.length > 1;
+  const multiSessionMode = allowMultiSession && !jojoMode && sessions.length > 1;
   const totalUnread = sessions.reduce((total, session) => total + (session.id === activeSession.id ? 0 : unreadCounts[session.id] || 0), 0);
   const musicMessages = useMemo(() => conversationProject.messages.filter((message) => message.type === "music" && !jojoMode), [conversationProject.messages, jojoMode]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -353,6 +355,7 @@ function WechatStoryPreviewComponent({
   const [showMusicDock, setShowMusicDock] = useState(false);
   const [musicDockDismissed, setMusicDockDismissed] = useState(false);
   const [mobileSessionListOpen, setMobileSessionListOpen] = useState(false);
+  const mobileSessionListVisible = multiSessionMode && mobileSessionListOpen;
   const activeMusicMessage = musicMessages.find((message) => message.id === activeMusicMessageId);
   const activeMusicIndex = activeMusicMessage ? musicMessages.findIndex((message) => message.id === activeMusicMessage.id) : -1;
 
@@ -426,6 +429,10 @@ function WechatStoryPreviewComponent({
   }, []);
 
   useEffect(() => {
+    if (!multiSessionMode) setMobileSessionListOpen(false);
+  }, [multiSessionMode]);
+
+  useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1080px)");
     const closeListOnDesktop = () => {
       if (desktopQuery.matches) setMobileSessionListOpen(false);
@@ -472,16 +479,16 @@ function WechatStoryPreviewComponent({
     <div className="wechat-preview-shell">
       <div
         ref={phoneRef}
-        className={`wechat-phone ${jojoMode ? "dingtalk-phone" : ""} ${wechatGroupMode ? "wechat-group-phone" : ""} ${mobileSessionListOpen ? "wechat-phone-session-list" : ""}`}
+        className={`wechat-phone ${jojoMode ? "dingtalk-phone" : ""} ${wechatGroupMode ? "wechat-group-phone" : ""} ${mobileSessionListVisible ? "wechat-phone-session-list" : ""}`}
         aria-label={jojoMode ? "钉钉手机版聊天预览" : wechatGroupMode ? "9:16 微信群聊预览" : "9:16 微信聊天预览"}
       >
-        <div className={jojoMode ? "dingtalk-topbar" : `wechat-topbar ${mobileSessionListOpen ? "wechat-topbar-session-list" : ""}`}>
+        <div className={jojoMode ? "dingtalk-topbar" : `wechat-topbar ${mobileSessionListVisible ? "wechat-topbar-session-list" : ""}`}>
           <img className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.webp" : "/wechat-ui/topbar.webp")} alt="" draggable={false} />
           {jojoMode ? (
             <strong className="dingtalk-topbar-title">{project.title || "工位蛐蛐小队"}</strong>
           ) : (
             <strong className={`wechat-topbar-title ${wechatGroupMode ? "wechat-topbar-title-group" : ""}`}>
-              {mobileSessionListOpen ? "微信" : wechatGroupMode ? (
+              {mobileSessionListVisible ? "微信" : wechatGroupMode ? (
                 <>
                   <WechatContactAvatar project={project} session={activeSession} className="wechat-topbar-group-avatar" />
                   <span className="wechat-topbar-group-copy">
@@ -491,7 +498,7 @@ function WechatStoryPreviewComponent({
               ) : showPeerName ? (chatSessionTitle(project, activeSession) || peer?.name || project.title) : "？"}
             </strong>
           )}
-          {multiSessionMode && !mobileSessionListOpen ? (
+          {multiSessionMode && !mobileSessionListVisible ? (
             <button
               className="wechat-mobile-session-back"
               type="button"
@@ -502,7 +509,7 @@ function WechatStoryPreviewComponent({
             </button>
           ) : null}
         </div>
-        {mobileSessionListOpen && multiSessionMode ? (
+        {mobileSessionListVisible ? (
           <WechatSessionList project={project} sessions={sessions} unreadCounts={unreadCounts} onSelect={selectSession} />
         ) : (
           <div className={`wechat-chat-viewport ${jojoMode ? "dingtalk-chat-viewport" : ""}`}>
@@ -583,7 +590,7 @@ function WechatStoryPreviewComponent({
             setMusicPlaying(false);
           }}
         />
-        {mobileSessionListOpen && multiSessionMode ? null : (
+        {mobileSessionListVisible ? null : (
           <img className={jojoMode ? "dingtalk-inputbar-img" : "wechat-bottombar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/inputbar.webp" : "/wechat-ui/bottombar.webp")} alt="" draggable={false} />
         )}
       </div>

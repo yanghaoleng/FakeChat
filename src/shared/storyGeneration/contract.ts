@@ -82,6 +82,8 @@ export type DeepSeekRequestInput = {
   prompt: string;
   promptCards: PromptCard[];
   model: string;
+  allowMultiSession?: boolean;
+  activeSessionId?: string;
   repairAttempt?: number;
 };
 
@@ -90,6 +92,8 @@ export type GenerateDeepSeekSegmentInput = {
   prompt: string;
   promptCards: PromptCard[];
   config: DeepSeekCompletionConfig;
+  allowMultiSession?: boolean;
+  activeSessionId?: string;
   logLabel?: string;
   signal?: AbortSignal;
 };

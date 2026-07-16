@@ -1,10 +1,70 @@
 import { assignDistinctCharacterAvatars } from "./avatarLibrary.js";
 import { chatSessionTitle, getChatSessions } from "./chatSessions.js";
-import type { Character, ChatMessage, ChatSession, DramaProject } from "./schema.js";
+import { parseProject, type Character, type ChatMessage, type ChatSession, type DramaProject } from "./schema.js";
 import { groupTitleForPrompt, isGenericGroupTitle } from "./storyIdentity.js";
 
 export const maxMultiSessionCount = 4;
 export const maxMultiSessionCharacterCount = 6;
+
+export function generationTargetSession(project: DramaProject, activeSessionId?: string) {
+  const sessions = getChatSessions(project);
+  return sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+}
+
+/**
+ * Treat model topology as untrusted whenever the multi-session capability is
+ * disabled. Existing topology is retained for archive compatibility, while
+ * every generated message is forced into the active (or first) session. A
+ * blank story may accept exactly the first generated session plus its
+ * roster/chatMode so the traditional one-group-chat flow and first-contact
+ * naming keep working without exposing additional sessions.
+ */
+export function constrainGeneratedProjectSessions({
+  project,
+  generatedProject,
+  allowMultiSession = false,
+  activeSessionId,
+  preserveExistingMessages = true
+}: {
+  project: DramaProject;
+  generatedProject: DramaProject;
+  allowMultiSession?: boolean;
+  activeSessionId?: string;
+  preserveExistingMessages?: boolean;
+}): DramaProject {
+  if (allowMultiSession) return generatedProject;
+
+  const establishedStory = project.messages.length > 0 || project.chatSessions.length > 0;
+  const generatedFirstSession = getChatSessions(generatedProject)[0];
+  const targetSession = establishedStory
+    ? generationTargetSession(project, activeSessionId)
+    : generatedFirstSession;
+  const firstSessionParticipantIds = new Set(generatedFirstSession.participantIds);
+  const firstSessionCharacters = generatedProject.characters.filter((character) => (
+    firstSessionParticipantIds.has(character.id)
+  ));
+  const generatedPlayer = generatedProject.characters.find((character) => character.id === generatedProject.selfCharacterId)
+    ?? generatedProject.characters.find((character) => character.side === "right")
+    ?? generatedProject.characters[0];
+  const generatedPeer = generatedProject.characters.find((character) => character.id !== generatedPlayer.id);
+  const blankStoryCharacters = firstSessionCharacters.length >= 2
+    ? firstSessionCharacters
+    : [generatedPlayer, generatedPeer].filter((character): character is Character => Boolean(character));
+  const existingMessagesById = preserveExistingMessages
+    ? new Map(project.messages.map((message) => [message.id, message]))
+    : new Map<string, ChatMessage>();
+  return parseProject({
+    ...generatedProject,
+    chatMode: establishedStory ? project.chatMode : generatedProject.chatMode,
+    characters: establishedStory ? project.characters : blankStoryCharacters,
+    selfCharacterId: establishedStory ? project.selfCharacterId : generatedProject.selfCharacterId,
+    chatSessions: establishedStory ? project.chatSessions : [generatedFirstSession],
+    messages: generatedProject.messages.map((message) => {
+      const existingMessage = existingMessagesById.get(message.id);
+      return existingMessage ?? { ...message, sessionId: targetSession.id };
+    })
+  });
+}
 
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];

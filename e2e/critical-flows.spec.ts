@@ -58,31 +58,57 @@ test.describe("关键用户流程", () => {
     await expect(page.locator('[aria-label="正在加载视频预览"]')).toHaveCount(0);
   });
 
-  test("关于菜单和下级页面逐级叠加返回", async ({ page }) => {
+  test("关于菜单和下级页面按 Escape 逐级返回", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await expectHealthyAppShell(page);
 
     await page.getByRole("button", { name: "打开设置" }).click();
+    const settingsSection = page.locator("#settings-dialog");
     const settingsDialog = page.getByRole("dialog", { name: "设置" });
     await expect(settingsDialog).toBeVisible();
     await settingsDialog.locator("[data-settings-about]").click();
 
+    const aboutSection = page.locator('section[aria-labelledby="about-dialog-title"]');
     const aboutDialog = page.getByRole("dialog", { name: "关于" });
-    await expect(settingsDialog).toBeVisible();
+    await expect(settingsSection).toBeVisible();
+    await expect(settingsSection).toHaveAttribute("aria-hidden", "true");
+    await expect(settingsSection).toHaveAttribute("inert", "");
+    await expect(settingsSection).not.toHaveAttribute("aria-modal", "true");
+    await expect(settingsDialog).toHaveCount(0);
     await expect(aboutDialog).toBeVisible();
-    await aboutDialog.getByRole("button", { name: "支持鼓励" }).click();
+    await expect(aboutDialog.getByRole("button", { name: "返回设置", exact: true })).toBeVisible();
+    await expect(aboutDialog.getByRole("button", { name: "关闭关于并返回设置", exact: true })).toHaveCount(0);
+    const supportButton = aboutDialog.getByRole("button", { name: "支持鼓励" });
+    await supportButton.click();
 
     const supportDialog = page.getByRole("dialog", { name: "支持鼓励" });
     await expect(supportDialog).toBeVisible();
+    await expect(supportDialog.getByRole("button", { name: "关闭当前页面并返回关于", exact: true })).toHaveCount(0);
+    await expect(aboutSection).toBeVisible();
+    await expect(aboutSection).toHaveAttribute("aria-hidden", "true");
+    await expect(aboutSection).toHaveAttribute("inert", "");
+    await expect(aboutSection).not.toHaveAttribute("aria-modal", "true");
+    await expect(aboutDialog).toHaveCount(0);
     await expect(page.locator(".about-dialog")).toHaveCount(2);
-    await supportDialog.getByRole("button", { name: "返回关于", exact: true }).click();
+    await page.keyboard.press("Escape");
     await expect(supportDialog).toHaveCount(0);
     await expect(aboutDialog).toBeVisible();
+    await expect(settingsSection).toBeVisible();
+    await expect(settingsDialog).toHaveCount(0);
+    await expect(supportButton).toBeFocused();
 
-    await aboutDialog.getByRole("button", { name: "返回设置", exact: true }).click();
+    await page.keyboard.press("Escape");
     await expect(aboutDialog).toHaveCount(0);
     await expect(settingsDialog).toBeVisible();
+    await expect(settingsSection).not.toHaveAttribute("aria-hidden", "true");
+    await expect(settingsSection).not.toHaveAttribute("inert", "");
+    await expect(settingsSection).toHaveAttribute("aria-modal", "true");
+    await expect(settingsDialog.getByRole("button", { name: /^关于/ })).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(settingsDialog).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "打开设置" })).toBeFocused();
   });
 
   test("存档封面导出为 800px 宽", async ({ page }) => {
@@ -119,7 +145,7 @@ test.describe("关键用户流程", () => {
     await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
   });
 
-  test("旧存档可迁移为私聊与群聊混合会话并切换", async ({ page }) => {
+  test("微信多会话测试开关默认关闭并在反复切换后保留存档数据", async ({ page }) => {
     const lawyer = {
       ...sampleProject.characters[1],
       id: "lawyer",
@@ -155,6 +181,16 @@ test.describe("关键用户流程", () => {
 
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await expectHealthyAppShell(page);
+    await expect(page.getByRole("navigation", { name: "切换会话" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "打开设置" }).click();
+    const settingsDialog = page.getByRole("dialog", { name: "设置" });
+    const multiSessionSwitch = settingsDialog.getByRole("switch", { name: "多会话（测试版）" });
+    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "false");
+    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
+    await expect(settingsDialog).toHaveCount(0);
+
     await page.locator('input[type="file"]').setInputFiles({
       name: "legacy-mixed-sessions.json",
       mimeType: "application/json",
@@ -162,12 +198,39 @@ test.describe("关键用户流程", () => {
     });
 
     const sessionRail = page.getByRole("navigation", { name: "切换会话" });
+    await expect(sessionRail).toHaveCount(0);
+
+    await page.getByRole("button", { name: "打开设置" }).click();
+    await multiSessionSwitch.click();
+    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "true");
+    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
+    await expect(settingsDialog).toHaveCount(0);
+
     await expect(sessionRail).toBeVisible();
+    await expect(sessionRail.getByRole("button", { name: /切换到林夏/ })).toBeVisible();
     const groupButton = sessionRail.getByRole("button", { name: /切换到合同核对群/ });
     await expect(groupButton.locator(".wechat-group-avatar")).toBeVisible();
     await groupButton.click();
     await expect(page.locator('[aria-label="9:16 微信群聊预览"]')).toBeVisible();
     await expect(page.locator(".wechat-topbar-group-avatar.wechat-group-avatar")).toBeVisible();
+    await expect(page.locator(".wechat-speaker-name")).toContainText(["周律师", "王总"]);
+
+    await page.getByRole("button", { name: "打开设置" }).click();
+    await multiSessionSwitch.click();
+    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "false");
+    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
+    await expect(settingsDialog).toHaveCount(0);
+    await expect(sessionRail).toHaveCount(0);
+
+    await page.getByRole("button", { name: "打开设置" }).click();
+    await multiSessionSwitch.click();
+    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "true");
+    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
+    await expect(settingsDialog).toHaveCount(0);
+    await expect(sessionRail.getByRole("button", { name: /切换到林夏/ })).toBeVisible();
+    const restoredGroupButton = sessionRail.getByRole("button", { name: /切换到合同核对群/ });
+    await expect(restoredGroupButton).toBeVisible();
+    await restoredGroupButton.click();
     await expect(page.locator(".wechat-speaker-name")).toContainText(["周律师", "王总"]);
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -187,5 +250,9 @@ test.describe("关键用户流程", () => {
     await expectHealthyAppShell(page);
     await expect(page).toHaveURL(/\/ding\/$/);
     await expect(page.locator('[aria-label="钉钉手机版聊天预览"]')).toBeVisible();
+    await page.getByRole("button", { name: "打开设置" }).click();
+    const settingsDialog = page.getByRole("dialog", { name: "设置" });
+    await expect(settingsDialog).toBeVisible();
+    await expect(settingsDialog.getByRole("switch", { name: "多会话（测试版）" })).toHaveCount(0);
   });
 });

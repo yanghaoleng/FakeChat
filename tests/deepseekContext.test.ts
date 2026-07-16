@@ -70,7 +70,8 @@ describe("bounded DeepSeek story context", () => {
       project,
       prompt: `继续交叉推进 ${"不要遗漏会话".repeat(500)}`,
       promptCards,
-      model: "deepseek-test"
+      model: "deepseek-test",
+      allowMultiSession: true
     });
     const user = body.messages[1].content;
 
@@ -93,6 +94,7 @@ describe("bounded DeepSeek story context", () => {
       prompt: "让最新证据触发反转",
       promptCards,
       model: "deepseek-test",
+      allowMultiSession: true,
       repairAttempt
     }).messages[1].content);
 
@@ -104,6 +106,26 @@ describe("bounded DeepSeek story context", () => {
       expect(historyLines.filter((line) => line.includes(`/${sessionId}]`)).length)
         .toBeLessThanOrEqual(MAX_CONTEXT_MESSAGES_PER_SESSION);
     }
+  });
+
+  it("sends only the active session context when multi-session generation is off", () => {
+    const project = largeMultiSessionProject();
+    const body = buildDeepSeekRequest({
+      project,
+      prompt: "只续写王总这个会话",
+      promptCards: [],
+      model: "deepseek-test",
+      allowMultiSession: false,
+      activeSessionId: "chat-3"
+    });
+    const user = body.messages[1].content;
+
+    expect(user).toContain("sessionId=chat-3");
+    expect(user).toContain("SESSION-3-EVENT-1202");
+    expect(user).not.toContain("sessionId=chat-1");
+    expect(user).not.toContain("sessionId=chat-2");
+    expect(user).not.toContain("sessionId=chat-4");
+    expect(user).not.toMatch(/SESSION-(?:1|2|4)-EVENT-/);
   });
 });
 
@@ -170,7 +192,8 @@ describe("DeepSeek generated response compatibility", () => {
         suggestedPrompt: "让林夏发出原始文件。"
       },
       project: current,
-      request
+      request,
+      allowMultiSession: true
     });
 
     expect(normalized.format).toBe("delta");
@@ -183,5 +206,63 @@ describe("DeepSeek generated response compatibility", () => {
     expect(normalized.project.chatSessions.map((session) => session.id)).toEqual(["chat-main", groupSession.id]);
     expect((normalized.project.chatSessions[1] as typeof groupSession).kind).toBe("group");
     expect(normalized.suggestedPrompt).toBe("让林夏发出原始文件。");
+  });
+
+  it("does not mistake a generated delta fallback id for an existing history id", () => {
+    const current: DramaProject = {
+      ...sampleProject,
+      chatSessions: [{ id: "chat-main", title: "林夏", kind: "direct", participantIds: ["boy", "girl"] }],
+      messages: [{ ...sampleProject.messages[0], id: "msg-1", sessionId: "chat-main", text: "历史消息" }]
+    };
+    const normalized = normalizeGeneratedStoryOutput({
+      value: {
+        newMessages: [{
+          sessionId: "chat-main",
+          senderId: "girl",
+          side: "left",
+          type: "text",
+          text: "本轮新消息",
+          emotion: "确认",
+          sendSfx: "send",
+          pauseMs: 300,
+          holdMs: 1_200
+        }]
+      },
+      project: current,
+      request,
+      activeSessionId: "chat-main"
+    });
+
+    expect(normalized.project.messages).toHaveLength(1);
+    expect(normalized.project.messages[0].text).toBe("本轮新消息");
+  });
+
+  it("keeps an explicitly new full-project message even when its content matches current history", () => {
+    const current: DramaProject = {
+      ...sampleProject,
+      chatSessions: [{ id: "chat-main", title: "林夏", kind: "direct", participantIds: ["boy", "girl"] }],
+      messages: [{ ...sampleProject.messages[1], id: "old-same-copy", sessionId: "chat-main", text: "这句可以再说一次" }]
+    };
+    const normalized = normalizeGeneratedStoryOutput({
+      value: {
+        title: current.title,
+        characters: current.characters,
+        chatSessions: current.chatSessions,
+        messages: [{
+          ...current.messages[0],
+          id: "new-same-copy"
+        }]
+      },
+      project: current,
+      request,
+      activeSessionId: "chat-main"
+    });
+
+    expect(normalized.format).toBe("full-project");
+    expect(normalized.project.messages).toHaveLength(1);
+    expect(normalized.project.messages[0]).toMatchObject({
+      id: "new-same-copy",
+      text: "这句可以再说一次"
+    });
   });
 });

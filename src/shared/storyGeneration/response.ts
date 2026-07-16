@@ -1,4 +1,5 @@
 import { normalizeDeepSeekProject } from "../deepseekProject.js";
+import { constrainGeneratedProjectSessions } from "../multiSession.js";
 import { normalizeSuggestedPrompt } from "../suggestedPrompt.js";
 import type { ChatSession, DramaProject, ScriptGenerateRequest } from "../schema.js";
 import type { NormalizedGeneratedStoryOutput } from "./contract.js";
@@ -83,6 +84,63 @@ function deltaPayload(value: unknown): { root: UnknownRecord; payload: UnknownRe
   return undefined;
 }
 
+function sameHistoricalMessage(
+  generated: DramaProject["messages"][number],
+  existing: DramaProject["messages"][number]
+) {
+  return generated.type === existing.type
+    && generated.side === existing.side
+    && generated.text.trim() === existing.text.trim();
+}
+
+function fullProjectMessageIds(value: unknown) {
+  if (!isRecord(value)) return new Set<string>();
+  let source = value;
+  for (const key of ["project", "dramaProject", "result", "data"]) {
+    if (isRecord(value[key])) {
+      source = value[key];
+      break;
+    }
+  }
+  return new Set(objectValues(source.messages).flatMap((message) => {
+    if (!isRecord(message)) return [];
+    const id = stringValue(message.id);
+    return id ? [id] : [];
+  }));
+}
+
+/**
+ * Historical providers may still return a complete project even though the
+ * generation pipeline consumes a delta. Remove current history before that
+ * project reaches ID regeneration/append logic. IDs are authoritative; the
+ * ordered content fallback covers providers that omit historical IDs.
+ */
+function projectWithOnlyGeneratedMessages(
+  generatedProject: DramaProject,
+  project: DramaProject,
+  explicitMessageIds: ReadonlySet<string>
+): DramaProject {
+  const existingIndexById = new Map(project.messages.map((message, index) => [message.id, index]));
+  let historyCursor = 0;
+  const messages = generatedProject.messages.filter((message) => {
+    if (explicitMessageIds.has(message.id)) {
+      const existingIndex = existingIndexById.get(message.id);
+      if (existingIndex === undefined) return true;
+      historyCursor = Math.max(historyCursor, existingIndex + 1);
+      return false;
+    }
+    const expectedHistory = project.messages[historyCursor];
+    if (expectedHistory && sameHistoricalMessage(message, expectedHistory)) {
+      historyCursor += 1;
+      return false;
+    }
+    return true;
+  });
+  return messages.length === generatedProject.messages.length
+    ? generatedProject
+    : { ...generatedProject, messages };
+}
+
 /**
  * Normalizes both the compact v1 delta and the historical full-DramaProject
  * model response into the same generated-project shape consumed by the
@@ -91,19 +149,34 @@ function deltaPayload(value: unknown): { root: UnknownRecord; payload: UnknownRe
 export function normalizeGeneratedStoryOutput({
   value,
   project,
-  request
+  request,
+  allowMultiSession = false,
+  activeSessionId
 }: {
   value: unknown;
   project: DramaProject;
   request: ScriptGenerateRequest;
+  allowMultiSession?: boolean;
+  activeSessionId?: string;
 }): NormalizedGeneratedStoryOutput {
   const delta = deltaPayload(value);
   if (!delta) {
     const root = isRecord(value) ? value : {};
     const suggestedPrompt = suggestedPromptFromOutput(root, root);
+    const normalizedProject = projectWithOnlyGeneratedMessages(
+      normalizeDeepSeekProject(value, request),
+      project,
+      fullProjectMessageIds(value)
+    );
     return {
       format: "full-project",
-      project: normalizeDeepSeekProject(value, request),
+      project: constrainGeneratedProjectSessions({
+        project,
+        generatedProject: normalizedProject,
+        allowMultiSession,
+        activeSessionId,
+        preserveExistingMessages: false
+      }),
       ...(suggestedPrompt ? { suggestedPrompt } : {})
     };
   }
@@ -132,9 +205,16 @@ export function normalizeGeneratedStoryOutput({
   }, request);
   const suggestedPrompt = suggestedPromptFromOutput(root, payload);
 
+  const restoredProject = restoreSessionKinds(normalizedProject, rawSessions);
   return {
     format: "delta",
-    project: restoreSessionKinds(normalizedProject, rawSessions),
+    project: constrainGeneratedProjectSessions({
+      project,
+      generatedProject: restoredProject,
+      allowMultiSession,
+      activeSessionId,
+      preserveExistingMessages: false
+    }),
     ...(suggestedPrompt ? { suggestedPrompt } : {})
   };
 }

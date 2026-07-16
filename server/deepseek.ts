@@ -41,7 +41,9 @@ const storyContinueRequestSchema = z.object({
     messages: z.array(chatMessageSchema).default([])
   }),
   prompt: z.string().min(1),
-  promptCards: z.array(promptCardSchema).default([])
+  promptCards: z.array(promptCardSchema).default([]),
+  allowMultiSession: z.boolean().default(false),
+  activeSessionId: z.string().min(1).optional()
 });
 
 function customizeFallback(request: ScriptGenerateRequest): DramaProject {
@@ -337,6 +339,8 @@ export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeek
     prompt: request.prompt,
     promptCards: request.promptCards,
     config: { apiKey, baseUrl, model },
+    allowMultiSession: request.allowMultiSession,
+    activeSessionId: request.activeSessionId,
     logLabel: "deepseek-server"
   });
 }
