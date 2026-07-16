@@ -1,5 +1,4 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
 import { DATA_DIR, SETTINGS_PATH } from "./paths.js";
 

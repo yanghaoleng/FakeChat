@@ -92,6 +92,7 @@ export const jojoProject: DramaProject = {
   id: "jojo-company-default",
   title: "工位蛐蛐小队",
   brief: "叫叫是用户默认扮演的勇敢小鸡吉祥物，也可以切换扮演随机 NPC 小动物。剧情围绕叫叫公司日常吐槽、自嘲、会议、需求、排期、甲乙方和职场小反转展开。",
+  chatMode: "group",
   stylePreset: "jojo-company-chat",
   fps: 30,
   canvas: {
@@ -155,6 +156,7 @@ export const jojoProject: DramaProject = {
       voiceDescription: "中性偏女性的系统播报声，冷静、短促、带一点无情流程感"
     }
   ],
+  chatSessions: [],
   assets: [...localMemeAssets, ...jojoCompanyAssets, ...jojoPhotoAssets],
   messages: [
     { id: "jojo-m01", roleId: "xitong", side: "left", type: "text", text: "早会还有3分钟", emotion: "提醒", holdMs: 1300, pauseMs: 300, sendSfx: "send" },

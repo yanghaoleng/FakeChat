@@ -5,9 +5,12 @@ import {
   archiveFooterTitle,
   archiveFooterUrl,
   archiveImageHeight,
+  archiveMediaCount,
+  archiveParticipantTitle,
   archiveSquareCrop,
   embedArchiveInPngBytes,
   extractArchiveFromPngBytes,
+  formatArchiveUpdatedAt,
   isPng,
   readArchiveFile
 } from "../src/shared/storyArchivePng";
@@ -21,13 +24,32 @@ function fixturePng() {
 
 describe("PNG story archive", () => {
   it("exports a portrait cover with a dedicated footer", () => {
-    expect(archiveCoverSize).toBe(300);
-    expect(archiveFooterHeight).toBe(100);
-    expect(archiveImageHeight).toBe(400);
+    expect(archiveCoverSize).toBe(800);
+    expect(archiveFooterHeight).toBe(267);
+    expect(archiveImageHeight).toBe(1067);
     expect(archiveFooterTitle).toBe("蛐蛐模拟器存档文件");
     expect(archiveFooterUrl).toBe("ququ.mikeywa.icu");
     expect(archiveSquareCrop(800, 1400)).toEqual({ size: 800, x: 0, y: 412 });
     expect(archiveSquareCrop(1400, 800)).toEqual({ size: 800, x: 300, y: 0 });
+  });
+
+  it("uses a fixed absolute update hour instead of relative time", () => {
+    expect(formatArchiveUpdatedAt("2026-07-16T14:35:00")).toBe("2026年7月16日 14时");
+    expect(formatArchiveUpdatedAt(undefined)).toBe("时间未知");
+    expect(formatArchiveUpdatedAt("not-a-date")).toBe("时间未知");
+  });
+
+  it("summarizes two-person and multi-person archive covers", () => {
+    expect(archiveParticipantTitle([{ name: "叫叫" }, { name: "铃铛" }])).toBe("叫叫、铃铛的聊天");
+    expect(archiveParticipantTitle([{ name: "叫叫" }, { name: "铃铛" }, { name: "系统" }, { name: "猪小弟" }]))
+      .toBe("叫叫、铃铛等 4 人的聊天");
+    expect(archiveMediaCount([
+      { type: "text" },
+      { type: "system" },
+      { type: "image" },
+      { type: "meme" },
+      { type: "music" }
+    ])).toBe(3);
   });
 
   it("embeds and extracts UTF-8 archive data from a viewable PNG", () => {

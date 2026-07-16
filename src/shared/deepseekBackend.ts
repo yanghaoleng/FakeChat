@@ -1,6 +1,7 @@
 import { parseProject, type ChatMessage, type DramaProject } from "./schema";
-import type { DeepSeekSegmentResult } from "./deepseekBrowser";
+import type { DeepSeekSegmentResult } from "./storyGeneration/contract";
 import type { PromptCard } from "./linearStory";
+import { constrainGeneratedProjectSessions } from "./multiSession";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt";
 
 function parsePromptCard(value: unknown): PromptCard {
@@ -48,17 +49,34 @@ export async function generateBackendStorySegment({
   project,
   prompt,
   promptCards,
+  allowMultiSession = false,
+  activeSessionId,
   signal
 }: {
   project: DramaProject;
   prompt: string;
   promptCards: PromptCard[];
+  allowMultiSession?: boolean;
+  activeSessionId?: string;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
+  const promptContextCards = promptCards.map((card) => ({
+    id: card.id,
+    prompt: card.prompt,
+    createdAt: card.createdAt,
+    messageIds: [],
+    summary: card.summary
+  }));
   const response = await fetch("/api/story/continue", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ project, prompt, promptCards }),
+    body: JSON.stringify({
+      project,
+      prompt,
+      promptCards: promptContextCards,
+      allowMultiSession,
+      activeSessionId
+    }),
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50000)]) : AbortSignal.timeout(50000)
   });
 
@@ -68,10 +86,19 @@ export async function generateBackendStorySegment({
 
   const json = await response.json() as Partial<DeepSeekSegmentResult>;
   const suggestedPrompt = parseSuggestedPrompt(json);
+  const rawMessages = parseMessages(json.messages);
+  const parsedProject = parseProject(json.project);
+  const constrainedProject = constrainGeneratedProjectSessions({
+    project,
+    generatedProject: parsedProject,
+    allowMultiSession,
+    activeSessionId
+  });
+  const constrainedMessagesById = new Map(constrainedProject.messages.map((message) => [message.id, message]));
   return {
     card: parsePromptCard(json.card),
-    messages: parseMessages(json.messages),
-    project: parseProject(json.project),
+    messages: rawMessages.map((message) => constrainedMessagesById.get(message.id) ?? message),
+    project: constrainedProject,
     ...(suggestedPrompt ? { suggestedPrompt } : {})
   };
 }

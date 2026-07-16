@@ -7,6 +7,7 @@ import {
   parseStoryArchive,
   type PromptCard
 } from "../src/shared/linearStory";
+import { parseProject } from "../src/shared/schema";
 
 describe("linear story archive", () => {
   it("keeps the viral static project empty but boots with a default playback story", () => {
@@ -32,6 +33,29 @@ describe("linear story archive", () => {
     expect(second.project.messages).toHaveLength(first.messages.length + second.messages.length);
   });
 
+  it("turns an explicit Journey group prompt into a named group with matching character avatars", () => {
+    const segment = generateStorySegment({
+      project: createInitialStaticProject(),
+      prompt: "写一个唐僧、孙悟空、女儿国国王、白骨精、沙僧和猪八戒的微信群聊。",
+      promptCards: []
+    });
+
+    expect(segment.project.chatMode).toBe("group");
+    expect(segment.project.title).toBe("取经项目总群");
+    expect(segment.project.characters.map((character) => character.name)).toEqual([
+      "唐玄奘", "孙悟空", "女儿国国王", "白骨精", "沙僧", "猪八戒"
+    ]);
+    expect(segment.project.characters.map((character) => character.avatarUrl)).toEqual([
+      "/avatars/journey-1986-tang.webp",
+      "/avatars/journey-1986-wukong.webp",
+      "/avatars/journey-1986-queen.webp",
+      "/avatars/journey-1986-baigujing.webp",
+      "/avatars/journey-1986-shaseng.webp",
+      "/avatars/journey-1986-bajie.webp"
+    ]);
+    expect(new Set(segment.messages.map((message) => message.roleId).filter(Boolean)).size).toBeGreaterThan(2);
+  });
+
   it("exports and imports prompts with the whole dialogue project", () => {
     const segment = generateStorySegment({
       project: createInitialStaticProject(),
@@ -43,8 +67,88 @@ describe("linear story archive", () => {
     const archive = makeStoryArchive(segment.project, promptCards);
     const imported = parseStoryArchive(JSON.parse(JSON.stringify(archive)));
 
-    expect(imported.version).toBe(1);
+    expect(imported.version).toBe(2);
     expect(imported.promptCards[0]?.prompt).toBe("账单截图把误会翻出来。");
+    expect(imported.promptCards[0]?.segment?.after).not.toHaveProperty("messages");
+    expect(imported.promptCards[0]?.segment).toEqual(segment.card.segment);
     expect(imported.project.messages).toHaveLength(segment.messages.length);
+
+    const brokenSegmentArchive = JSON.parse(JSON.stringify(archive));
+    brokenSegmentArchive.promptCards[0].segment.version = 999;
+    expect(parseStoryArchive(brokenSegmentArchive).promptCards[0]?.segment).toBeUndefined();
+  });
+
+  it("round-trips chat sessions and message session ids while accepting legacy archives", () => {
+    const segment = generateStorySegment({
+      project: createInitialStaticProject(),
+      prompt: "男主一边问林夏，一边找周律师核对合同。",
+      promptCards: []
+    });
+    const sessionizedProject = parseProject({
+      ...segment.project,
+      chatSessions: [
+        { id: "chat-main", title: "林夏", participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "周律师", participantIds: ["boy", "girl"] }
+      ],
+      messages: segment.project.messages.map((message, index) => ({
+        ...message,
+        sessionId: index % 2 === 0 ? "chat-main" : "chat-lawyer"
+      }))
+    });
+    const archive = makeStoryArchive(sessionizedProject, [segment.card]);
+    const imported = parseStoryArchive(JSON.parse(JSON.stringify(archive)));
+
+    expect(imported.project.chatSessions).toEqual(sessionizedProject.chatSessions);
+    expect(imported.project.messages.map((message) => message.sessionId)).toEqual(
+      sessionizedProject.messages.map((message) => message.sessionId)
+    );
+
+    const legacyArchive = JSON.parse(JSON.stringify(archive)) as {
+      project: Record<string, unknown> & { messages: Array<Record<string, unknown>> };
+    };
+    delete legacyArchive.project.chatSessions;
+    legacyArchive.project.messages.forEach((message) => delete message.sessionId);
+    const importedLegacy = parseStoryArchive(legacyArchive);
+
+    expect(importedLegacy.project.chatSessions).toEqual([]);
+    expect(importedLegacy.project.messages.every((message) => message.sessionId === "chat-main")).toBe(true);
+    expect(importedLegacy.project.messages.every((message) => message.senderId === message.roleId)).toBe(true);
+  });
+
+  it("migrates version 1 and unversioned archives while safely normalizing prompt cards", () => {
+    const segment = generateStorySegment({
+      project: createInitialStaticProject(),
+      prompt: "旧存档继续写。",
+      promptCards: []
+    });
+    const legacyArchive = {
+      version: 1,
+      exportedAt: "2025-01-01T00:00:00.000Z",
+      project: segment.project,
+      promptCards: [
+        {
+          prompt: segment.card.prompt,
+          messageIds: [...segment.card.messageIds, 42, "missing-message"],
+          suggestedPrompt: 42
+        },
+        null,
+        { id: "invalid-without-prompt" }
+      ]
+    };
+
+    const importedV1 = parseStoryArchive(legacyArchive);
+    expect(importedV1.version).toBe(2);
+    expect(importedV1.promptCards).toHaveLength(1);
+    expect(importedV1.promptCards[0]).toMatchObject({
+      id: "imported-prompt-1",
+      createdAt: legacyArchive.exportedAt,
+      messageIds: segment.card.messageIds
+    });
+    expect(importedV1.promptCards[0]?.summary).toContain("导入故事卡");
+    expect(importedV1.promptCards[0]?.segment).toBeUndefined();
+
+    const unversioned = { ...legacyArchive } as Record<string, unknown>;
+    delete unversioned.version;
+    expect(parseStoryArchive(unversioned).project.messages).toHaveLength(segment.project.messages.length);
   });
 });

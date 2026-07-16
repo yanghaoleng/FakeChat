@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build:ququ",
+  "buildCommand": "npm run verify",
   "outputDirectory": "dist/ququ",
   "rewrites": [
     {

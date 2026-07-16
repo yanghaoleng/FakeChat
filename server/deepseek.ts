@@ -13,7 +13,8 @@ import {
   type DramaProject,
   type ScriptGenerateRequest
 } from "../src/shared/schema.js";
-import { generateDeepSeekStorySegmentWithConfig, type DeepSeekSegmentResult } from "../src/shared/deepseekBrowser.js";
+import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/storyGeneration/deepseekCore.js";
+import type { DeepSeekSegmentResult } from "../src/shared/storyGeneration/contract.js";
 import { getDeepSeekConfig } from "./settings.js";
 
 const storyBeats = [
@@ -40,7 +41,9 @@ const storyContinueRequestSchema = z.object({
     messages: z.array(chatMessageSchema).default([])
   }),
   prompt: z.string().min(1),
-  promptCards: z.array(promptCardSchema).default([])
+  promptCards: z.array(promptCardSchema).default([]),
+  allowMultiSession: z.boolean().default(false),
+  activeSessionId: z.string().min(1).optional()
 });
 
 function customizeFallback(request: ScriptGenerateRequest): DramaProject {
@@ -203,15 +206,6 @@ function normalizeSfx(value: unknown): DramaProject["sfx"] {
   };
 }
 
-function replacementIndexFor(messages: ChatMessage[], preferredIndex: number): number {
-  if (!["transfer", "image", "meme", "music"].includes(messages[preferredIndex]?.type)) {
-    return preferredIndex;
-  }
-
-  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme", "music"].includes(message.type));
-  return fallbackIndex === -1 ? preferredIndex : fallbackIndex;
-}
-
 function limitMessages(messages: ChatMessage[]): ChatMessage[] {
   const next = messages.slice(0, maxGeneratedMessages);
   for (const requiredType of ["image", "meme"] as const) {
@@ -341,10 +335,12 @@ export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeek
   if (!apiKey) throw new Error("后端 DeepSeek API key 未配置");
 
   return generateDeepSeekStorySegmentWithConfig({
-    project: request.project,
+    project: parseProject(request.project),
     prompt: request.prompt,
     promptCards: request.promptCards,
     config: { apiKey, baseUrl, model },
+    allowMultiSession: request.allowMultiSession,
+    activeSessionId: request.activeSessionId,
     logLabel: "deepseek-server"
   });
 }

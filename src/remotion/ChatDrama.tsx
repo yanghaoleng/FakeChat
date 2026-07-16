@@ -1,11 +1,9 @@
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { genderMatchedAvatarUrl } from "../shared/avatarLibrary";
-import { imageNarrativeCopy, imageSourceForMessage } from "../shared/imageNarrative";
-import { jojoCssMemeCardForMessage, type JojoCssMemeCard } from "../shared/jojoMemeCards";
+import type { JojoCssMemeCard } from "../shared/jojoMemeCards";
 import { isJojoProject } from "../shared/jojoProject";
-import { musicTrackForMessage } from "../shared/musicLibrary";
+import { messagePresentationFor, type MessagePresentation } from "../shared/messagePresentation";
 import { resolvePublicAssetPath } from "../shared/publicPath";
-import { getCharacter, type ChatMessage, type DramaProject } from "../shared/schema";
+import type { ChatMessage, DramaProject } from "../shared/schema";
 import { buildTimeline, getDurationInFrames, type TimelineEntry } from "../shared/timing";
 import { sampleProject } from "../shared/sampleProject";
 import "./style.css";
@@ -25,27 +23,20 @@ const scrollTargetFor = (project: DramaProject, timeline: TimelineEntry[], entry
   return clamp(entry.y + entry.height * 0.58 - focusY, 0, maxY);
 };
 
-function Avatar({ project, message }: { project: DramaProject; message: ChatMessage }) {
-  const character = getCharacter(project, message);
-  const avatarUrl = genderMatchedAvatarUrl(character);
+function Avatar({ presentation }: { presentation: MessagePresentation }) {
+  const avatar = presentation.avatar;
+  if (!avatar) return null;
 
-  if (avatarUrl) {
-    const resolvedAvatarUrl = resolvePublicAssetPath(avatarUrl) || avatarUrl;
+  if (avatar.source) {
+    const resolvedAvatarUrl = resolvePublicAssetPath(avatar.source) || avatar.source;
     return <Img className="chat-avatar" src={resolvedAvatarUrl} />;
   }
 
   return (
-    <div className="chat-avatar avatar-fallback" style={{ background: character.avatarGradient }}>
-      {character.avatarInitial}
+    <div className="chat-avatar avatar-fallback" style={{ background: avatar.gradient }}>
+      {avatar.initial}
     </div>
   );
-}
-
-function visualSideFor(project: DramaProject, message: ChatMessage) {
-  if (!isJojoProject(project)) return message.side;
-  if (message.side === "center") return "center";
-  const character = message.roleId ? project.characters.find((item) => item.id === message.roleId) : undefined;
-  return character?.side || message.side;
 }
 
 function TextBubble({ message, visualSide }: { message: ChatMessage; visualSide: ChatMessage["side"] }) {
@@ -69,9 +60,9 @@ function TransferBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-function ImageBubble({ project, message }: { project: DramaProject; message: ChatMessage }) {
-  const src = resolvePublicAssetPath(imageSourceForMessage(project, message));
-  const copy = imageNarrativeCopy(project, message);
+function ImageBubble({ presentation }: { presentation: MessagePresentation }) {
+  if (presentation.media.kind !== "image") return null;
+  const src = resolvePublicAssetPath(presentation.media.source);
 
   return (
     <div className="media-card">
@@ -79,7 +70,7 @@ function ImageBubble({ project, message }: { project: DramaProject; message: Cha
         <Img src={src} className="media-image" />
       ) : (
         <div className="photo-placeholder">
-          <div className="photo-description">{copy.description}</div>
+          <div className="photo-description">{presentation.media.description}</div>
         </div>
       )}
     </div>
@@ -98,31 +89,32 @@ function JojoCssMemeCardView({ card }: { card: JojoCssMemeCard }) {
   );
 }
 
-function MemeBubble({ project, message }: { project: DramaProject; message: ChatMessage }) {
-  const cssCard = jojoCssMemeCardForMessage(message);
-  const src = cssCard ? undefined : resolvePublicAssetPath(imageSourceForMessage(project, message));
+function MemeBubble({ presentation }: { presentation: MessagePresentation }) {
+  if (presentation.media.kind !== "meme") return null;
+  const { caption, cssCard } = presentation.media;
+  const src = resolvePublicAssetPath(presentation.media.source);
 
   return (
     <div className={cssCard ? "meme-card meme-card-css" : "meme-card"}>
       {cssCard ? <JojoCssMemeCardView card={cssCard} /> : src ? <Img src={src} className="meme-image" /> : <div className="meme-text">表情</div>}
-      {!cssCard && message.text ? <div className="meme-caption">{message.text}</div> : null}
+      {!cssCard && caption ? <div className="meme-caption">{caption}</div> : null}
     </div>
   );
 }
 
-function MusicBubble({ message }: { message: ChatMessage }) {
-  const track = musicTrackForMessage(message);
-  const title = message.musicTitle || track.title;
+function MusicBubble({ presentation }: { presentation: MessagePresentation }) {
+  if (presentation.media.kind !== "music") return null;
+  const media = presentation.media;
   return (
     <div className="music-card">
       <div className="music-card-main">
         <div className="music-card-copy">
-          <strong>{title}</strong>
-          <span>{message.musicArtist || track.artist}</span>
-          <small>{message.musicLyric || track.lyric}</small>
+          <strong>{media.title}</strong>
+          <span>{media.artist}</span>
+          <small>{media.lyric}</small>
         </div>
         <div className="music-card-cover-wrap">
-          <Img className="music-card-cover" src={message.musicCoverUrl || track.coverUrl} />
+          <Img className="music-card-cover" src={media.source} />
           <div className="music-card-play">▶</div>
         </div>
       </div>
@@ -131,14 +123,13 @@ function MusicBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-function MessageBody({ project, message }: { project: DramaProject; message: ChatMessage }) {
-  const visualSide = visualSideFor(project, message);
+function MessageBody({ message, presentation }: { message: ChatMessage; presentation: MessagePresentation }) {
+  if (presentation.isSystem) return <div className="system-message">{message.text}</div>;
   if (message.type === "transfer") return <TransferBubble message={message} />;
-  if (message.type === "image") return <ImageBubble project={project} message={message} />;
-  if (message.type === "meme") return <MemeBubble project={project} message={message} />;
-  if (message.type === "music") return <MusicBubble message={message} />;
-  if (message.type === "system") return <div className="system-message">{message.text}</div>;
-  return <TextBubble message={message} visualSide={visualSide} />;
+  if (message.type === "image") return <ImageBubble presentation={presentation} />;
+  if (message.type === "meme") return <MemeBubble presentation={presentation} />;
+  if (message.type === "music") return <MusicBubble presentation={presentation} />;
+  return <TextBubble message={message} visualSide={presentation.visualSide} />;
 }
 
 function MessageRow({ project, entry }: { project: DramaProject; entry: TimelineEntry }) {
@@ -162,15 +153,17 @@ function MessageRow({ project, entry }: { project: DramaProject; entry: Timeline
 
   if (frame < entry.startFrame - 3) return null;
 
-  if (entry.message.type === "system") {
+  const presentation = messagePresentationFor(project, entry.message, "remotion");
+
+  if (presentation.isSystem) {
     return (
       <div className="message-row message-center" style={{ top: entry.y, opacity, transform: `translateY(${translateY}px) scale(${scale})` }}>
-        <MessageBody project={project} message={entry.message} />
+        <MessageBody message={entry.message} presentation={presentation} />
       </div>
     );
   }
 
-  const visualSide = visualSideFor(project, entry.message);
+  const visualSide = presentation.visualSide;
   const jojoMode = isJojoProject(project);
 
   return (
@@ -178,9 +171,12 @@ function MessageRow({ project, entry }: { project: DramaProject; entry: Timeline
       className={`message-row message-${visualSide} ${jojoMode ? (visualSide === "right" ? "message-self" : "message-other") : ""}`}
       style={{ top: entry.y, opacity, transform: `translateY(${translateY}px) scale(${scale})` }}
     >
-      {visualSide === "left" ? <Avatar project={project} message={entry.message} /> : null}
-      <MessageBody project={project} message={entry.message} />
-      {visualSide === "right" ? <Avatar project={project} message={entry.message} /> : null}
+      {visualSide === "left" ? <Avatar presentation={presentation} /> : null}
+      <div className={`message-stack ${visualSide === "right" ? "message-stack-right" : ""}`}>
+        {presentation.speakerName ? <div className="group-speaker-name">{presentation.speakerName}</div> : null}
+        <MessageBody message={entry.message} presentation={presentation} />
+      </div>
+      {visualSide === "right" ? <Avatar presentation={presentation} /> : null}
     </div>
   );
 }

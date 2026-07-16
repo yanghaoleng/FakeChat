@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { generateBackendStorySegment } from "../src/shared/deepseekBackend";
 import { normalizeDeepSeekProject } from "../src/shared/deepseekProject";
+import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/deepseekBrowser";
+import { sampleProject } from "../src/shared/sampleProject";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("normalizeDeepSeekProject", () => {
   it("accepts object assets and array sfx from model JSON", () => {
@@ -126,5 +133,489 @@ describe("normalizeDeepSeekProject", () => {
     expect(project.messages[0].assetId).toMatch(/^qface-/);
     expect(project.assets.some((asset) => asset.id === project.messages[0].assetId && asset.localPath?.startsWith("/memes/qface/"))).toBe(true);
     expect(project.messages[0].text).not.toBe("破防");
+  });
+
+  it("normalizes session aliases, message conversation ids, and at most six characters", () => {
+    const project = normalizeDeepSeekProject(
+      {
+        title: "多线聊天",
+        characters: [
+          { id: "boy", name: "阿泽", side: "right" },
+          { id: "girl", name: "林夏", side: "left" },
+          { id: "lawyer", name: "周律师", side: "left" },
+          { id: "boss", name: "王总", side: "left" },
+          { id: "friend", name: "老陈", side: "left" },
+          { id: "mother", name: "妈妈", side: "left" },
+          { id: "coworker", name: "小李", side: "left" }
+        ],
+        conversations: [
+          { conversationId: "chat-main", name: "林夏", participants: ["boy", "girl"] },
+          { sessionId: "chat-lawyer", title: "周律师", memberIds: ["boy", "lawyer"] }
+        ],
+        messages: [
+          { conversationId: "chat-main", roleId: "girl", side: "left", type: "text", text: "你先看合同" },
+          { conversationId: "chat-lawyer", roleId: "lawyer", side: "left", type: "text", text: "第七条有问题" }
+        ],
+        sfx: {}
+      },
+      { brief: "合同纠纷分两个会话推进", durationSeconds: 75 }
+    );
+
+    expect(project.characters).toHaveLength(6);
+    expect(project.characters.some((character) => character.id === "lawyer" && character.name === "周律师")).toBe(true);
+    expect(project.chatSessions.map((session) => session.id)).toEqual(["chat-main", "chat-lawyer"]);
+    expect(project.chatSessions[1].participantIds).toEqual(expect.arrayContaining(["boy", "lawyer"]));
+    expect(project.messages.map((message) => message.sessionId)).toEqual(["chat-main", "chat-lawyer"]);
+  });
+
+  it("atomically merges new direct-chat contacts and sessions while serializing named session history", async () => {
+    const currentProject = {
+      ...sampleProject,
+      chatSessions: [{ id: "chat-main", title: "旧聊天", participantIds: ["boy", "girl"] }],
+      messages: [{ ...sampleProject.messages[0], sessionId: "chat-main" }]
+    };
+    const modelProject = {
+      title: "模型试图改标题",
+      characters: [
+        { id: "boy", name: "被改名的玩家", side: "right" },
+        { id: "girl", name: "林夏", side: "left" },
+        { id: "lawyer", name: "周律师", side: "left" }
+      ],
+      sessions: [
+        { id: "chat-main", title: "不应覆盖旧标题", participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "周律师", participantIds: ["boy", "lawyer"] }
+      ],
+      messages: [
+        { conversationId: "chat-lawyer", roleId: "lawyer", side: "left", type: "text", text: "合同第七条隐藏了违约金" },
+        { conversationId: "chat-main", roleId: "girl", side: "left", type: "text", text: "我刚拿到对方的补充协议" },
+        { conversationId: "chat-lawyer", roleId: "boy", side: "right", type: "text", text: "两份文件的时间对上了" }
+      ],
+      assets: [],
+      sfx: {}
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(modelProject) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: currentProject,
+      prompt: "让律师和林夏两个会话交错推进合同真相",
+      promptCards: [],
+      allowMultiSession: true,
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.characters.find((character) => character.id === "boy")?.name).toBe(sampleProject.characters.find((character) => character.id === "boy")?.name);
+    expect(result.project.characters.some((character) => character.id === "lawyer" && character.name === "周律师")).toBe(true);
+    expect(result.project.characters.find((character) => character.id === "lawyer")?.avatarUrl)
+      .not.toBe(result.project.characters.find((character) => character.id === "girl")?.avatarUrl);
+    expect(result.project.chatSessions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "chat-main", title: "旧聊天" }),
+      expect.objectContaining({ id: "chat-lawyer", title: "周律师" })
+    ]));
+    expect(result.messages.map((message) => message.sessionId)).toEqual(["chat-lawyer", "chat-main", "chat-lawyer"]);
+
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{ content: string }> };
+    expect(request.messages[0].content).toContain("1-4 个 chatSessions");
+    expect(request.messages[0].content).toContain("全局剧情时间线");
+    expect(request.messages[1].content).toContain("旧聊天 (sessionId=chat-main, kind=direct)");
+    expect(request.messages[1].content).toContain("[会话:旧聊天/chat-main]");
+  });
+
+  it("applies a compact GeneratedStoryDelta without replacing existing history", async () => {
+    const currentProject = {
+      ...sampleProject,
+      chatSessions: [{
+        id: "chat-main",
+        title: "林夏",
+        kind: "direct" as const,
+        participantIds: ["boy", "girl"]
+      }],
+      messages: [{ ...sampleProject.messages[0], sessionId: "chat-main" }]
+    };
+    const delta = {
+      schemaVersion: 1,
+      newMessages: [{
+        sessionId: "chat-main",
+        senderId: "girl",
+        side: "left",
+        type: "text",
+        text: "原始合同的第七条被人换过",
+        emotion: "确认",
+        sendSfx: "send",
+        pauseMs: 320,
+        holdMs: 1_400
+      }],
+      suggestedPrompt: "让林夏发出原文件时间戳。"
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(delta) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: currentProject,
+      prompt: "核对合同原文件的修改痕迹",
+      promptCards: [],
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]).toMatchObject({
+      sessionId: "chat-main",
+      roleId: "girl",
+      text: "原始合同的第七条被人换过"
+    });
+    expect(result.project.messages).toHaveLength(2);
+    expect(result.project.messages[0].text).toBe(currentProject.messages[0].text);
+    expect(result.suggestedPrompt).toBe("让林夏发出原文件时间戳。");
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{ content: string }> };
+    expect(requestBody.messages[0].content).toContain("只输出 GeneratedStoryDelta");
+  });
+
+  it("adds a group session to an existing direct multi-session project without clearing old sessions", async () => {
+    const lawyer = {
+      ...sampleProject.characters[1],
+      id: "lawyer",
+      name: "周律师",
+      avatarInitial: "周"
+    };
+    const boss = {
+      ...sampleProject.characters[1],
+      id: "boss",
+      name: "王总",
+      avatarInitial: "王"
+    };
+    const currentProject = {
+      ...sampleProject,
+      title: "合同调查",
+      characters: [...sampleProject.characters, lawyer],
+      chatSessions: [
+        { id: "chat-main", title: "林夏", kind: "direct" as const, participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "周律师", kind: "direct" as const, participantIds: ["boy", "lawyer"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[0], sessionId: "chat-main" },
+        { ...sampleProject.messages[1], id: "lawyer-history", roleId: "lawyer", senderId: "lawyer", sessionId: "chat-lawyer" }
+      ]
+    };
+    const groupSession = {
+      id: "chat-contract-group",
+      title: "合同核对群",
+      kind: "group" as const,
+      participantIds: ["boy", "girl", "lawyer", "boss"]
+    };
+    const delta = {
+      schemaVersion: 1,
+      newMessages: [
+        { sessionId: groupSession.id, senderId: "boss", side: "left", type: "text", text: "把两份合同都发群里", emotion: "催促", sendSfx: "send", pauseMs: 320, holdMs: 1_300 },
+        { sessionId: groupSession.id, senderId: "lawyer", side: "left", type: "text", text: "我来逐条对比修改痕迹", emotion: "冷静", sendSfx: "send", pauseMs: 320, holdMs: 1_300 }
+      ],
+      topologyChanges: {
+        characters: [...currentProject.characters, boss],
+        chatSessions: [...currentProject.chatSessions, groupSession]
+      }
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(delta) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: currentProject,
+      prompt: "让林夏、周律师和王总新建微信群聊，同时保留原来两个私聊。",
+      promptCards: [],
+      allowMultiSession: true,
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.chatMode).toBe("direct");
+    expect(result.project.title).toBe("合同调查");
+    expect(result.project.chatSessions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "chat-main", kind: "direct" }),
+      expect.objectContaining({ id: "chat-lawyer", kind: "direct" }),
+      expect.objectContaining({ id: groupSession.id, kind: "group", participantIds: expect.arrayContaining(groupSession.participantIds) })
+    ]));
+    expect(result.messages.every((message) => message.sessionId === groupSession.id)).toBe(true);
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{ content: string }> };
+    expect(requestBody.messages[0].content).toContain("必须保留其他已有 direct/group 会话");
+    expect(requestBody.messages[0].content).not.toContain("这个项目只有一个群聊会话");
+  });
+
+  it("does not collapse a mixed archive whose compatibility chatMode is group when the capability is off", async () => {
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "周" };
+    const currentProject = {
+      ...sampleProject,
+      schemaVersion: 2 as const,
+      selfCharacterId: "boy",
+      chatMode: "group" as const,
+      characters: [...sampleProject.characters, lawyer],
+      chatSessions: [
+        { id: "chat-main", title: "林夏", kind: "direct" as const, participantIds: ["boy", "girl"] },
+        { id: "chat-lawyer", title: "合同核对群", kind: "group" as const, participantIds: ["boy", "girl", "lawyer"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[0], id: "mixed-main-history", sessionId: "chat-main" },
+        { ...sampleProject.messages[1], id: "mixed-group-history", senderId: "lawyer", roleId: "lawyer", sessionId: "chat-lawyer" }
+      ]
+    };
+    const delta = {
+      schemaVersion: 1,
+      newMessages: [{
+        sessionId: "invented-session",
+        senderId: "lawyer",
+        side: "left",
+        type: "text",
+        text: "第七条的时间戳对上了",
+        emotion: "确认",
+        sendSfx: "send",
+        pauseMs: 320,
+        holdMs: 1_300
+      }]
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(delta) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: currentProject,
+      prompt: "继续在合同核对群里查时间戳",
+      promptCards: [],
+      activeSessionId: "chat-lawyer",
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.chatSessions.map((session) => session.id)).toEqual(["chat-main", "chat-lawyer"]);
+    expect(result.project.messages.find((message) => message.id === "mixed-main-history")?.sessionId).toBe("chat-main");
+    expect(result.project.messages.find((message) => message.id === "mixed-group-history")?.sessionId).toBe("chat-lawyer");
+    expect(result.messages.every((message) => message.sessionId === "chat-lawyer")).toBe(true);
+  });
+
+  it("strips echoed history from a full-project response before appending only the new active-session message", async () => {
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "周" };
+    const currentProject = {
+      ...sampleProject,
+      schemaVersion: 2 as const,
+      selfCharacterId: "boy",
+      characters: [...sampleProject.characters, lawyer],
+      chatSessions: [
+        { id: "chat-main", title: "林夏", kind: "direct" as const, participantIds: ["boy", "girl"] },
+        { id: "chat-hidden", title: "周律师", kind: "direct" as const, participantIds: ["boy", "lawyer"] }
+      ],
+      messages: [
+        { ...sampleProject.messages[0], id: "old-main", sessionId: "chat-main", text: "主会话旧历史" },
+        {
+          ...sampleProject.messages[1],
+          id: "old-hidden",
+          senderId: "lawyer",
+          roleId: "lawyer",
+          sessionId: "chat-hidden",
+          text: "隐藏会话旧历史"
+        }
+      ]
+    };
+    const fullProjectResponse = {
+      ...currentProject,
+      messages: [
+        ...currentProject.messages,
+        {
+          ...sampleProject.messages[1],
+          id: "new-hidden",
+          senderId: "lawyer",
+          roleId: "lawyer",
+          sessionId: "chat-hidden",
+          text: "这是模型新写的隐藏会话消息"
+        }
+      ]
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(fullProjectResponse) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: currentProject,
+      prompt: "只续写当前主会话",
+      promptCards: [],
+      allowMultiSession: false,
+      activeSessionId: "chat-main",
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]).toMatchObject({
+      sessionId: "chat-main",
+      senderId: "girl",
+      roleId: "girl",
+      text: "这是模型新写的隐藏会话消息"
+    });
+    expect(result.project.messages).toHaveLength(3);
+    expect(result.project.messages.slice(0, 2).map((message) => message.id)).toEqual(["old-main", "old-hidden"]);
+    expect(result.project.messages[0].sessionId).toBe("chat-main");
+    expect(result.project.messages[1].sessionId).toBe("chat-hidden");
+    expect(result.project.messages.filter((message) => message.text === "主会话旧历史")).toHaveLength(1);
+    expect(result.project.messages.filter((message) => message.text === "隐藏会话旧历史")).toHaveLength(1);
+  });
+
+  it("repairs a person-like title for a group prompt and binds Journey avatars", async () => {
+    const modelProject = {
+      title: "唐僧",
+      chatMode: "direct",
+      characters: [
+        { id: "role-a", name: "唐僧", side: "right" },
+        { id: "role-b", name: "孙悟空", side: "left" },
+        { id: "role-c", name: "女儿国国王", side: "left" },
+        { id: "role-d", name: "白骨精", side: "left" },
+        { id: "role-e", name: "沙僧", side: "left" },
+        { id: "role-f", name: "猪八戒", side: "left" }
+      ],
+      messages: [
+        { roleId: "role-a", side: "right", type: "text", text: "群规先看一下" },
+        { roleId: "role-f", side: "left", type: "text", text: "群名谁取的" },
+        { roleId: "role-b", side: "left", type: "text", text: "先说正事" },
+        { roleId: "role-c", side: "left", type: "text", text: "御弟哥哥怎么看" },
+        { roleId: "role-d", side: "left", type: "text", text: "我只看结果" },
+        { roleId: "role-e", side: "left", type: "text", text: "行李已经收好" }
+      ],
+      assets: [],
+      sfx: {}
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(modelProject) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: { ...sampleProject, messages: [] },
+      prompt: "写唐僧、孙悟空、女儿国国王、白骨精、沙僧和猪八戒的微信群聊。",
+      promptCards: [],
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.chatMode).toBe("group");
+    expect(result.project.title).toBe("取经项目总群");
+    expect(result.project.characters.map((character) => character.avatarUrl)).toEqual([
+      "/avatars/journey-1986-tang.webp",
+      "/avatars/journey-1986-wukong.webp",
+      "/avatars/journey-1986-queen.webp",
+      "/avatars/journey-1986-baigujing.webp",
+      "/avatars/journey-1986-shaseng.webp",
+      "/avatars/journey-1986-bajie.webp"
+    ]);
+    expect(result.messages.map((message) => message.roleId)).toEqual([
+      "tang", "bajie", "wukong", "queen", "baigujing", "shaseng"
+    ]);
+    expect(result.messages.map((message) => message.senderId)).toEqual([
+      "tang", "bajie", "wukong", "queen", "baigujing", "shaseng"
+    ]);
+    expect(result.project.messages.slice(-result.messages.length).map((message) => message.senderId)).toEqual(
+      result.messages.map((message) => message.senderId)
+    );
+    expect(result.project.chatSessions).toEqual([{
+      id: "chat-main",
+      title: "取经项目总群",
+      kind: "group",
+      participantIds: ["tang", "wukong", "queen", "baigujing", "shaseng", "bajie"]
+    }]);
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{ content: string }> };
+    expect(request.messages[0].content).toContain("title 必须像真实群名");
+    expect(request.messages[0].content).toContain("chatMode 必须是 group");
+    expect(request.messages[0].content).not.toMatch(/莫急|搞么事|东北口语|方言/);
+  });
+
+  it("gives an ordinary generated group distinct member avatars and a canonical group session", async () => {
+    const duplicatedAvatar = sampleProject.characters.find((character) => character.side === "left")!.avatarUrl;
+    const modelProject = {
+      title: "项目推进小组",
+      chatMode: "group",
+      characters: [
+        { id: "me", name: "张三", side: "right", avatarGender: "boy", avatarUrl: duplicatedAvatar },
+        { id: "li", name: "李四", side: "left", avatarGender: "boy", avatarUrl: duplicatedAvatar },
+        { id: "wang", name: "王五", side: "left", avatarGender: "girl", avatarUrl: duplicatedAvatar },
+        { id: "zhao", name: "赵六", side: "left", avatarGender: "girl", avatarUrl: duplicatedAvatar }
+      ],
+      messages: [
+        { roleId: "me", side: "right", type: "text", text: "先对一下时间" },
+        { roleId: "li", side: "left", type: "text", text: "我负责合同" },
+        { roleId: "wang", side: "left", type: "text", text: "我去找付款记录" },
+        { roleId: "zhao", side: "left", type: "text", text: "聊天截图在我这" }
+      ],
+      assets: [],
+      sfx: {}
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(modelProject) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: { ...sampleProject, messages: [] },
+      prompt: "写张三、李四、王五和赵六一起查合同的微信群聊。",
+      promptCards: [],
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "deepseek-test" }
+    });
+
+    expect(result.project.chatMode).toBe("group");
+    expect(new Set(result.project.characters.map((character) => character.avatarUrl)).size)
+      .toBe(result.project.characters.length);
+    expect(result.project.chatSessions).toEqual([{
+      id: "chat-main",
+      title: "项目推进小组",
+      kind: "group",
+      participantIds: result.project.characters.map((character) => character.id)
+    }]);
+    expect(new Set(result.messages.map((message) => message.roleId))).toEqual(new Set(["me", "li", "wang", "zhao"]));
+    expect(result.messages.every((message) => message.sessionId === "chat-main")).toBe(true);
+  });
+
+  it("defensively constrains an old backend multi-session response when the capability is off", async () => {
+    const currentProject = {
+      ...sampleProject,
+      chatSessions: [{ id: "chat-main", title: "林夏", kind: "direct" as const, participantIds: ["boy", "girl"] }],
+      messages: [{ ...sampleProject.messages[0], id: "existing-main", sessionId: "chat-main" }]
+    };
+    const boss = { ...sampleProject.characters[1], id: "boss", name: "王总", avatarInitial: "王" };
+    const generatedMessage = {
+      ...sampleProject.messages[1],
+      id: "backend-new",
+      senderId: "boss",
+      roleId: "boss",
+      sessionId: "chat-boss",
+      text: "去新会话里说"
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      card: {
+        id: "prompt-backend",
+        prompt: "继续核对",
+        createdAt: "2026-07-16T00:00:00.000Z",
+        messageIds: [generatedMessage.id],
+        summary: "后端返回的新消息"
+      },
+      messages: [generatedMessage],
+      project: {
+        ...currentProject,
+        characters: [...currentProject.characters, boss],
+        chatSessions: [
+          ...currentProject.chatSessions,
+          { id: "chat-boss", title: "王总", kind: "direct", participantIds: ["boy", "boss"] }
+        ],
+        messages: [...currentProject.messages, generatedMessage]
+      }
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateBackendStorySegment({
+      project: currentProject,
+      prompt: "继续核对",
+      promptCards: [],
+      allowMultiSession: false,
+      activeSessionId: "chat-main"
+    });
+
+    expect(result.project.chatSessions.map((session) => session.id)).toEqual(["chat-main"]);
+    expect(result.project.characters.some((character) => character.id === "boss")).toBe(false);
+    expect(result.project.messages.find((message) => message.id === "existing-main")?.sessionId).toBe("chat-main");
+    expect(result.project.messages.find((message) => message.id === generatedMessage.id)).toMatchObject({
+      sessionId: "chat-main",
+      senderId: "girl",
+      roleId: "girl"
+    });
+    expect(result.messages[0].sessionId).toBe("chat-main");
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(requestBody).toMatchObject({ allowMultiSession: false, activeSessionId: "chat-main" });
   });
 });

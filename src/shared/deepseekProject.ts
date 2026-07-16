@@ -2,11 +2,13 @@ import { sampleProject } from "./sampleProject.js";
 import { isGenericImageCopy } from "./imageNarrative.js";
 import { localMemeAssets, normalizeMemeMessage } from "./memeLibrary.js";
 import { hydrateMusicMessage, injectRomanticMusicMessage } from "./musicLibrary.js";
+import { isGroupChatPrompt } from "./storyIdentity.js";
 import {
   messageTypes,
   parseProject,
-  sides,
+  type Character,
   type ChatMessage,
+  type ChatSession,
   type DramaProject,
   type ScriptGenerateRequest
 } from "./schema.js";
@@ -44,6 +46,14 @@ function objectValues(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   if (isRecord(value)) return Object.values(value);
   return [];
+}
+
+function namedObjectValues(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (!isRecord(value)) return [];
+  return Object.entries(value).map(([id, item]) => (
+    isRecord(item) && !stringValue(item.id) ? { ...item, id } : item
+  ));
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -200,21 +210,103 @@ function normalizeAsset(value: unknown, index: number): DramaProject["assets"][n
   };
 }
 
-function normalizeCharacter(value: unknown, index: number, fallback: DramaProject["characters"][number]): DramaProject["characters"][number] {
+function normalizeCharacter(value: unknown, index: number, fallback: Character): Character {
   const record = isRecord(value) ? value : {};
+  const side = enumValue(record.side, ["left", "right"] as const, fallback.side);
+  const name = stringValue(record.name) || fallback.name || `角色${index + 1}`;
 
   return {
     ...fallback,
     id: stringValue(record.id) || fallback.id || `role-${index + 1}`,
-    name: stringValue(record.name) || fallback.name,
-    side: fallback.side,
+    name,
+    side,
+    avatarGender: enumValue(record.avatarGender, ["boy", "girl"] as const, fallback.avatarGender || (side === "right" ? "boy" : "girl")),
     avatarUrl: stringValue(record.avatarUrl) || fallback.avatarUrl,
-    avatarInitial: (stringValue(record.avatarInitial) || stringValue(record.initial) || fallback.avatarInitial).slice(0, 2),
+    avatarInitial: (stringValue(record.avatarInitial) || stringValue(record.initial) || name.slice(-1) || fallback.avatarInitial).slice(0, 2),
     avatarGradient: stringValue(record.avatarGradient) || fallback.avatarGradient,
-    voiceId: stringValue(record.voiceId) || fallback.voiceId,
-    voicePreset: enumValue(record.voicePreset, ["young_real_female", "young_male"] as const, fallback.voicePreset || "young_real_female"),
-    voiceDescription: stringValue(record.voiceDescription) || fallback.voiceDescription
+    voiceId: stringValue(record.voiceId) || fallback.voiceId || `deepseek-role-${index + 1}`,
+    voicePreset: enumValue(record.voicePreset, ["young_real_female", "young_male"] as const, fallback.voicePreset || (side === "right" ? "young_male" : "young_real_female")),
+    voiceDescription: stringValue(record.voiceDescription) || fallback.voiceDescription || (side === "right" ? "自然的年轻男声" : "自然的年轻女声")
   };
+}
+
+function normalizeCharacters(value: unknown, fallback: DramaProject): Character[] {
+  const rawCharacters = namedObjectValues(value).slice(0, 6);
+  if (!rawCharacters.length) return fallback.characters.map((character) => ({ ...character }));
+
+  const characters: Character[] = [];
+  const knownIds = new Set<string>();
+  rawCharacters.forEach((rawCharacter, index) => {
+    const record = isRecord(rawCharacter) ? rawCharacter : {};
+    const rawId = stringValue(record.id);
+    const rawSide = enumValue(record.side, ["left", "right"] as const, index === 0 ? "right" : "left");
+    const base = fallback.characters.find((character) => character.id === rawId)
+      ?? fallback.characters.find((character) => character.side === rawSide)
+      ?? fallback.characters[index % fallback.characters.length];
+    const character = normalizeCharacter(rawCharacter, index, base);
+    if (knownIds.has(character.id)) return;
+    knownIds.add(character.id);
+    characters.push(character);
+  });
+
+  for (const fallbackCharacter of fallback.characters) {
+    if (characters.length >= 2) break;
+    if (knownIds.has(fallbackCharacter.id)) continue;
+    knownIds.add(fallbackCharacter.id);
+    characters.push({ ...fallbackCharacter });
+  }
+  return characters.slice(0, 6);
+}
+
+function participantId(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim() || undefined;
+  if (!isRecord(value)) return undefined;
+  return stringValue(value.id) || stringValue(value.roleId) || stringValue(value.characterId);
+}
+
+function normalizeChatSession(value: unknown, index: number, characters: Character[]): ChatSession | undefined {
+  if (!isRecord(value)) return undefined;
+  const id = stringValue(value.id) || stringValue(value.sessionId) || stringValue(value.conversationId) || `chat-${index + 1}`;
+  const rawParticipants = value.participantIds ?? value.participants ?? value.memberIds ?? value.characterIds ?? value.roleIds;
+  const validCharacterIds = new Set(characters.map((character) => character.id));
+  const player = characters.find((character) => character.side === "right") ?? characters[0];
+  const participantIds = [
+    player?.id,
+    ...objectValues(rawParticipants).map(participantId)
+  ].filter((roleId): roleId is string => Boolean(roleId && validCharacterIds.has(roleId)));
+  const uniqueParticipantIds = [...new Set(participantIds)];
+  const peer = characters.find((character) => character.side === "left" && uniqueParticipantIds.includes(character.id));
+  return {
+    id,
+    title: stringValue(value.title) || stringValue(value.name) || stringValue(value.label) || peer?.name || `会话${index + 1}`,
+    participantIds: uniqueParticipantIds.length ? uniqueParticipantIds : [characters[0].id]
+  };
+}
+
+function normalizeChatSessions(source: Record<string, unknown>, characters: Character[], messages: ChatMessage[]): ChatSession[] {
+  const rawSessions = source.chatSessions ?? source.sessions ?? source.conversations;
+  const sessions = new Map<string, ChatSession>();
+  namedObjectValues(rawSessions).slice(0, 4).forEach((value, index) => {
+    const session = normalizeChatSession(value, index, characters);
+    if (!session) return;
+    const previous = sessions.get(session.id);
+    sessions.set(session.id, previous ? {
+      ...previous,
+      participantIds: [...new Set([...previous.participantIds, ...session.participantIds])]
+    } : session);
+  });
+
+  const player = characters.find((character) => character.side === "right") ?? characters[0];
+  for (const message of messages) {
+    if (!message.sessionId || sessions.has(message.sessionId) || sessions.size >= 4) continue;
+    const peer = message.roleId ? characters.find((character) => character.id === message.roleId && character.side === "left") : undefined;
+    sessions.set(message.sessionId, {
+      id: message.sessionId,
+      title: peer?.name || "新会话",
+      participantIds: [...new Set([player?.id, message.roleId].filter((id): id is string => Boolean(id)))]
+    });
+  }
+  return [...sessions.values()];
 }
 
 function normalizeMessage(
@@ -249,6 +341,7 @@ function normalizeMessage(
 
   const message: ChatMessage = {
     id: stringValue(record.id) || `msg-${index + 1}`,
+    sessionId: stringValue(record.sessionId) || stringValue(record.conversationId),
     roleId: side === "center" ? undefined : stringValue(record.roleId) || stringValue(record.characterId) || stringValue(record.character) || roleForSide?.id,
     side,
     type,
@@ -285,15 +378,6 @@ function normalizeSfx(value: unknown): DramaProject["sfx"] {
   };
 }
 
-function replacementIndexFor(messages: ChatMessage[], preferredIndex: number): number {
-  if (!["transfer", "image", "meme", "music"].includes(messages[preferredIndex]?.type)) {
-    return preferredIndex;
-  }
-
-  const fallbackIndex = messages.findIndex((message) => !["transfer", "image", "meme", "music"].includes(message.type));
-  return fallbackIndex === -1 ? preferredIndex : fallbackIndex;
-}
-
 function limitMessages(messages: ChatMessage[], request: ScriptGenerateRequest): ChatMessage[] {
   const next = messages.slice(0, maxGeneratedMessages);
   for (const requiredType of ["image", "meme"] as const) {
@@ -314,26 +398,34 @@ function limitMessages(messages: ChatMessage[], request: ScriptGenerateRequest):
 export function normalizeDeepSeekProject(value: unknown, request: ScriptGenerateRequest): DramaProject {
   const source = normalizeProjectSource(value);
   const fallback = customizeFallback(request);
-  const rawCharacters = objectValues(source.characters);
-  const characters = fallback.characters.map((character, index) => normalizeCharacter(rawCharacters[index], index, character));
+  const chatMode = enumValue(source.chatMode, ["direct", "group"] as const, isGroupChatPrompt(request.brief) ? "group" : fallback.chatMode);
+  const characters = normalizeCharacters(source.characters, fallback);
   const rawMessages = objectValues(source.messages);
 
   if (!rawMessages.length) {
     throw new Error("DeepSeek JSON did not include a messages array");
   }
 
-  const messages = injectRomanticMusicMessage(
+  const messagesWithPossibleMusic = injectRomanticMusicMessage(
     limitMessages(rawMessages.map((message, index) => normalizeMessage(message, index, characters)), request),
-    fallback,
+    { ...fallback, chatMode },
     request.brief,
     "deepseek"
   );
+  const messages = messagesWithPossibleMusic.map((message, index, allMessages) => {
+    if (message.sessionId) return message;
+    const inheritedSessionId = allMessages[index - 1]?.sessionId || allMessages[index + 1]?.sessionId;
+    return inheritedSessionId ? { ...message, sessionId: inheritedSessionId } : message;
+  });
+  const chatSessions = normalizeChatSessions(source, characters, messages);
+  const defaultSessionId = chatSessions.length === 1 ? chatSessions[0].id : undefined;
 
   return parseProject({
     ...fallback,
     id: stringValue(source.id) || makeId("deepseek"),
     title: stringValue(source.title) || fallback.title,
     brief: stringValue(source.brief) || request.brief,
+    chatMode,
     stylePreset: "kuaishou-horizontal-chat",
     fps: boundedNumber(source.fps, fallback.fps, 24, 60),
     canvas: {
@@ -341,11 +433,14 @@ export function normalizeDeepSeekProject(value: unknown, request: ScriptGenerate
       height: Math.round(numberValue(isRecord(source.canvas) ? source.canvas.height : undefined, fallback.canvas.height))
     },
     characters,
+    chatSessions,
     assets: [
       ...localMemeAssets,
       ...objectValues(source.assets).map(normalizeAsset).filter((asset): asset is DramaProject["assets"][number] => Boolean(asset))
     ],
-    messages,
+    messages: defaultSessionId
+      ? messages.map((message) => message.sessionId ? message : { ...message, sessionId: defaultSessionId })
+      : messages,
     sfx: normalizeSfx(source.sfx),
     audioMix: isRecord(source.audioMix) ? { ...fallback.audioMix, ...source.audioMix } : fallback.audioMix
   });
