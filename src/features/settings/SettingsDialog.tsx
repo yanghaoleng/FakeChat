@@ -1,7 +1,6 @@
-import { ArrowUpRight, FileDown, FileUp, Info, MessageSquarePlus, Settings, Smartphone, Sparkles, Video, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, FileDown, FileUp, Heart, MessageSquarePlus, Settings, Smartphone, Sparkles, UserRound, X } from "lucide-react";
 import type { KeyboardEventHandler, RefObject } from "react";
 import type { StoryPackage } from "../../shared/linearStory";
-import { resolvePublicAssetPath } from "../../shared/publicPath";
 import type {
   JojoPresetRole,
   PresetRoleSelection,
@@ -96,88 +95,81 @@ export function SettingsDialog({
           <span className="settings-dialog-heading-icon" aria-hidden="true"><Settings size={18} /></span>
           <div>
             <h2 id="settings-dialog-title">设置</h2>
-            <p id="settings-dialog-hint">方向键切换，回车确认</p>
+            <p id="settings-dialog-hint">预览、角色和背景</p>
           </div>
           <button className="settings-dialog-close" type="button" aria-label="关闭设置" onClick={onClose}>
             <X size={18} />
           </button>
         </header>
         <div className="settings-dialog-body">
-          <div className="title-menu-tabs" role="tablist" aria-label="预览模式">
-            <button
-              className={previewMode === "wechat" ? "title-menu-tab title-menu-tab-active" : "title-menu-tab"}
-              type="button"
-              role="tab"
-              aria-selected={previewMode === "wechat"}
-              onClick={() => onChoosePreviewMode("wechat")}
-            >
-              <Smartphone size={15} />
-              <span>界面版</span>
-            </button>
-            <button
-              className={previewMode === "video" ? "title-menu-tab title-menu-tab-active" : "title-menu-tab"}
-              type="button"
-              role="tab"
-              aria-selected={previewMode === "video"}
-              onClick={() => onChoosePreviewMode("video")}
-            >
-              <Video size={15} />
-              <span>视频版</span>
-            </button>
-          </div>
-          <div className="title-menu-panel" role="group" aria-label="选择角色">
-            {storyPackage === "jojo" ? (
-              <div className="title-role-avatar-grid">
-                {jojoRoleChoices.map((character) => (
-                  <button
-                    key={character.roleId}
-                    className={activePresetRole.jojoRole === character.roleId ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
-                    type="button"
-                    onClick={() => onSwitchPresetRole({ jojoRole: character.roleId })}
-                    aria-pressed={activePresetRole.jojoRole === character.roleId}
-                  >
-                    {character.avatarUrl ? <img src={resolvePublicAssetPath(character.avatarUrl)} alt="" /> : <span className="title-role-avatar-fallback">{character.avatarInitial}</span>}
-                    <strong>{character.label}</strong>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="title-role-avatar-grid title-role-symbol-grid">
-                {viralRoleChoices.map((option) => (
-                  <button
-                    key={option.id}
-                    className={activePresetRole.viralRole === option.id ? "title-role-avatar title-role-avatar-active" : "title-role-avatar"}
-                    type="button"
-                    onClick={() => onSwitchPresetRole({ viralRole: option.id })}
-                    aria-pressed={activePresetRole.viralRole === option.id}
-                    aria-label={option.label}
-                    title={option.label}
-                  >
-                    <span className="title-role-symbol" aria-hidden="true">{option.symbol}</span>
-                    <strong>{option.label}</strong>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="title-menu-panel title-ambient-panel" role="group" aria-label="切换背景">
-            <div className="title-menu-section-label">
-              <Sparkles size={14} />
-              <span>背景</span>
-            </div>
-            <div className="title-ambient-grid">
-              {ambientSkins.map((skin) => (
-                <button
-                  key={skin.id}
-                  className={ambientSkin === skin.id ? "title-ambient-option title-ambient-option-active" : "title-ambient-option"}
-                  type="button"
-                  aria-pressed={ambientSkin === skin.id}
-                  onClick={() => onSelectAmbientSkin(skin.id)}
+          <div className="settings-option-list" aria-label="基础设置">
+            <label className="settings-option-row">
+              <span className="settings-option-label">
+                <Smartphone size={16} />
+                <span>预览</span>
+              </span>
+              <span className="settings-option-control">
+                <select
+                  aria-label="预览模式"
+                  value={previewMode}
+                  onChange={(event) => onChoosePreviewMode(event.currentTarget.value as SettingsPreviewMode)}
                 >
-                  <span>{skin.label}</span>
-                </button>
-              ))}
-            </div>
+                  <option value="wechat">界面版</option>
+                  <option value="video">视频版</option>
+                </select>
+                <ChevronDown size={15} aria-hidden="true" />
+              </span>
+            </label>
+
+            <label className="settings-option-row">
+              <span className="settings-option-label">
+                <UserRound size={16} />
+                <span>角色</span>
+              </span>
+              <span className="settings-option-control">
+                {storyPackage === "jojo" ? (
+                  <select
+                    aria-label="选择角色"
+                    value={activePresetRole.jojoRole}
+                    onChange={(event) => onSwitchPresetRole({ jojoRole: event.currentTarget.value as JojoPresetRole })}
+                  >
+                    {jojoRoleChoices.map((character) => (
+                      <option key={character.roleId} value={character.roleId}>{character.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    aria-label="选择角色"
+                    value={activePresetRole.viralRole}
+                    onChange={(event) => onSwitchPresetRole({ viralRole: event.currentTarget.value as ViralPresetRole })}
+                  >
+                    {viralRoleChoices.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                )}
+                <ChevronDown size={15} aria-hidden="true" />
+              </span>
+            </label>
+
+            <label className="settings-option-row">
+              <span className="settings-option-label">
+                <Sparkles size={16} />
+                <span>背景</span>
+              </span>
+              <span className="settings-option-control">
+                <select
+                  aria-label="切换背景"
+                  value={ambientSkin}
+                  onChange={(event) => onSelectAmbientSkin(event.currentTarget.value as SettingsAmbientSkinId)}
+                >
+                  {ambientSkins.map((skin) => (
+                    <option key={skin.id} value={skin.id}>{skin.label}</option>
+                  ))}
+                </select>
+                <ChevronDown size={15} aria-hidden="true" />
+              </span>
+            </label>
           </div>
           {storyPackage === "viral" ? (
             <button
@@ -207,9 +199,9 @@ export function SettingsDialog({
             <small>切换版本</small>
           </a>
           <button className="title-menu-item" type="button" data-settings-about onClick={onOpenAbout}>
-            <Info size={16} />
-            <span>关于</span>
-            <small>联系与支持</small>
+            <Heart size={16} />
+            <span>支持作者</span>
+            <small>开源与打赏</small>
           </button>
           <div className="title-menu-separator" />
           <button className="title-menu-item" type="button" onClick={onExportArchive}>

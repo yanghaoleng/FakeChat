@@ -31,6 +31,7 @@ const videoMimeTypes = [
 ];
 const exportSize = { width: 1280, height: 720 };
 const progressUpdateIntervalMs = 200;
+const hiddenPageExportErrorMessage = "视频导出已中止：请在导出期间保持当前页面可见，不要切换标签页、最小化窗口或锁屏，然后重试。";
 const disposedVideoExportResults = new WeakSet<VideoExportResult>();
 type VisualSide = "left" | "right";
 type ImageCache = {
@@ -48,6 +49,10 @@ export function disposeVideoExportResult(result: VideoExportResult | null | unde
 
 function pickMimeType() {
   return videoMimeTypes.find((item) => MediaRecorder.isTypeSupported(item.mimeType)) || videoMimeTypes.at(-1)!;
+}
+
+function isPageHidden() {
+  return document.hidden || document.visibilityState === "hidden";
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
@@ -599,6 +604,8 @@ export async function exportBrowserVideo(
   clips: TtsClipMap,
   onProgress?: (progress: VideoExportProgress) => void
 ): Promise<VideoExportResult> {
+  if (isPageHidden()) throw new Error(hiddenPageExportErrorMessage);
+
   const canvas = document.createElement("canvas");
   canvas.width = exportSize.width;
   canvas.height = exportSize.height;
@@ -620,6 +627,7 @@ export async function exportBrowserVideo(
   let animationFrameId: number | undefined;
   let recorderStopTimerId: number | undefined;
   let detachRecorderListeners = () => undefined;
+  let detachVisibilityListener = () => undefined;
   let runtimeDisposed = false;
   let lastProgressUpdateAt = Number.NEGATIVE_INFINITY;
 
@@ -639,6 +647,7 @@ export async function exportBrowserVideo(
     if (runtimeDisposed) return;
     runtimeDisposed = true;
     detachRecorderListeners();
+    detachVisibilityListener();
     if (animationFrameId !== undefined) window.cancelAnimationFrame(animationFrameId);
     if (recorderStopTimerId !== undefined) window.clearTimeout(recorderStopTimerId);
     if (recorder && recorder.state !== "inactive") {
@@ -724,11 +733,15 @@ export async function exportBrowserVideo(
       const handleDataAvailable = (event: BlobEvent) => {
         if (event.data.size) chunks.push(event.data);
       };
-      const handleError = () => {
+      const failExport = (error: Error) => {
         if (settled) return;
         settled = true;
         cleanupRuntime();
-        reject(new Error("浏览器视频录制失败"));
+        reject(error);
+      };
+      const handleError = () => failExport(new Error("浏览器视频录制失败"));
+      const handleVisibilityChange = () => {
+        if (isPageHidden()) failExport(new Error(hiddenPageExportErrorMessage));
       };
       const handleStop = () => {
         if (settled) return;
@@ -763,6 +776,15 @@ export async function exportBrowserVideo(
         activeRecorder.removeEventListener("error", handleError);
         activeRecorder.removeEventListener("stop", handleStop);
       };
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      detachVisibilityListener = () => {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      };
+
+      if (isPageHidden()) {
+        handleVisibilityChange();
+        return;
+      }
 
       try {
         const audioStart = activeAudioContext.currentTime + 0.2;
@@ -792,6 +814,7 @@ export async function exportBrowserVideo(
         }
 
         activeRecorder.start(1000);
+        if (settled) return;
         const draw = () => {
           try {
             const elapsedMs = Math.max(0, performance.now() - startedAt);

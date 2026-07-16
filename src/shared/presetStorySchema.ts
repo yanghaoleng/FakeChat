@@ -37,6 +37,7 @@ export type PresetStory = {
   chatMode?: "direct" | "group";
   viralRole?: ViralPresetRole;
   viralRoles?: Array<Exclude<ViralPresetRole, "any">>;
+  playerCharacterId?: string;
   presetCharacters?: PresetCharacterSpec[];
   peerAvatarSet?: "western-student";
   characterAvatarSet?: "neutral-editorial";

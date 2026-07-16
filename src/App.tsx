@@ -36,6 +36,7 @@ import {
 } from "./shared/linearStory";
 import {
   createPresetInitialArchive,
+  initialProjectForPrompt,
   isPresetPromptCard,
   nextPresetStoryIndex,
   normalizePresetRoleSelection,
@@ -1334,33 +1335,46 @@ export default function App({ storyPackage }: AppProps) {
     }, 4200);
   }
 
+  async function copyText(value: string, successMessage: string, errorLabel: string) {
+    try {
+      let copied = false;
+      if (typeof document.execCommand === "function") {
+        const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        try {
+          textarea.select();
+          copied = document.execCommand("copy");
+        } finally {
+          textarea.remove();
+          previousActiveElement?.focus({ preventScroll: true });
+        }
+      }
+      if (!copied && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        copied = true;
+      }
+      if (!copied) throw new Error("copy command failed");
+      showToast(successMessage);
+    } catch (error) {
+      console.error(`[about] copy ${errorLabel} failed`, error);
+      showToast("复制失败，请手动复制");
+    }
+  }
+
+  async function copyGithubRepositoryUrl() {
+    await copyText(githubRepositoryUrl, "开源链接已复制", "github url");
+  }
+
   async function copyFeedbackWechatId() {
     if (!hasFeedbackWechatId) {
       showToast("请先补充微信号");
       return;
     }
-    try {
-      let copied = false;
-      if (typeof document.execCommand === "function") {
-        const textarea = document.createElement("textarea");
-        textarea.value = feedbackWechatId;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        copied = document.execCommand("copy");
-        textarea.remove();
-      }
-      if (!copied && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(feedbackWechatId);
-        copied = true;
-      }
-      if (!copied) throw new Error("copy command failed");
-      showToast("复制微信号成功");
-    } catch (error) {
-      console.error("[about] copy wechat id failed", error);
-      showToast("复制失败，请手动复制");
-    }
+    await copyText(feedbackWechatId, "作者微信号已复制", "wechat id");
   }
 
   function isCurrentGeneration(runId: number, signal: AbortSignal) {
@@ -1722,7 +1736,7 @@ export default function App({ storyPackage }: AppProps) {
 
     const dialog = settingsDialogRef.current;
     if (!dialog) return;
-    const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], select:not(:disabled)"));
     if (!controls.length) return;
     const currentIndex = controls.indexOf(document.activeElement as HTMLElement);
 
@@ -1734,6 +1748,8 @@ export default function App({ storyPackage }: AppProps) {
       controls[nextIndex]?.focus();
       return;
     }
+
+    if (event.target instanceof HTMLSelectElement) return;
 
     const direction = event.key === "ArrowUp" || event.key === "ArrowLeft"
       ? -1
@@ -1862,8 +1878,17 @@ export default function App({ storyPackage }: AppProps) {
           return changed ? nextCards : cards;
         });
 
-        const projectSnapshot = projectRef.current;
         const promptCardsSnapshot = promptCardsRef.current;
+        const currentProjectSnapshot = projectRef.current;
+        const initialPresetArchive = initialPresetArchiveRef.current;
+        const projectSnapshot = initialPresetArchive
+          ? initialProjectForPrompt(
+              initialPresetArchive,
+              currentProjectSnapshot,
+              promptCardsSnapshot,
+              activeCard.prompt
+            )
+          : currentProjectSnapshot;
         const snapshotSessions = getChatSessions(projectSnapshot);
         const activeSessionIdSnapshot = snapshotSessions.some((session) => session.id === activeChatSessionIdRef.current)
           ? activeChatSessionIdRef.current
@@ -2915,6 +2940,7 @@ export default function App({ storyPackage }: AppProps) {
           feedbackWechatId={feedbackWechatId}
           hasFeedbackWechatId={hasFeedbackWechatId}
           onClose={closeAboutDialog}
+          onCopyGithubRepositoryUrl={copyGithubRepositoryUrl}
           onCopyFeedbackWechatId={copyFeedbackWechatId}
         />
       ) : null}

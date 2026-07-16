@@ -50,15 +50,17 @@ test.describe("关键用户流程", () => {
     await expect(page.getByRole("button", { name: /定位到第 1 张故事卡/ })).toBeVisible();
 
     await page.getByRole("button", { name: "打开设置" }).click();
-    const videoTab = page.getByRole("tab", { name: "视频版" });
-    await videoTab.click();
+    const settingsDialog = page.getByRole("dialog", { name: "设置" });
+    await expect(settingsDialog.getByRole("combobox")).toHaveCount(3);
+    const previewSelect = settingsDialog.getByRole("combobox", { name: "预览模式" });
+    await previewSelect.selectOption("video");
 
-    await expect(videoTab).toHaveAttribute("aria-selected", "true");
+    await expect(previewSelect).toHaveValue("video");
     await expect(page.locator(".player-frame")).toBeVisible();
     await expect(page.locator('[aria-label="正在加载视频预览"]')).toHaveCount(0);
   });
 
-  test("关于菜单和下级页面按 Escape 逐级返回", async ({ page }) => {
+  test("支持作者页面与设置菜单按 Escape 逐级返回", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await expectHealthyAppShell(page);
@@ -69,42 +71,30 @@ test.describe("关键用户流程", () => {
     await expect(settingsDialog).toBeVisible();
     await settingsDialog.locator("[data-settings-about]").click();
 
-    const aboutSection = page.locator('section[aria-labelledby="about-dialog-title"]');
-    const aboutDialog = page.getByRole("dialog", { name: "关于" });
+    const supportDialog = page.getByRole("dialog", { name: "支持作者" });
     await expect(settingsSection).toBeVisible();
     await expect(settingsSection).toHaveAttribute("aria-hidden", "true");
     await expect(settingsSection).toHaveAttribute("inert", "");
     await expect(settingsSection).not.toHaveAttribute("aria-modal", "true");
     await expect(settingsDialog).toHaveCount(0);
-    await expect(aboutDialog).toBeVisible();
-    await expect(aboutDialog.getByRole("button", { name: "返回设置", exact: true })).toBeVisible();
-    await expect(aboutDialog.getByRole("button", { name: "关闭关于并返回设置", exact: true })).toHaveCount(0);
-    const supportButton = aboutDialog.getByRole("button", { name: "支持鼓励" });
-    await supportButton.click();
-
-    const supportDialog = page.getByRole("dialog", { name: "支持鼓励" });
     await expect(supportDialog).toBeVisible();
-    await expect(supportDialog.getByRole("button", { name: "关闭当前页面并返回关于", exact: true })).toHaveCount(0);
-    await expect(aboutSection).toBeVisible();
-    await expect(aboutSection).toHaveAttribute("aria-hidden", "true");
-    await expect(aboutSection).toHaveAttribute("inert", "");
-    await expect(aboutSection).not.toHaveAttribute("aria-modal", "true");
-    await expect(aboutDialog).toHaveCount(0);
-    await expect(page.locator(".about-dialog")).toHaveCount(2);
+    await expect(supportDialog.getByRole("button", { name: "返回设置", exact: true })).toBeVisible();
+    await expect(supportDialog.getByRole("link", { name: "开源链接" })).toBeVisible();
+    const copyGithubButton = supportDialog.getByRole("button", { name: "复制开源链接" });
+    await expect(copyGithubButton).toBeVisible();
+    await expect(page.locator(".about-dialog")).toHaveCount(1);
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(page.url()).origin });
+    await copyGithubButton.click();
+    await expect(page.locator(".app-toast")).toHaveText("开源链接已复制");
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("github.com/");
+
     await page.keyboard.press("Escape");
     await expect(supportDialog).toHaveCount(0);
-    await expect(aboutDialog).toBeVisible();
-    await expect(settingsSection).toBeVisible();
-    await expect(settingsDialog).toHaveCount(0);
-    await expect(supportButton).toBeFocused();
-
-    await page.keyboard.press("Escape");
-    await expect(aboutDialog).toHaveCount(0);
     await expect(settingsDialog).toBeVisible();
     await expect(settingsSection).not.toHaveAttribute("aria-hidden", "true");
     await expect(settingsSection).not.toHaveAttribute("inert", "");
     await expect(settingsSection).toHaveAttribute("aria-modal", "true");
-    await expect(settingsDialog.getByRole("button", { name: /^关于/ })).toBeFocused();
+    await expect(settingsDialog.getByRole("button", { name: /^支持作者/ })).toBeFocused();
 
     await page.keyboard.press("Escape");
     await expect(settingsDialog).toHaveCount(0);

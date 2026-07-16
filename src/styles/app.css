@@ -2359,11 +2359,11 @@ button[disabled],
   width: min(400px, calc(100vw - 32px));
   max-height: min(680px, calc(100dvh - 40px));
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 0;
   border-radius: 16px;
   background: rgba(9, 22, 36, 0.96);
   color: var(--app-text);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(24px) saturate(122%);
   -webkit-backdrop-filter: blur(24px) saturate(122%);
   animation: settings-dialog-in 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -2377,7 +2377,8 @@ button[disabled],
   align-items: center;
   gap: 10px;
   min-height: 68px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: 0;
+  background: rgba(255, 255, 255, 0.035);
   padding: 11px 14px;
 }
 
@@ -2406,7 +2407,7 @@ button[disabled],
   width: 36px;
   height: 36px;
   min-height: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0;
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--app-accent-readable);
@@ -2421,7 +2422,6 @@ button[disabled],
 
 .settings-dialog-close:hover,
 .settings-dialog-close:focus-visible {
-  border-color: var(--wechat-green-border);
   background: var(--wechat-green-soft);
   color: var(--app-text);
   outline: none;
@@ -2434,13 +2434,98 @@ button[disabled],
 .settings-dialog-body {
   display: grid;
   align-content: start;
+  gap: 4px;
   overflow-y: auto;
   padding: 8px;
 }
 
-.settings-dialog :is(button, a):focus-visible {
+.settings-dialog :is(button, a, select):focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+.settings-option-list {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 4px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 4px;
+}
+
+.settings-option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(116px, 46%);
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 6px 7px 6px 12px;
+  transition: background 0.16s ease;
+}
+
+.settings-option-row:hover,
+.settings-option-row:focus-within {
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.settings-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.settings-option-label > svg {
+  flex: 0 0 auto;
+  color: var(--app-text-muted);
+}
+
+.settings-option-control {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.settings-option-control select {
+  width: 100%;
+  min-height: 34px;
+  overflow: hidden;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 8px;
+  background: var(--wechat-green-soft);
+  color: var(--app-accent-readable);
+  cursor: pointer;
+  padding: 0 30px 0 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.settings-option-control select:hover {
+  background: var(--app-accent-hover-soft);
+}
+
+.settings-option-control select option {
+  background: #0d2236;
+  color: var(--app-text);
+}
+
+.settings-option-control > svg {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  color: var(--app-accent-readable);
+  pointer-events: none;
+  transform: translateY(-50%);
 }
 
 .title-menu-tabs {
@@ -2819,7 +2904,7 @@ button[disabled],
   min-height: 42px;
   border: 0;
   border-radius: 10px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--app-text);
   cursor: pointer;
   padding: 9px 10px;
@@ -2887,7 +2972,7 @@ button[disabled],
   min-width: 38px;
   height: 22px;
   overflow: visible;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
   transition: background 0.18s ease, border-color 0.18s ease;
@@ -2922,9 +3007,9 @@ button[disabled],
 }
 
 .title-menu-separator {
-  height: 1px;
-  margin: 6px 5px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 4px;
+  margin: 0;
+  background: transparent;
 }
 
 @keyframes settings-dialog-in {
@@ -3029,11 +3114,11 @@ button[disabled],
   z-index: 1;
   width: min(390px, calc(100vw - 32px));
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 0;
   border-radius: 16px;
   background: rgba(9, 22, 36, 0.96);
   color: var(--app-text);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(24px) saturate(122%);
   -webkit-backdrop-filter: blur(24px) saturate(122%);
   animation: about-dialog-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -3064,7 +3149,8 @@ button[disabled],
   align-items: center;
   gap: 10px;
   min-height: 68px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: 0;
+  background: rgba(255, 255, 255, 0.035);
   padding: 11px 14px;
 }
 
@@ -3093,7 +3179,7 @@ button[disabled],
   width: 36px;
   height: 36px;
   min-height: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0;
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--app-accent-readable);
@@ -3107,7 +3193,6 @@ button[disabled],
 
 .about-dialog-icon-button:hover,
 .about-dialog-icon-button:focus-visible {
-  border-color: var(--wechat-green-border);
   background: var(--wechat-green-soft);
   color: var(--app-text);
   outline: none;
@@ -3230,8 +3315,8 @@ button[disabled],
 .about-support-qr {
   position: relative;
   overflow: hidden;
-  border: 7px solid rgba(255, 255, 255, 0.94);
   background: rgba(255, 255, 255, 0.94);
+  padding: 7px;
 }
 
 .about-support-qr img {
@@ -3247,8 +3332,8 @@ button[disabled],
   place-items: center;
   align-content: center;
   gap: 10px;
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.035);
+  border: 0;
+  background: rgba(255, 255, 255, 0.055);
   color: var(--app-text-muted);
   padding: 22px;
   text-align: center;
@@ -3264,6 +3349,99 @@ button[disabled],
   color: var(--app-text-subtle);
   font-size: 10px;
   line-height: 1.55;
+}
+
+.support-author-panel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin: 8px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 18px 14px 14px;
+}
+
+.support-author-links {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+}
+
+.support-author-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px 9px 8px 12px;
+}
+
+.support-author-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.support-author-copy > span {
+  color: var(--app-text-subtle);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.support-author-copy :is(a, strong) {
+  overflow: hidden;
+  color: var(--app-text);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.4;
+}
+
+.support-author-copy a:hover,
+.support-author-copy a:focus-visible {
+  color: var(--app-accent-readable);
+  outline: none;
+}
+
+.support-author-copy-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.075);
+  color: var(--app-text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.support-author-copy-button:hover,
+.support-author-copy-button:focus-visible {
+  background: var(--wechat-green-soft);
+  color: var(--app-accent-readable);
+  outline: none;
+}
+
+.support-author-copy-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+.support-author-copy-button:active {
+  transform: scale(0.96);
+}
+
+.support-author-copy-button:disabled {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--app-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .about-feedback-content {

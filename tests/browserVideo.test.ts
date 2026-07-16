@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { disposeVideoExportResult, exportBrowserVideo, type VideoExportProgress, type VideoExportResult } from "../src/shared/browserVideo";
 import { sampleProject } from "../src/shared/sampleProject";
 
-function stubVideoRuntime(options: { recorderConstructorError?: Error } = {}) {
+function stubVideoRuntime(options: {
+  recorderConstructorError?: Error;
+  initiallyHidden?: boolean;
+  hideOnRecorderStart?: boolean;
+} = {}) {
   const track = { stop: vi.fn() };
   const stream = {
     addTrack: vi.fn(),
@@ -23,6 +27,26 @@ function stubVideoRuntime(options: { recorderConstructorError?: Error } = {}) {
     height: 0,
     getContext: vi.fn(() => context),
     captureStream: vi.fn(() => stream)
+  };
+  let visibilityState: DocumentVisibilityState = options.initiallyHidden ? "hidden" : "visible";
+  const visibilityTarget = new EventTarget();
+  const createElement = vi.fn(() => canvas);
+  const addVisibilityListener = vi.fn(visibilityTarget.addEventListener.bind(visibilityTarget));
+  const removeVisibilityListener = vi.fn(visibilityTarget.removeEventListener.bind(visibilityTarget));
+  const browserDocument = {
+    createElement,
+    addEventListener: addVisibilityListener,
+    removeEventListener: removeVisibilityListener,
+    get hidden() {
+      return visibilityState === "hidden";
+    },
+    get visibilityState() {
+      return visibilityState;
+    }
+  };
+  const hideDocument = () => {
+    visibilityState = "hidden";
+    visibilityTarget.dispatchEvent(new Event("visibilitychange"));
   };
   const destination = {
     connect: vi.fn((node: unknown) => node),
@@ -65,6 +89,7 @@ function stubVideoRuntime(options: { recorderConstructorError?: Error } = {}) {
 
     start() {
       this.state = "recording";
+      if (options.hideOnRecorderStart) hideDocument();
     }
 
     stop() {
@@ -92,14 +117,25 @@ function stubVideoRuntime(options: { recorderConstructorError?: Error } = {}) {
   };
   const createObjectURL = vi.fn(() => "blob:generated-export");
   const revokeObjectURL = vi.fn();
-  vi.stubGlobal("document", { createElement: vi.fn(() => canvas) });
+  vi.stubGlobal("document", browserDocument);
   vi.stubGlobal("AudioContext", FakeAudioContext);
   vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
   vi.stubGlobal("window", browserWindow);
   vi.stubGlobal("performance", { now: vi.fn(() => times.shift() ?? 100_000) });
   vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
 
-  return { browserWindow, canvas, closeAudioContext, createObjectURL, revokeObjectURL, silent, track };
+  return {
+    addVisibilityListener,
+    browserWindow,
+    canvas,
+    closeAudioContext,
+    createElement,
+    createObjectURL,
+    removeVisibilityListener,
+    revokeObjectURL,
+    silent,
+    track
+  };
 }
 
 describe("browser video export result", () => {
@@ -154,6 +190,8 @@ describe("browser video export result", () => {
     expect(runtime.track.stop).toHaveBeenCalledOnce();
     expect(runtime.silent.stop).toHaveBeenCalled();
     expect(runtime.closeAudioContext).toHaveBeenCalledOnce();
+    expect(runtime.addVisibilityListener).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+    expect(runtime.removeVisibilityListener).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
     expect(runtime.canvas.width).toBe(0);
     expect(runtime.canvas.height).toBe(0);
 
@@ -172,6 +210,32 @@ describe("browser video export result", () => {
     expect(runtime.track.stop).toHaveBeenCalledOnce();
     expect(runtime.silent.stop).toHaveBeenCalled();
     expect(runtime.closeAudioContext).toHaveBeenCalledOnce();
+    expect(runtime.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("refuses to start an export while the page is hidden", async () => {
+    const runtime = stubVideoRuntime({ initiallyHidden: true });
+    const project = { ...sampleProject, characters: [], messages: [] };
+
+    await expect(exportBrowserVideo(project, {})).rejects.toThrow(
+      "视频导出已中止：请在导出期间保持当前页面可见，不要切换标签页、最小化窗口或锁屏，然后重试。"
+    );
+
+    expect(runtime.createElement).not.toHaveBeenCalled();
+    expect(runtime.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("aborts and releases runtime resources when the page becomes hidden while recording", async () => {
+    const runtime = stubVideoRuntime({ hideOnRecorderStart: true });
+    const project = { ...sampleProject, characters: [], messages: [] };
+
+    await expect(exportBrowserVideo(project, {})).rejects.toThrow(
+      "视频导出已中止：请在导出期间保持当前页面可见，不要切换标签页、最小化窗口或锁屏，然后重试。"
+    );
+
+    expect(runtime.track.stop).toHaveBeenCalledOnce();
+    expect(runtime.closeAudioContext).toHaveBeenCalledOnce();
+    expect(runtime.removeVisibilityListener).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
     expect(runtime.createObjectURL).not.toHaveBeenCalled();
   });
 });

@@ -3,10 +3,11 @@ import { avatarGenderForCharacter, genderMatchedAvatarUrl } from "../src/shared/
 import {
   createPresetInitialArchive,
   defaultPresetRoleSelection,
+  initialProjectForPrompt,
   normalizePresetRoleSelection,
   presetStoryCount
 } from "../src/shared/presetStories";
-import { viralNamedCharacterStyleInstruction } from "../src/shared/deepseekBrowser";
+import { buildDeepSeekRequest, viralNamedCharacterStyleInstruction } from "../src/shared/deepseekBrowser";
 
 function archiveById(viralRole: "any" | "male" | "female", presetId: string) {
   const count = presetStoryCount("viral", { viralRole });
@@ -41,6 +42,41 @@ describe("微信预制首卡", () => {
       expect(archive.cachedFirstSegment.card.segment?.before).not.toHaveProperty("messages");
       expect(archive.cachedFirstSegment.card.segment?.after).not.toHaveProperty("messages");
     }
+  });
+
+  it("首条自定义提示词从干净项目开始，不携带未播放的预制本", () => {
+    const archive = archiveById("any", "viral-liu-qiangdong-passerby");
+    const requestProject = initialProjectForPrompt(
+      archive,
+      archive.project,
+      [],
+      "写一个完全无关的火星基地群聊"
+    );
+
+    expect(requestProject).toBe(archive.customStartProject);
+    expect(requestProject.messages).toEqual([]);
+    expect(requestProject.brief).toBe("");
+    expect(requestProject.title).toBe("线性聊天短剧");
+    expect(requestProject.characters.map((character) => character.name)).not.toContain("刘强东");
+    expect(JSON.stringify(requestProject)).not.toContain(archive.preset.prompt);
+    const aiRequest = buildDeepSeekRequest({
+      project: requestProject,
+      prompt: "写一个完全无关的火星基地群聊",
+      promptCards: [],
+      model: "deepseek-test"
+    });
+    expect(JSON.stringify(aiRequest)).not.toContain(archive.preset.prompt);
+    expect(JSON.stringify(aiRequest)).not.toContain("刘强东");
+  });
+
+  it("预制提示词被采纳播放后，后续提示词保留预制历史", () => {
+    const archive = archiveById("any", "viral-liu-qiangdong-passerby");
+    const adoptedProject = archive.cachedFirstSegment.project;
+    const adoptedCards = [archive.cachedFirstSegment.card];
+
+    expect(initialProjectForPrompt(archive, archive.project, [], archive.preset.prompt)).toBe(archive.project);
+    expect(initialProjectForPrompt(archive, adoptedProject, adoptedCards, "前员工继续追问"))
+      .toBe(adoptedProject);
   });
 
   it.each([
@@ -137,6 +173,15 @@ describe("微信预制首卡", () => {
     const dialogue = archive.cachedFirstSegment.messages.map((message) => message.text).join(" ");
 
     expect(archive.project.characters.map((character) => character.name)).toEqual(["刘强东", "前员工"]);
+    expect(archive.project.selfCharacterId).toBe("girl");
+    expect(archive.project.characters.find((character) => character.name === "前员工")?.side).toBe("right");
+    expect(archive.project.characters.find((character) => character.name === "刘强东")?.side).toBe("left");
+    expect(archive.cachedFirstSegment.messages
+      .filter((message) => message.roleId === "girl")
+      .every((message) => message.side === "right")).toBe(true);
+    expect(archive.cachedFirstSegment.messages
+      .filter((message) => message.roleId === "boy")
+      .every((message) => message.side === "left")).toBe(true);
     expect(archive.project.characters.find((character) => character.name === "刘强东")?.avatarUrl)
       .toBe("/avatars/dragonball-goku-orange.webp");
     expect(dialogue).toContain("生活第一，事业、工作第二");

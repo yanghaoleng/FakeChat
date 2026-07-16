@@ -208,6 +208,7 @@ export const viralPresetStories: PresetStory[] = [
     id: "viral-liu-qiangdong-passerby",
     title: "离职后成了路人",
     viralRole: "any",
+    playerCharacterId: "girl",
     characterAvatarSet: "neutral-editorial",
     characterAvatarIds: { boy: "dragonball-goku-orange" },
     characterNames: { boy: "刘强东", girl: "前员工" },
