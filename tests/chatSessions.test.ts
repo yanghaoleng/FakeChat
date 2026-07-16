@@ -183,6 +183,27 @@ describe("chat sessions", () => {
     });
   });
 
+  it("repairs a generic persisted group title from the story context", () => {
+    const friend = { ...sampleProject.characters[1], id: "friend", name: "周雨", avatarInitial: "雨" };
+    const project = parseProject({
+      ...sampleProject,
+      schemaVersion: 2,
+      selfCharacterId: "boy",
+      title: "新群聊",
+      brief: "西游记师徒四人在取经总群里聊天",
+      chatMode: "group",
+      characters: [...sampleProject.characters, friend],
+      chatSessions: [{
+        id: "chat-main",
+        title: "新群聊",
+        kind: "group",
+        participantIds: ["boy", "girl", "friend"]
+      }]
+    });
+
+    expect(getChatSessions(project)[0].title).toBe("取经项目总群");
+  });
+
   it("supports direct and group sessions in the same v2 project", () => {
     const friend = { ...sampleProject.characters[1], id: "friend", name: "周雨", avatarInitial: "雨" };
     const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "律" };
@@ -247,5 +268,33 @@ describe("chat sessions", () => {
       kind: "group",
       participantIds: ["boy", "girl", "friend"]
     }]);
+  });
+
+  it("does not let generated topology overwrite a creative group title with a default name", () => {
+    const friend = { ...sampleProject.characters[1], id: "friend", name: "周雨", avatarInitial: "雨" };
+    const characters = [...sampleProject.characters, friend];
+    const project = parseProject({
+      ...sampleProject,
+      schemaVersion: 2,
+      brief: "三个人核对合同证据",
+      characters,
+      chatSessions: [{
+        id: "case-group",
+        title: "合同拆弹小组",
+        kind: "group",
+        participantIds: ["boy", "girl", "friend"]
+      }]
+    });
+    const generatedProject = parseProject({
+      ...project,
+      chatSessions: [{
+        id: "case-group",
+        title: "新群聊",
+        kind: "group",
+        participantIds: ["boy", "girl", "friend"]
+      }]
+    });
+
+    expect(mergeChatSessions(project, generatedProject, characters)[0].title).toBe("合同拆弹小组");
   });
 });

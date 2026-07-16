@@ -54,7 +54,7 @@ const journeyProfiles: JourneyProfile[] = [
   }
 ];
 
-const groupTitleMarkers = /群|小组|项目组|工作组|办公室|一家人|联盟|后援会|俱乐部|联络处|委员会|大队|聊天局/;
+const genericGroupTitlePattern = /^(?:新建?|默认|未命名|临时)?(?:群聊|微信群|多人群聊|多人聊天|聊天群|讨论群|群组|群)$/;
 
 function compact(value: string) {
   return value.replace(/[\s·_\-—]+/g, "").toLowerCase();
@@ -71,8 +71,16 @@ export function isUsableGroupTitle(title: string | undefined, characterNames: st
   const value = title?.replace(/\s+/g, "").trim();
   if (!value || value.length < 3 || value.length > 18) return false;
   if (characterNames.some((name) => value === name.trim())) return false;
-  if (/^(?:男主|女主|聊天对象|联系人|群聊|微信群|多人聊天)$/.test(value)) return false;
-  return groupTitleMarkers.test(value);
+  if (/^(?:男主|女主|聊天对象|联系人)$/.test(value)) return false;
+  if (/^(?:线性聊天短剧|聊天短剧|新故事|未命名故事|DramaProject)$/.test(value)) return false;
+  if (genericGroupTitlePattern.test(value)) return false;
+  if (/^.{1,8}(?:和|与).{1,8}的聊天$/.test(value)) return false;
+  return true;
+}
+
+export function isGenericGroupTitle(title: string | undefined) {
+  const value = title?.replace(/\s+/g, "").trim();
+  return !value || genericGroupTitlePattern.test(value);
 }
 
 function explicitGroupTitle(prompt: string) {
@@ -85,12 +93,15 @@ export function groupTitleForPrompt(prompt: string, generatedTitle?: string, cha
   const explicit = explicitGroupTitle(prompt);
   if (isUsableGroupTitle(explicit, characterNames)) return explicit!;
   if (isUsableGroupTitle(generatedTitle, characterNames)) return generatedTitle!.trim();
-  if (/唐僧|唐玄奘|孙悟空|悟空|白骨精|猪八戒|八戒|沙僧|女儿国/.test(prompt)) return "取经项目总群";
+  if (/西游|取经|唐僧|唐玄奘|孙悟空|悟空|白骨精|猪八戒|八戒|沙僧|女儿国/.test(prompt)) return "取经项目总群";
+  if (/GTA|Grand\s*Theft\s*Auto|洛圣都|罪恶都市|自由城|Vice\s*City/i.test(prompt)) return "洛圣都候场室";
+  if (/水浒|武松|潘金莲|梁山|阳谷县/.test(prompt)) return "阳谷县吃瓜局";
+  if (/合同|付款|账单|律师|证据/.test(prompt)) return "证据链补完小组";
   if (/家人|家庭|亲戚/.test(prompt)) return "相亲相爱一家人";
   if (/同学|校友|毕业/.test(prompt)) return "老同学联络处";
   if (/同事|工作|项目|甲方|乙方|公司/.test(prompt)) return "项目推进小组";
   if (/朋友|好友|闺蜜|兄弟/.test(prompt)) return "朋友闲聊小组";
-  return "临时讨论小组";
+  return "今晚不许潜水";
 }
 
 export function journeyProfilesInText(value: string) {

@@ -1673,6 +1673,7 @@ export default function App({ storyPackage }: AppProps) {
 
   function closeSettingsMenu() {
     if (!settingsMenuOpen || settingsMenuClosing) return;
+    setAboutDialogOpen(false);
     setSettingsMenuClosing(true);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     settingsMenuCloseTimerRef.current = window.setTimeout(() => {
@@ -1729,13 +1730,14 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function openAboutDialog() {
-    closeSettingsMenu();
-    window.setTimeout(() => setAboutDialogOpen(true), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180);
+    setAboutDialogOpen(true);
   }
 
   function closeAboutDialog() {
     setAboutDialogOpen(false);
-    window.requestAnimationFrame(() => settingsButtonRef.current?.focus());
+    window.requestAnimationFrame(() => {
+      settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-about]")?.focus();
+    });
   }
 
   function setStoryPanelOpenWithContinuity(next: boolean | ((current: boolean) => boolean)) {
@@ -2712,17 +2714,11 @@ export default function App({ storyPackage }: AppProps) {
         return;
       }
       if (event.defaultPrevented) return;
+      if (aboutDialogOpen) return;
       if (settingsMenuOpen) {
         if (key === "Escape") {
           event.preventDefault();
           closeSettingsMenu();
-        }
-        return;
-      }
-      if (aboutDialogOpen) {
-        if (key === "Escape") {
-          event.preventDefault();
-          closeAboutDialog();
         }
         return;
       }

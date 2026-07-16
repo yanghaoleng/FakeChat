@@ -1,6 +1,7 @@
 import { assignDistinctCharacterAvatars } from "./avatarLibrary.js";
 import { chatSessionTitle, getChatSessions } from "./chatSessions.js";
 import type { Character, ChatMessage, ChatSession, DramaProject } from "./schema.js";
+import { groupTitleForPrompt, isGenericGroupTitle } from "./storyIdentity.js";
 
 export const maxMultiSessionCount = 4;
 export const maxMultiSessionCharacterCount = 6;
@@ -68,7 +69,7 @@ function mergedSessionInputs(project: DramaProject, generatedProject: DramaProje
     const previous = sessions.get(session.id);
     sessions.set(session.id, previous ? {
       ...session,
-      title: previous.title,
+      title: isGenericGroupTitle(previous.title) ? session.title : previous.title,
       kind: previous.kind === "group" || session.kind === "group"
         ? "group"
         : session.kind ?? previous.kind,
@@ -151,11 +152,19 @@ export function reconcileGeneratedMultiSessions({
     ).values()];
 
     if (kind === "group" && candidatePeers.length) {
+      const participantIds = unique([basePlayer.id, ...candidatePeers.map((character) => character.id)]);
+      const participantNames = allCharacters
+        .filter((character) => participantIds.includes(character.id))
+        .map((character) => character.name);
       sessions.push({
         id: session.id,
-        title: currentSessionIds.has(session.id) ? session.title : (session.title.trim() || "群聊"),
+        title: groupTitleForPrompt(
+          `${project.title}\n${project.brief}\n${generatedProject.brief}`,
+          session.title,
+          participantNames
+        ),
         kind: "group",
-        participantIds: unique([basePlayer.id, ...candidatePeers.map((character) => character.id)])
+        participantIds
       });
       continue;
     }
@@ -266,6 +275,7 @@ export function multiSessionGenerationInstruction() {
   return [
     `这是微信多会话故事。根据剧情可以只推进原会话，也可以自然新建私聊或群聊；整个项目保持 1-${maxMultiSessionCount} 个 chatSessions，不要为了凑数建群。`,
     `chatSessions 每项必须有 id、title、kind(direct|group)、participantIds；输出多个 direct 会话时，每个会话必须创建一名不同的左侧联系人角色，不能让两个会话复用同一个 roleId；group 会话保留所有参与者。所有会话都包含同一名右侧玩家，characters 总数不得超过 ${maxMultiSessionCharacterCount}。`,
+    "group 会话的 title 要根据人物关系和当前剧情起一个像真实微信群的有梗名字，3-18 个字符；禁止使用“新群聊”“群聊”“多人群聊”“未命名群聊”“新建群聊”等默认名。已有创意群名必须沿用，除非用户明确要求改名。",
     "每条 message 必须有有效 sessionId 和 senderId（兼容字段 roleId 与 senderId 保持一致），且 senderId 必须属于对应会话。messages 是全局剧情时间线，不同会话的消息可以按发生顺序交错排列；不要把 messages 嵌套进 chatSessions。",
     "沿用已有会话和角色的 id、姓名、头像与参与关系；只有剧情明确需要新联系人时才新建 id。新联系人必须使用不同头像，不能和已有角色重复。"
   ].join("\n");

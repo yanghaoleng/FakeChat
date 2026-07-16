@@ -2,9 +2,12 @@ const pngSignature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 const archiveKeyword = "chara";
 const maximumArchiveChunkBytes = 16 * 1024 * 1024;
 const crcTable = buildCrcTable();
+const archiveDesignSize = 300;
+const archiveDesignFooterHeight = 100;
+const archiveDesignImageHeight = archiveDesignSize + archiveDesignFooterHeight;
 
-export const archiveCoverSize = 300;
-export const archiveFooterHeight = archiveCoverSize / 3;
+export const archiveCoverSize = 800;
+export const archiveFooterHeight = Math.round(archiveCoverSize / 3);
 export const archiveImageHeight = archiveCoverSize + archiveFooterHeight;
 export const archiveFooterTitle = "蛐蛐模拟器存档文件";
 export const archiveFooterUrl = "ququ.mikeywa.icu";
@@ -234,6 +237,14 @@ export function archiveMediaCount(messages: Array<{ type?: string }>) {
   return messages.filter((message) => ![undefined, "text", "system"].includes(message.type)).length;
 }
 
+export function formatArchiveUpdatedAt(value: string | undefined) {
+  if (!value) return "时间未知";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "时间未知";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}时`;
+}
+
 function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   const safeRadius = Math.min(radius, width / 2, height / 2);
   context.beginPath();
@@ -326,24 +337,25 @@ async function renderArchiveCover(archive: unknown) {
   canvas.height = archiveImageHeight;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("当前浏览器无法生成存档图片");
+  context.scale(archiveCoverSize / archiveDesignSize, archiveImageHeight / archiveDesignImageHeight);
 
-  const background = context.createLinearGradient(0, 0, 0, archiveCoverSize);
+  const background = context.createLinearGradient(0, 0, 0, archiveDesignSize);
   background.addColorStop(0, "#111922");
   background.addColorStop(0.56, "#0b141c");
   background.addColorStop(1, "#071016");
   context.fillStyle = background;
-  context.fillRect(0, 0, archiveCoverSize, archiveCoverSize);
+  context.fillRect(0, 0, archiveDesignSize, archiveDesignSize);
 
   for (let index = 0; index < 110; index += 1) {
-    const x = (index * 47) % archiveCoverSize;
-    const y = (index * 83) % archiveCoverSize;
+    const x = (index * 47) % archiveDesignSize;
+    const y = (index * 83) % archiveDesignSize;
     context.fillStyle = `rgba(255,255,255,${0.008 + (index % 3) * 0.004})`;
     context.fillRect(x, y, 1, 1);
   }
 
   const avatarStep = coverCharacters.length > 1 ? Math.min(37, 208 / (coverCharacters.length - 1)) : 0;
   const avatarRowWidth = 52 + (coverCharacters.length - 1) * avatarStep;
-  const avatarStartX = (archiveCoverSize - avatarRowWidth) / 2;
+  const avatarStartX = (archiveDesignSize - avatarRowWidth) / 2;
   coverCharacters.forEach((character, index) => {
     drawArchiveAvatar(context, character, avatars[index], avatarStartX + index * avatarStep, 28, accent);
   });
@@ -352,10 +364,10 @@ async function renderArchiveCover(archive: unknown) {
   context.font = '700 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(fitArchiveName(context, archiveParticipantTitle(project.characters), 256), archiveCoverSize / 2, 106);
+  context.fillText(fitArchiveName(context, archiveParticipantTitle(project.characters), 256), archiveDesignSize / 2, 106);
   context.fillStyle = "rgba(190,202,211,0.76)";
   context.font = '400 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  context.fillText(fitArchiveName(context, project.title || (project.chatMode === "group" ? "群聊存档" : "私聊存档"), 230), archiveCoverSize / 2, 128);
+  context.fillText(fitArchiveName(context, project.title || (project.chatMode === "group" ? "群聊存档" : "私聊存档"), 230), archiveDesignSize / 2, 128);
 
   const chips = [
     project.chatMode === "group" ? "群聊" : "私聊",
@@ -365,7 +377,7 @@ async function renderArchiveCover(archive: unknown) {
   context.font = '500 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const chipWidths = chips.map((chip) => Math.ceil(context.measureText(chip).width) + 18);
   const chipGap = 6;
-  let chipX = (archiveCoverSize - chipWidths.reduce((sum, width) => sum + width, 0) - chipGap * (chips.length - 1)) / 2;
+  let chipX = (archiveDesignSize - chipWidths.reduce((sum, width) => sum + width, 0) - chipGap * (chips.length - 1)) / 2;
   chips.forEach((chip, index) => {
     roundedRectPath(context, chipX, 146, chipWidths[index], 25, 12.5);
     context.fillStyle = "rgba(255,255,255,0.06)";
@@ -393,7 +405,8 @@ async function renderArchiveCover(archive: unknown) {
   context.fillStyle = "rgba(255,255,255,0.95)";
   context.font = '650 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   context.fillText(`${project.characters.length} 人参与`, 85, 271);
-  context.fillText("今天", 215, 271);
+  context.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  context.fillText(formatArchiveUpdatedAt(cover.exportedAt), 215, 271);
   context.fillStyle = "rgba(171,184,193,0.72)";
   context.font = '400 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   context.fillText("聊天人数", 85, 287);
@@ -404,20 +417,20 @@ async function renderArchiveCover(archive: unknown) {
   vignette.addColorStop(0.68, "rgba(0,0,0,0.05)");
   vignette.addColorStop(1, "rgba(0,0,0,0.48)");
   context.fillStyle = vignette;
-  context.fillRect(0, 0, archiveCoverSize, archiveCoverSize);
+  context.fillRect(0, 0, archiveDesignSize, archiveDesignSize);
 
   context.fillStyle = "#030506";
-  context.fillRect(0, archiveCoverSize, archiveCoverSize, archiveFooterHeight);
+  context.fillRect(0, archiveDesignSize, archiveDesignSize, archiveDesignFooterHeight);
   context.fillStyle = "rgba(255,255,255,0.08)";
-  context.fillRect(0, archiveCoverSize, archiveCoverSize, 1);
+  context.fillRect(0, archiveDesignSize, archiveDesignSize, 1);
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillStyle = "#ffffff";
   context.font = '650 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  context.fillText(archiveFooterTitle, archiveCoverSize / 2, archiveCoverSize + 38);
+  context.fillText(archiveFooterTitle, archiveDesignSize / 2, archiveDesignSize + 38);
   context.font = '400 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   context.fillStyle = "#b8bdc2";
-  context.fillText(archiveFooterUrl, archiveCoverSize / 2, archiveCoverSize + 68);
+  context.fillText(archiveFooterUrl, archiveDesignSize / 2, archiveDesignSize + 68);
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {

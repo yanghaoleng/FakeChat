@@ -123,6 +123,9 @@ describe("DeepSeek prompt contract", () => {
     };
     const { system, user } = promptParts(groupProject, "三个人在群里核对合同和付款记录");
 
+    expect(system).toContain("禁止使用“新群聊”");
+    expect(system).toContain("续写时沿用已有创意群名");
+
     expect({
       lead: system.split("\n")[0],
       mode: lineContaining(system, "当前故事是多人群聊"),

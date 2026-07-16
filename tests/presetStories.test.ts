@@ -77,10 +77,8 @@ describe("微信预制首卡", () => {
       "viral-fengge-female-fan-private-chat",
       "viral-fengge-male-b-friend-advice",
       "viral-luo-jia-next-week-live",
-      "viral-lei-yu-joint-launch",
+      "viral-luo-lei-crossroads-podcast",
       "viral-liu-qiangdong-passerby",
-      "viral-wang-dong-nearby-office",
-      "viral-king-of-comedy-support-you",
       "viral-journey-secret-cp-group",
       "viral-gta-release-city-summit",
       "viral-office-private-calendar",
@@ -88,7 +86,7 @@ describe("微信预制首卡", () => {
       "viral-encounter-wrong-umbrella"
     ];
 
-    expect(presetStoryCount("viral", { viralRole: "any" })).toBe(16);
+    expect(presetStoryCount("viral", { viralRole: "any" })).toBe(14);
     expect(presetStoryCount("viral", { viralRole: "male" })).toBe(7);
     expect(presetStoryCount("viral", { viralRole: "female" })).toBe(6);
     for (const presetId of presetIds) expect(archiveById("any", presetId).preset.id).toBe(presetId);
@@ -101,21 +99,37 @@ describe("微信预制首卡", () => {
 
   it("水浒本使用武松与潘金莲并匹配角色性别", () => {
     const archive = archiveById("any", "viral-pan-jinlian-window-request");
+    const dialogue = archive.cachedFirstSegment.messages.map((message) => message.text).join(" ");
 
     expect(archive.project.characters.map((character) => character.name)).toEqual(["武松", "潘金莲"]);
     expect(archive.project.characters.map(avatarGenderForCharacter)).toEqual(["boy", "girl"]);
-    expect(archive.cachedFirstSegment.messages.some((message) => message.text.includes("门外"))).toBe(true);
+    expect(dialogue).toContain("西门庆要来");
+    expect(dialogue).toContain("若我真越一次墙");
+    expect(dialogue).toContain("只替你哥");
+    expect(dialogue).toContain("我就在楼下");
+    expect(dialogue).toContain("窗边看你");
     for (const character of archive.project.characters) {
       expect(genderMatchedAvatarUrl(character)).toBe(character.avatarUrl);
     }
   });
 
   it("非恋爱题材优先使用中性插画头像", () => {
-    const archive = archiveById("any", "viral-wang-dong-nearby-office");
+    const archive = archiveById("any", "viral-luo-lei-crossroads-podcast");
     const avatarUrls = archive.project.characters.map((character) => character.avatarUrl);
 
     expect(avatarUrls.every((avatarUrl) => avatarUrl?.includes("neutral-animal-"))).toBe(true);
     expect(new Set(avatarUrls).size).toBe(2);
+  });
+
+  it("罗永浩邀请雷军上十字路口时拉扯低调与新车宣传", () => {
+    const archive = archiveById("any", "viral-luo-lei-crossroads-podcast");
+    const dialogue = archive.cachedFirstSegment.messages.map((message) => message.text).join(" ");
+
+    expect(archive.project.characters.map((character) => character.name)).toEqual(["罗永浩", "雷军"]);
+    expect(dialogue).toContain("十字路口");
+    expect(dialogue).toContain("低调");
+    expect(dialogue).toContain("新车");
+    expect(dialogue).toContain("口播");
   });
 
   it("刘强东本改为与前员工讨论兄弟和路人", () => {
@@ -123,6 +137,8 @@ describe("微信预制首卡", () => {
     const dialogue = archive.cachedFirstSegment.messages.map((message) => message.text).join(" ");
 
     expect(archive.project.characters.map((character) => character.name)).toEqual(["刘强东", "前员工"]);
+    expect(archive.project.characters.find((character) => character.name === "刘强东")?.avatarUrl)
+      .toBe("/avatars/dragonball-goku-orange.webp");
     expect(dialogue).toContain("生活第一，事业、工作第二");
     expect(dialogue).toContain("你不是我们的兄弟，你是路人");
     expect(dialogue).toContain("我们不是一路人，我们不是一家人");

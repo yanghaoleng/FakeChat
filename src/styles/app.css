@@ -1596,7 +1596,7 @@ button[disabled],
     #03111d;
   transform-origin: 50% 50%;
   will-change: transform;
-  animation: ambient-nightmeadow-entry-slow 2.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: ambient-nightmeadow-entry-slow 4.2s cubic-bezier(0.22, 0.7, 0.28, 1) both;
 }
 
 .app-shell[data-ambient-skin="nightmeadow"] .ambient-layer::before,
@@ -1619,7 +1619,7 @@ button[disabled],
 }
 
 .app-shell[data-ambient-skin="nightmeadow"] .ambient-entry-blackout {
-  animation: ambient-nightmeadow-black-reveal 2.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: ambient-nightmeadow-black-reveal 4.2s cubic-bezier(0.22, 0.7, 0.28, 1) both;
 }
 
 @keyframes ambient-nightmeadow-entry-slow {
@@ -1627,25 +1627,15 @@ button[disabled],
     transform: scale(1);
   }
   to {
-    transform: scale(1.25);
+    transform: scale(1.18);
   }
 }
 
 @keyframes ambient-nightmeadow-black-reveal {
-  0%,
-  8% {
+  from {
     opacity: 1;
   }
-  28% {
-    opacity: 0.86;
-  }
-  52% {
-    opacity: 0.48;
-  }
-  78% {
-    opacity: 0.12;
-  }
-  100% {
+  to {
     opacity: 0;
   }
 }
@@ -2947,7 +2937,7 @@ button[disabled],
 .about-dialog-layer {
   position: fixed;
   inset: 0;
-  z-index: 85;
+  z-index: 90;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -2961,16 +2951,17 @@ button[disabled],
   min-height: 0;
   border: 0;
   border-radius: 0;
-  background: rgba(2, 8, 15, 0.72);
+  background: rgba(2, 8, 15, 0.38);
   cursor: default;
   padding: 0;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   animation: about-backdrop-in 0.18s ease both;
 }
 
 .about-dialog {
   position: relative;
+  z-index: 1;
   width: min(390px, calc(100vw - 32px));
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -2981,6 +2972,25 @@ button[disabled],
   backdrop-filter: blur(24px) saturate(122%);
   -webkit-backdrop-filter: blur(24px) saturate(122%);
   animation: about-dialog-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.about-dialog-layer-has-child > .about-dialog {
+  pointer-events: none;
+  filter: brightness(0.72) saturate(0.84);
+}
+
+.about-dialog-subview-layer {
+  z-index: 2;
+}
+
+.about-dialog-subview-backdrop {
+  background: rgba(2, 8, 15, 0.48);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.about-dialog-subview {
+  animation-duration: 0.26s;
 }
 
 .about-dialog-header {

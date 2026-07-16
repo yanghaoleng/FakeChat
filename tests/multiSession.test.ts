@@ -118,10 +118,41 @@ describe("multi-session topology", () => {
     expect(assigned.map((message) => message.side)).toEqual(["left", "left"]);
   });
 
+  it("replaces a generic AI group title with a plot-specific title", () => {
+    const friend = { ...sampleProject.characters[1], id: "friend", name: "周雨", avatarInitial: "雨" };
+    const lawyer = { ...sampleProject.characters[1], id: "lawyer", name: "周律师", avatarInitial: "律" };
+    const baseProject = parseProject({
+      ...sampleProject,
+      brief: "三个人在群里核对合同、账单和付款证据",
+      messages: [],
+      chatSessions: []
+    });
+    const generatedProject = parseProject({
+      ...baseProject,
+      schemaVersion: 2,
+      characters: [...sampleProject.characters, friend, lawyer],
+      chatSessions: [{
+        id: "case-group",
+        title: "新群聊",
+        kind: "group",
+        participantIds: ["boy", "friend", "lawyer"]
+      }]
+    });
+    const result = reconcileGeneratedMultiSessions({
+      project: baseProject,
+      generatedProject,
+      baseCharacters: sampleProject.characters,
+      random: () => 0
+    });
+
+    expect(result.chatSessions[0].title).toBe("证据链补完小组");
+  });
+
   it("tells the model that sessions cannot reuse contacts or avatars", () => {
     const instruction = multiSessionGenerationInstruction();
     expect(instruction).toContain("每个会话必须创建一名不同的左侧联系人角色");
     expect(instruction).toContain("不能让两个会话复用同一个 roleId");
     expect(instruction).toContain("新联系人必须使用不同头像");
+    expect(instruction).toContain("禁止使用“新群聊”");
   });
 });

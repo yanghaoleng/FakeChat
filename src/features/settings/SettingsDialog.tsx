@@ -174,7 +174,7 @@ export function SettingsDialog({
             <span>{switchLink.label}</span>
             <small>切换版本</small>
           </a>
-          <button className="title-menu-item" type="button" onClick={onOpenAbout}>
+          <button className="title-menu-item" type="button" data-settings-about onClick={onOpenAbout}>
             <Info size={16} />
             <span>关于</span>
             <small>联系与支持</small>

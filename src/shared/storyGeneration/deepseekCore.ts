@@ -23,7 +23,8 @@ import {
   applyPromptJourneyRoster,
   canonicalJourneyRoleId,
   groupTitleForPrompt,
-  isGroupChatPrompt
+  isGroupChatPrompt,
+  isGenericGroupTitle
 } from "../storyIdentity.js";
 import type { PromptCard } from "../linearStory.js";
 import type {
@@ -249,7 +250,7 @@ function mergeGeneratedGroupCharacters(project: DramaProject, generated: DramaPr
 function groupChatSession(project: DramaProject, characters: DramaProject["characters"]) {
   return [{
     id: defaultChatSessionId,
-    title: project.title || "群聊",
+    title: groupTitleForPrompt(project.brief, project.title, characters.map((character) => character.name)),
     kind: "group" as const,
     participantIds: characters.map((character) => character.id)
   }];
@@ -302,7 +303,8 @@ function chatSessionGenerationInstruction(
   if (isJojoProject(project) || standaloneGroupIntent) {
     return [
       "这个项目只有一个群聊会话：禁止新建其他会话，禁止将群成员拆成私聊。",
-      "chatSessions 最多输出当前这一个会话，kind=group；所有 newMessages 都必须使用同一个 sessionId。"
+      "chatSessions 最多输出当前这一个会话，kind=group；所有 newMessages 都必须使用同一个 sessionId。",
+      "群名要根据人物关系和当前剧情起得像真实群聊、有记忆点；禁止使用“新群聊”“群聊”“多人群聊”“未命名群聊”“新建群聊”等默认名。续写时沿用已有创意群名，除非用户明确要求改名。"
     ].join("\n");
   }
   return [
@@ -557,13 +559,16 @@ function isUsableJojoGroupTitle(title: string | undefined) {
   const value = title?.replace(/\s+/g, "").trim();
   if (!value) return false;
   if (value.length < 4 || value.length > 10) return false;
+  if (isGenericGroupTitle(value)) return false;
   if (/叫叫公司日常群|公司日常|DramaProject|DeepSeek|Prompt|JSON|剧情|短剧/.test(value)) return false;
   return true;
 }
 
 function nextProjectTitle(project: DramaProject, generated: DramaProject) {
   if (isJojoProject(project)) {
-    return isUsableJojoGroupTitle(generated.title) ? generated.title : project.title;
+    if (project.messages.length && isUsableJojoGroupTitle(project.title)) return project.title;
+    if (isUsableJojoGroupTitle(generated.title)) return generated.title;
+    return groupTitleForPrompt(project.brief, project.title, project.characters.map((character) => character.name));
   }
   return project.messages.length ? project.title : generated.title;
 }
@@ -697,9 +702,11 @@ export async function generateDeepSeekStorySegmentWithConfig({
       ? assignDistinctCharacterAvatars(promptedCharacters)
       : promptedCharacters);
   const nextTitle = !isJojoProject(project) && standaloneGroupIntent
-    ? project.chatMode === "group" && project.messages.length
-      ? project.title
-      : groupTitleForPrompt(premise, generated.project.title, baseCharacters.map((character) => character.name))
+    ? groupTitleForPrompt(
+        premise,
+        project.chatMode === "group" && project.messages.length ? project.title : generated.project.title,
+        baseCharacters.map((character) => character.name)
+      )
     : nextProjectTitle(project, generated.project);
   const chatSessions = multiSessionTopology?.chatSessions
     ?? (!isJojoProject(project) && standaloneGroupIntent

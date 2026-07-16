@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { sampleProject } from "../src/shared/sampleProject";
 
 const errorOverlaySelector = [
@@ -55,6 +56,49 @@ test.describe("关键用户流程", () => {
     await expect(videoTab).toHaveAttribute("aria-selected", "true");
     await expect(page.locator(".player-frame")).toBeVisible();
     await expect(page.locator('[aria-label="正在加载视频预览"]')).toHaveCount(0);
+  });
+
+  test("关于菜单和下级页面逐级叠加返回", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expectHealthyAppShell(page);
+
+    await page.getByRole("button", { name: "打开设置" }).click();
+    const settingsDialog = page.getByRole("dialog", { name: "设置" });
+    await expect(settingsDialog).toBeVisible();
+    await settingsDialog.locator("[data-settings-about]").click();
+
+    const aboutDialog = page.getByRole("dialog", { name: "关于" });
+    await expect(settingsDialog).toBeVisible();
+    await expect(aboutDialog).toBeVisible();
+    await aboutDialog.getByRole("button", { name: "支持鼓励" }).click();
+
+    const supportDialog = page.getByRole("dialog", { name: "支持鼓励" });
+    await expect(supportDialog).toBeVisible();
+    await expect(page.locator(".about-dialog")).toHaveCount(2);
+    await supportDialog.getByRole("button", { name: "返回关于", exact: true }).click();
+    await expect(supportDialog).toHaveCount(0);
+    await expect(aboutDialog).toBeVisible();
+
+    await aboutDialog.getByRole("button", { name: "返回设置", exact: true }).click();
+    await expect(aboutDialog).toHaveCount(0);
+    await expect(settingsDialog).toBeVisible();
+  });
+
+  test("存档封面导出为 800px 宽", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expectHealthyAppShell(page);
+
+    await page.getByRole("button", { name: "打开设置" }).click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: /存档/ }).click();
+    const download = await downloadPromise;
+    const path = await download.path();
+    expect(path).not.toBeNull();
+    const png = await readFile(path!);
+    expect(png.readUInt32BE(16)).toBe(800);
+    expect(png.readUInt32BE(20)).toBe(1067);
   });
 
   test("移动端初始页与预设展开后均无横向溢出", async ({ page }) => {

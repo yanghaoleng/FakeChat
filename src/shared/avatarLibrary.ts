@@ -137,6 +137,14 @@ export const defaultAvatars: DefaultAvatar[] = [
     url: localAvatar(`${id}.webp`),
     ...generatedSource
   })),
+  {
+    id: "dragonball-goku-orange",
+    title: "孙悟空（橘色武道服）",
+    vibe: "七龙珠角色 / 孙悟空 / 橘色武道服",
+    gender: "boy",
+    url: localAvatar("dragonball-goku-orange.webp"),
+    ...generatedSource
+  },
   ...[
     ["journey-1986-tang", "唐玄奘", "西游角色 / 唐玄奘 / 86 版妆造语言", "boy"],
     ["journey-1986-queen", "女儿国国王", "西游角色 / 女儿国国王 / 86 版妆造语言", "girl"],

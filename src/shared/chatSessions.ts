@@ -1,4 +1,5 @@
 import type { Character, ChatMessage, ChatSession, DramaProject } from "./schema.js";
+import { groupTitleForPrompt, isUsableGroupTitle } from "./storyIdentity.js";
 
 export const defaultChatSessionId = "chat-main";
 
@@ -37,6 +38,17 @@ function playerCharacter(project: DramaProject) {
     ?? project.characters[0];
 }
 
+function creativeGroupTitle(project: DramaProject, suggestedTitle: string | undefined, participantIds: string[]) {
+  const characterNames = project.characters
+    .filter((character) => participantIds.includes(character.id))
+    .map((character) => character.name);
+  return groupTitleForPrompt(
+    `${project.title}\n${project.brief}\n${project.messages.slice(-12).map((message) => message.text || message.ttsText || "").join("\n")}`,
+    suggestedTitle || project.title,
+    characterNames
+  );
+}
+
 function fallbackChatSession(project: DramaProject): ChatSession {
   const player = playerCharacter(project);
   const peer = project.characters.find((character) => character.side === "left")
@@ -48,7 +60,9 @@ function fallbackChatSession(project: DramaProject): ChatSession {
 
   return {
     id: defaultChatSessionId,
-    title: project.chatMode === "group" ? (project.title || "群聊") : (peer?.name || project.title || "聊天"),
+    title: project.chatMode === "group"
+      ? creativeGroupTitle(project, project.title, participantIds)
+      : (peer?.name || project.title || "聊天"),
     kind: project.chatMode,
     participantIds
   };
@@ -62,10 +76,13 @@ function inferredSession(
   const player = playerCharacter(project);
   const peer = project.characters.find((character) => roleIds.includes(character.id) && character.side === "left");
   const participantIds = unique([player?.id || "", ...roleIds]);
+  const kind = participantIds.length > 2 ? "group" : "direct";
   return {
     id: sessionId,
-    title: participantIds.length > 2 ? "新群聊" : (peer?.name || "新会话"),
-    kind: participantIds.length > 2 ? "group" : "direct",
+    title: kind === "group"
+      ? creativeGroupTitle(project, undefined, participantIds)
+      : (peer?.name || "新会话"),
+    kind,
     participantIds
   };
 }
@@ -83,7 +100,9 @@ function deriveChatSessions(project: DramaProject): ChatSession[] {
     return {
       ...session,
       kind,
-      title: session.title.trim() || (kind === "group" ? "群聊" : "聊天"),
+      title: kind === "group"
+        ? creativeGroupTitle(project, session.title, requestedParticipants)
+        : (session.title.trim() || "聊天"),
       participantIds: kind === "direct"
         ? unique([
           player?.id || "",
@@ -340,6 +359,7 @@ export function mergeChatSessions(
     ?? characters.find((character) => character.side === "right")
     ?? characters[0];
   const validCharacterIds = new Set(characters.map((character) => character.id));
+  const effectiveProject = { ...project, characters };
   const merged = new Map<string, ChatSession>();
   for (const session of [...project.chatSessions, ...generatedProject.chatSessions]) {
     const previous = merged.get(session.id);
@@ -351,9 +371,17 @@ export function mergeChatSessions(
     const kind = previous?.kind === "group" || session.kind === "group" || requestedParticipants.length > 2
       ? "group"
       : session.kind ?? previous?.kind ?? "direct";
+    const participantNames = characters
+      .filter((character) => requestedParticipants.includes(character.id))
+      .map((character) => character.name);
+    const existingCreativeTitle = isUsableGroupTitle(previous?.title, participantNames)
+      ? previous?.title
+      : undefined;
     merged.set(session.id, {
       id: session.id,
-      title: session.title.trim() || previous?.title || "聊天",
+      title: kind === "group"
+        ? creativeGroupTitle(effectiveProject, existingCreativeTitle || session.title, requestedParticipants)
+        : (session.title.trim() || previous?.title || "聊天"),
       kind,
       participantIds: kind === "direct"
         ? unique([
