@@ -1,139 +1,199 @@
-# 聊天记录短剧模拟器
+# 蛐蛐模拟器
 
-面向中文短视频创作和公司内网娱乐的本地 Web 工具，用来生成“聊天剧情 + 编故事续写 + 语音 + 视频导出”的聊天记录短剧。
+一个用 React 构建的聊天记录短剧创作工具：选择预制剧情或输入下一段故事，让 DeepSeek 继续生成多个私聊、群聊和角色之间的对话，再预览语音、视频并导出可继续编辑的存档。
 
-当前内置两个独立包装，共用底层组件、生成逻辑和 API：
+项目包含两套共用数据、生成和渲染能力的界面：
 
-- JOJO版：默认构建，页面标题为“蛐蛐模拟器”。玩家扮演叫叫，使用 `avatar-jojo` 头像、钉钉手机版顶栏/底部、叫叫右侧蓝色气泡、其他角色左侧白色气泡；桌面端“编故事”和视频预览窗口共用固定顶部偏移，1080px 以下“编故事”改为底部居中半弹窗，400px 以下只让模拟聊天界面轻微等比缩小，整体结构不再切换。
-- 网红短剧版：独立构建产物，提供不限性别的微信式双人聊天短剧玩法，也可主动切换男、女情感视角。
+- **微信版**：短剧创作主版本，支持私聊与群聊混合、多会话并行、群头像、发言人姓名和未读消息。
+- **钉钉版**：JOJO 公司群聊包装，保留独立的角色、素材和界面风格。
 
-公开仓库：[FakeChat](https://github.com/yanghaoleng/FakeChat)
+在线入口：
+
+- 微信版：<https://ququ.mikeywa.icu/>
+- 钉钉版：<https://ququ.mikeywa.icu/ding/>
+
+公开仓库：[yanghaoleng/FakeChat](https://github.com/yanghaoleng/FakeChat)
 
 ## 微信版截图
 
-![微信版截图](docs/screenshots/fakechat-wechat.webp)
+西游记六人群聊预制本“取经项目总群”：
+
+![微信西游群聊：取经项目总群](docs/screenshots/fakechat-wechat.webp)
+
+## 主要功能
+
+- 使用预制本快速开场，或输入 Prompt 让 DeepSeek 按现有角色关系继续剧情。
+- 同一个项目可同时包含多个私聊和群聊；AI 可以按剧情新增角色、会话和消息，并让几条故事线并行推进。
+- 桌面端在微信窗口右侧显示会话头像轨与未读数量；移动端通过返回按钮和消息列表切换会话。
+- 群聊使用组合头像并显示群成员姓名；每条消息通过 `sessionId` 和 `senderId` 归属到真实会话与角色。
+- 内置 16 个微信预制本，包括六人西游群聊、九人 GTA 群聊、经典名著、影视和互联网人物剧情。
+- 每次生成都会形成一张故事卡；删除、重新编辑或回到任意故事卡时，会同时恢复当时的角色和会话拓扑。
+- 支持 `text`、`image`、`meme`、`music`、`transfer`、`system` 消息。
+- 支持 Edge TTS 语音、Remotion 视频预览和浏览器端视频导出。
+- 存档导出为带封面的 PNG，聊天项目 JSON 内嵌在图片中；也可以读取旧版 PNG 或 JSON 存档继续创作。
 
 ## 快速启动
+
+安装依赖并复制本地配置：
 
 ```bash
 npm install --registry=https://registry.npmjs.org/
 cp .env.example .env
-npm run dev
 ```
 
-打开 `http://127.0.0.1:5173`。默认只启动 Vite 静态前端；“编故事”需要后端代理或浏览器公开配置才能调用 DeepSeek。
-
-公司内网使用推荐：
+启动微信版前端：
 
 ```bash
-npm run dev:fullstack
+STORY_PACKAGE=viral npm run dev
 ```
 
-## 本地预览
+打开 <http://127.0.0.1:5173/>。预制本的第一段使用本地缓存，不需要模型；继续编写新剧情需要 DeepSeek。
+
+同时启动前端与 Fastify API：
+
+```bash
+STORY_PACKAGE=viral npm run dev:fullstack
+```
+
+`npm run dev` 和 `npm run dev:fullstack` 不带 `STORY_PACKAGE` 时默认启动钉钉/JOJO 版。
+
+## 构建与本地预览
+
+分别构建两套独立产物：
 
 ```bash
 npm run build
-npm run preview
 ```
 
-`npm run build` 会生成两套互不链接的静态产物：`dist/jojo` 和 `dist/viral`。`npm run preview` 默认启动带后端 API 的 JOJO 版生产预览，地址为 `http://127.0.0.1:4173/`。
+输出目录：
 
-部署到 `jojodemos.mikeywa.icu/ququ` 使用：
+- `dist/viral`：微信版
+- `dist/jojo`：钉钉版
+
+生成与线上路由一致的组合包：
 
 ```bash
 npm run build:ququ
 ```
 
-它会用 `/ququ/` 作为静态资源前缀输出到 `dist/ququ`。
-
-带 DeepSeek 后端代理的生产预览：
+组合包输出到 `dist/ququ`：微信版位于 `/`，钉钉版位于 `/ding/`。本地预览这套组合包可运行：
 
 ```bash
-npm run preview:jojo
-npm run preview:viral
+npm run preview:e2e
 ```
 
-JOJO 版默认地址为 `http://127.0.0.1:4173/`，网红版默认地址为 `http://127.0.0.1:4174/`。只看静态包可用 `npm run preview:static`。内网预览 JOJO 版使用：
+地址为 <http://127.0.0.1:4193/> 和 <http://127.0.0.1:4193/ding/>。
+
+也可以单独启动带后端 API 的生产预览：
 
 ```bash
-npm run preview:lan
+npm run preview:viral  # http://127.0.0.1:4174/
+npm run preview:jojo   # http://127.0.0.1:4173/
 ```
 
-它会监听 `0.0.0.0:4173` 并托管 `dist/jojo`；网红版可用 `npm run preview:lan:viral` 单独监听 `0.0.0.0:4174`。
+## DeepSeek 配置
 
-当前 JOJO 内网访问地址：
+推荐把私有密钥放在服务端：
 
-- `http://10.131.48.68:4173/`
-- 服务监听：`0.0.0.0:4173`
-- 当前由 `screen` 会话 `chat-record-drama-preview` 保持运行。
+```dotenv
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+```
 
-## 模型配置
+本地全栈模式通过 `/api/story/continue` 代理请求；Vercel 部署同样从项目 Environment Variables 读取 `DEEPSEEK_API_KEY`。
 
-- 后端默认地址：`https://api.deepseek.com`。
-- 后端默认模型：`deepseek-chat`。
-- 公开仓库不保存任何真实 token；本地请复制 `.env.example` 为 `.env` 后填写 `DEEPSEEK_API_KEY`。
-- Vercel 部署应把 `DEEPSEEK_API_KEY` 放在项目 Environment Variables 中，让 `/api/story/continue` 在服务端代请求 DeepSeek。
-- `VITE_DEEPSEEK_API_KEY` 只用于纯静态、浏览器直连模式；任何 `VITE_*` 变量都会进入前端 bundle，不建议放真实私有 key。
-- 如需临时覆盖，可设置 `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`、`VITE_GITHUB_REPO_URL` 环境变量。
-- 旧的 `data/settings.json` 保存配置默认不覆盖环境变量；只有设置 `USE_SAVED_DEEPSEEK_SETTINGS=1` 才启用。
+纯静态部署也可以配置 `VITE_DEEPSEEK_API_KEY`、`VITE_DEEPSEEK_BASE_URL` 和 `VITE_DEEPSEEK_MODEL` 让浏览器直连，但所有 `VITE_*` 值都会写进前端 bundle，不应放入需要保密的生产密钥。
 
-如果没有后端、未配置 token 或模型请求失败，“编故事”会停止并提示 DeepSeek 错误，不再自动使用本地固定套路兜底。Edge TTS 在浏览器端直连微软语音服务；如果当前浏览器或网络策略拦截 WebSocket，会在页面状态和控制台里报错。
+模型不可用时会保留现有项目并显示明确错误，不会用固定套路伪造一次成功续写。Edge TTS 在浏览器端连接微软语音服务，网络策略拦截 WebSocket 时会在界面和控制台中报错。
 
-## 线性存档
+## 多会话与数据格式
 
-每次在“编故事”里输入一段内容，都会追加一张故事卡片，并把 DeepSeek 生成的新对话接到同一条线上。第一张故事卡出现后，桌面端故事栏会平滑上移并与模拟页面顶边对齐。顶部“存档”会导出带封面的 PNG，“读档”可读取 PNG 或旧版 JSON 继续创作。
+项目在读取边界统一迁移为 Schema v2：
 
-## 核心功能
+- `schemaVersion: 2`：当前项目版本。
+- `selfCharacterId`：用户扮演的角色。
+- `chatSessions[].kind`：`direct` 或 `group`。
+- `chatSessions[].participantIds`：会话成员。
+- `messages[].sessionId`：消息所属会话。
+- `messages[].senderId`：消息发送者；`roleId` 仅保留为旧格式兼容字段。
 
-- 输入下一段剧情，基于历史故事卡片和当前对话续写剧情。
-- JOJO版 / 网红短剧版是两套独立构建产物，右上角设置按钮或 `⌘K` 可打开居中设置弹窗并切换版本；弹窗支持方向键切换焦点、回车确认和 `Esc` 关闭，“关于”内提供 GitHub、支持鼓励和意见反馈。
-- 微信版内置 13 个大众同人梗和 1 个经典长线小说开场，覆盖经典影视与名著、AI 科技圈及中文互联网人物；首条西门庆与武大郎对手戏提供更完整的一轮聊天，峰哥分别拥有女粉暧昧私聊和男 B 友情感答疑两条脚本。默认角色偏好为“不限”，男、女选项用于主动切换情感视角。
-- 在界面版和 Remotion 视频版之间切换，聊天播放完后可在信息流末尾点“再来一遍”重播入场；视频版空态保持和有内容时相同的画布尺寸。
-- 启动时默认内置剧情会从空信息流自动入场播放。
-- 1080px 以下编故事使用底部居中半弹窗，生成成功后自动收起，并通过连续过渡把按钮从弹窗右上角移动到底部居中；400px 以下只收窄模拟聊天手机，不改变整体交互结构。
-- “重启故事”会清空当前信息流气泡和故事卡片，但保留手机壳、顶栏和底栏，不再恢复默认内置剧情。
-- 支持带独立气泡云封面的 PNG 存档，也兼容读取旧版线性 JSON。
-- 支持 Edge TTS 生成男女声语音，并在浏览器内导出视频。
-- JOJO 版自动调用固定头像、真实办公室局部照片、CSS 表情卡，不让用户手动选择头像或场景。
+`src/shared/schema.ts` 的 `parseProject()` 会把 v1、无版本以及旧 `chatMode` 项目线性迁移为规范 v2 数据。一个项目因此可以同时保留多条私聊和群聊，而不必把整个剧情强制转换成单一聊天模式。
+
+## AI 续写机制
+
+DeepSeek 只返回本轮 `GeneratedStoryDelta`，包含新增消息、必要的角色/会话拓扑变化和新增素材，不再重复传回完整项目。
+
+发送给模型的历史也有明确上限：
+
+- 最近 8 张故事卡摘要。
+- 每个会话最多 12 条消息。
+- 全项目最多 40 条消息。
+- 最终用户上下文最多 24,000 字符。
+
+较安静的会话仍会保留至少一条最近消息，避免活跃会话把并行故事线挤出上下文。服务端与浏览器模式共用同一套 Prompt、响应归一化和旧版完整项目响应兼容逻辑。
+
+## 存档与故事回滚
+
+当前 StoryArchive v2 为每张故事卡保存：
+
+- 本段新增消息 ID。
+- 生成前的角色、标题与会话拓扑。
+- 生成后的角色、标题与会话拓扑。
+
+因此删除或重新编辑某张故事卡时，可以精确恢复到对应时间点，而不是只截断消息数组。PNG 存档会把完整 JSON 写入 PNG `tEXt` 元数据，同时仍兼容旧版 JSON 和 v1 存档。
+
+“重新开始”会随机载入另一套符合当前角色视角的预制剧情；不会复原刚刚删除的聊天记录。
+
+## 代码结构
+
+```text
+src/
+  App.tsx                              应用状态与故事编排
+  components/UiPrimitives.tsx          轻量 UI 基础组件
+  features/chat-preview/               微信聊天与多会话交互
+  features/settings/                   设置和关于弹窗
+  features/video/                      懒加载视频预览
+  remotion/                            视频画面组件
+  shared/chatSessions.ts               会话索引、未读与投影
+  shared/multiSession.ts               AI 多会话生成约束与归并
+  shared/messagePresentation.ts        界面、Canvas、Remotion 共用消息呈现
+  shared/schema.ts                     Schema v2 与旧数据迁移
+  shared/storySegments.ts              故事卡拓扑快照与回滚
+  shared/storyGeneration/              DeepSeek 契约、Prompt、上下文与响应归一化
+server/                                 Fastify 本地全栈 API
+api/                                    Vercel Functions
+e2e/                                    Playwright 关键流程
+```
+
+前端基于 Vite、React 19、Tailwind CSS、`@heroui/styles` 和自定义 UI primitives；视频使用 Remotion。视频预览、浏览器导出和 DeepSeek 客户端均按需加载，避免进入聊天页时下载整套媒体工具链。
 
 ## API
 
-日常静态模式不依赖后端。保留的 Fastify 开发 API 通过 `npm run dev:fullstack` 启动，默认端口 `8787`：
+`npm run dev:fullstack` 默认在 `8787` 端口启动 Fastify：
 
 - `GET /api/health`：健康检查。
-- `GET /api/settings/deepseek`：读取 DeepSeek 配置状态，不返回明文 key。
-- `POST /api/story/continue`：编故事续写，后端通过 OpenAI Chat Completions 兼容接口请求公司中转。
+- `GET/POST /api/settings/deepseek`：读取或更新本地 DeepSeek 配置；读取接口不返回明文密钥。
+- `POST /api/story/continue`：生成下一段增量剧情。
 - `GET /api/project/sample`：示例项目。
-- `POST /api/script/generate`：DeepSeek 剧情生成。
-- `POST /api/tts/batch`：批量合成语音。
+- `POST /api/script/generate`：从 Brief 生成剧情项目。
+- `GET /api/memes/search`：搜索表情素材。
+- `POST /api/tts/batch`：批量生成语音。
 - `POST /api/render`：服务端渲染视频。
-
-## 关键技术架构
-
-- 前端：Vite、React 19、HeroUI、Tailwind CSS、GSAP。
-- 构建：`STORY_PACKAGE=jojo|viral` 注入 `__APP_STORY_PACKAGE__`，分别输出 `dist/jojo`、`dist/viral`；`build:ququ` 输出可部署到 `/ququ/` 的 `dist/ququ`。
-- 预览与渲染：Remotion Player + 浏览器录制导出。
-- 剧情数据：`src/shared/schema.ts` 定义项目、角色、消息类型。
-- 生成逻辑：全栈模式优先走后端 DeepSeek 代理；后端不可用时尝试浏览器公开配置；都不可用时停止并提示错误。
-- JOJO 资源：`assets/avatar-jojo` 为头像源；`public/avatars/jojo`、`public/dingtalk-ui`、`public/jojo-assets` 为运行时静态资源。
-- 静态资源：微信/钉钉 UI、音频、表情、渲染产物分别放在 `public/`、`data/`、`assets/`、`renders/`。
-- 聊天预览顶部和底部使用 Figma 导出的整图：微信 `public/wechat-ui`，钉钉 `public/dingtalk-ui`。
-- 站点图标：`public/site-icon.svg`，白底黑色蛐蛐，用于 favicon 和顶栏产品名左侧 logo。
-
-## 功能边界
-
-- Remotion 模板默认 `1516x852`，匹配参考录屏的横向聊天画布。
-- 消息支持 `text`、`image`、`meme`、`transfer`、`system`。
-- JOJO 版图片素材要求真实办公室局部、手、背影、运动模糊，不出现真实正脸或卡通角色脸。
-- 表情包候选接入 `QFace`、`ChineseBQB`、`SOOGIF`、`sorrypy` 来源记录。
-- `QFace` README 明确写明腾讯官方表情资源仅供学习交流，请勿直接商用；`ChineseBQB` 未声明明确 license。工具会记录来源和风险，但不阻断导入。
 
 ## 验证
 
 ```bash
-npm run test
-npm run build
-npm run render:sample
+npm run typecheck
+npm test
+npm run verify       # 单元测试 + 微信/钉钉组合构建
+npm run verify:e2e   # Playwright 关键用户流程
 ```
 
-公司内网要使用固定中转生成时，请运行 `npm run dev:fullstack` 或部署 Fastify 后端。
+持续集成分别运行单元/构建检查与 Playwright 浏览器回归，覆盖微信直聊、移动端布局、旧存档迁移、私聊/群聊切换以及钉钉路由。
+
+## 素材与使用边界
+
+- JOJO 图片素材使用真实办公室局部、手、背影和运动模糊，避免真实正脸。
+- 表情包候选记录 `QFace`、`ChineseBQB`、`SOOGIF`、`sorrypy` 等来源及风险。
+- 腾讯官方表情资源仅供学习交流；第三方素材没有明确授权时，不应直接用于商业发布。
