@@ -82,6 +82,7 @@ export const viralPresetStories: PresetStory[] = [
     title: "主页访问算不算采访",
     viralRole: "female",
     characterNames: { boy: "峰哥", girl: "成年女粉" },
+    characterGenders: { boy: "boy", girl: "girl" },
     characterAvatarIds: { boy: "journey-1986-shaseng" },
     characterVoiceDescriptions: {
       boy: "成熟真实的男性声线，判断笃定，短句下结论后突然反转，生活化、自嘲，像一本正经地解答世间万物"
@@ -143,34 +144,6 @@ export const viralPresetStories: PresetStory[] = [
       m("girl", "别问。你消失七天，行为会替她回答。"),
       m("boy", "要是她真来找我呢？"),
       m("girl", "到时候再看，没发生的事别提前上意义。")
-    ]
-  },
-  {
-    id: "viral-luo-jia-next-week-live",
-    title: "下周一定进直播间",
-    viralRole: "any",
-    characterAvatarSet: "neutral-editorial",
-    characterNames: { boy: "罗永浩", girl: "贾跃亭" },
-    characterGenders: { boy: "boy", girl: "boy" },
-    prompt: "罗永浩邀请贾跃亭进直播间聊“如何按时交付”，贾跃亭回复“下周一定”，罗永浩把预约时间直接设成了每周循环。",
-    nextPrompt: "循环日历开始自动邀请投资人、供应商和直播观众，所有人都在等同一个下周；两人可以争夺主持权，也可以把一场延期变成跨时区发布会。",
-    messages: [
-      m("boy", "来直播间聊聊按时交付？"),
-      m("girl", "下周一定。"),
-      m("boy", "具体哪天下周？"),
-      m("girl", "下周的下周。"),
-      m("boy", "那我把预约设成每周循环。"),
-      m("girl", "很好，永远不会错过。"),
-      m("boy", "也永远不会到。"),
-      m("girl", "你要对未来有耐心。"),
-      m("boy", "我直播间不卖未来。"),
-      m("girl", "那卖梦想吗？"),
-      m("boy", "梦想也得能发货。"),
-      m("girl", "我可以先连线。"),
-      m("boy", "你人在哪？"),
-      m("girl", "去发布会的路上。"),
-      m("boy", "哪个发布会？"),
-      m("girl", "下周那个。")
     ]
   },
   {
@@ -267,38 +240,6 @@ export const viralPresetStories: PresetStory[] = [
       m("boy", "能否改成玄奘一行？"),
       m("girl", "可以，另一行写女儿国国王。"),
       m("boy", "陛下这导航，比妖怪还会绕。")
-    ]
-  },
-  {
-    id: "viral-baigujing-third-account",
-    title: "三打售后只算一单",
-    viralRoles: ["male", "female"],
-    characterNames: { boy: "孙悟空", girl: "白骨精" },
-    characterAvatarIds: { boy: "journey-1986-wukong", girl: "journey-1986-baigujing" },
-    prompt: "白骨精建立“三打售后群”投诉孙悟空：自己换了三套造型挨了三棒，天庭战绩却只给悟空算一单；孙悟空以售后客服身份进群，发现她真正要求的不是赔偿，而是补一次正式见面。",
-    nextPrompt: "白骨精可以把三次变装的原图发进群要求重新判定，悟空也可能发现所谓“第四次补打”被预约在一家餐厅；下一段可从售后仲裁、八戒误入群或两人的线下验收继续。",
-    messages: [
-      m("girl", "你好，我要投诉孙悟空。"),
-      m("boy", "老孙就是，投诉内容？"),
-      m("girl", "我换了三套造型，挨了三棒，你战绩怎么只算一单？"),
-      m("boy", "同一妖精重复下单，系统自动合并。"),
-      m("girl", "少女、老妇、老翁，哪里同一件商品？"),
-      m("boy", "包装不同，骨架编号一样。"),
-      m("girl", "你打之前扫描过？"),
-      m("boy", "火眼金睛支持隔空验货。"),
-      m("girl", "那为什么第三次才喊我名字？"),
-      m("boy", "前两次没看详情页。"),
-      m("girl", "我要申请三次独立战绩。"),
-      m("boy", "可以，得重新验收。"),
-      m("girl", "第四次还打？"),
-      m("boy", "售后流程不能少。"),
-      m("girl", "行，我把验收地点发你。"),
-      m("boy", "怎么是家餐厅？"),
-      m("girl", "公共场合，防止你掏棒子。"),
-      m("boy", "备注为什么写双人位？"),
-      m("girl", "三次售后，一顿结清。"),
-      m("boy", "老孙第一次见妖怪主动约验收。"),
-      m("girl", "不然怎么证明你每次都认得出我？")
     ]
   },
   {
@@ -507,30 +448,6 @@ export const viralPresetStories: PresetStory[] = [
       m("franklin", "他突然发定位了。"),
       m("trevor", "很好，提前踩点小组成立。"),
       m("lucia", "谁敢提前来，我就把谁写进支线任务。")
-    ]
-  },
-  {
-    id: "viral-office-private-calendar",
-    title: "会议邀请只发给了你",
-    viralRoles: ["male", "female"],
-    prompt: "女主发现男同事把本该群发的加班会议邀请只发给了她，地点却写着公司楼下新开的咖啡店。",
-    nextPrompt: "两人可以把这场假会议演给同事看，也可能被老板临时加入日历；下一段可从办公室起哄、方案泄露或一次没说出口的约会继续。",
-    messages: [
-      m("girl", "你会议邀请发错人了。"),
-      m("boy", "没发错。"),
-      m("girl", "参会人怎么只有我？"),
-      m("boy", "小范围评审。"),
-      m("girl", "地点为什么是咖啡店？"),
-      m("boy", "公司会议室满了。"),
-      m("girl", "晚上九点也满？"),
-      m("boy", "那是会后时间。"),
-      m("girl", "议题写着了解彼此。"),
-      m("boy", "协作前置调研。"),
-      m("girl", "需要我准备什么？"),
-      m("boy", "别带电脑。"),
-      m("girl", "那我带结论。"),
-      m("boy", "什么结论？"),
-      m("girl", "会议可以开，别装加班。")
     ]
   },
   {

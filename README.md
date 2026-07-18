@@ -98,7 +98,7 @@ npm run preview:jojo   # http://127.0.0.1:4173/
 ```dotenv
 DEEPSEEK_API_KEY=
 DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
 本地全栈模式通过 `/api/story/continue` 代理请求；Vercel 部署同样从项目 Environment Variables 读取 `DEEPSEEK_API_KEY`。

@@ -21,9 +21,87 @@ import {
 import { musicTrackForMessage } from "../../shared/musicLibrary";
 import { publicAsset, resolvePublicAssetPath } from "../../shared/publicPath";
 import { type ChatMessage, type ChatSession, type DramaProject } from "../../shared/schema";
+import { avatarPreviewPath, messageImagePreviewPath } from "../../shared/visualAssetVariants";
+
+const avatarPreviewPixelSize = 96;
+
+function useDecodedImageReady(src: string | undefined) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!src) {
+      setReady(false);
+      return undefined;
+    }
+    if (typeof Image === "undefined") {
+      setReady(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const image = new Image();
+    image.decoding = "async";
+    image.src = src;
+    setReady(false);
+
+    const markReady = () => {
+      if (!cancelled) setReady(true);
+    };
+
+    if (image.complete && image.naturalWidth > 0) {
+      markReady();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (image.decode) {
+      void image.decode().then(markReady, () => {
+        if (image.complete && image.naturalWidth > 0) markReady();
+      });
+    } else {
+      image.onload = markReady;
+    }
+
+    return () => {
+      cancelled = true;
+      image.onload = null;
+    };
+  }, [src]);
+
+  return ready;
+}
+
+function WechatDecodedAvatar({ avatar, className }: { avatar: MessageAvatarPresentation; className: string }) {
+  const src = resolvePublicAssetPath(avatarPreviewPath(avatar.source));
+  const ready = useDecodedImageReady(src);
+  if (!src) {
+    return (
+      <span className={`${className} wechat-contact-avatar-fallback`} style={{ background: avatar.gradient }} aria-hidden="true">
+        {avatar.initial}
+      </span>
+    );
+  }
+  return (
+    <span className={`${className} wechat-decoded-avatar`} style={{ background: avatar.gradient }} aria-hidden="true">
+      <span className="wechat-decoded-avatar-initial">{avatar.initial}</span>
+      <img
+        className={`wechat-decoded-avatar-img ${ready ? "wechat-decoded-avatar-img-ready" : ""}`}
+        src={src}
+        alt=""
+        width={avatarPreviewPixelSize}
+        height={avatarPreviewPixelSize}
+        decoding="async"
+        loading="eager"
+        fetchPriority="high"
+        draggable={false}
+      />
+    </span>
+  );
+}
 
 function WechatAvatar({ avatar }: { avatar: MessageAvatarPresentation }) {
-  if (avatar.source) return <img className="wechat-avatar" src={resolvePublicAssetPath(avatar.source)} alt="" />;
+  if (avatar.source) return <WechatDecodedAvatar avatar={avatar} className="wechat-avatar" />;
   return (
     <div className="wechat-avatar wechat-avatar-fallback" style={{ background: avatar.gradient }}>
       {avatar.initial}
@@ -95,7 +173,7 @@ function WechatMusicBubble({ project, message, playback }: { project: DramaProje
           <span className="wechat-music-lyric">{details.lyric}</span>
         </span>
         <span className="wechat-music-cover-wrap">
-          <img className="wechat-music-cover" src={details.coverUrl} alt={`${details.title} 专辑封面`} />
+          <img className="wechat-music-cover" src={details.coverUrl} alt={`${details.title} 专辑封面`} width={164} height={164} decoding="async" loading="eager" />
           <span className="wechat-music-play" aria-hidden="true">
             <span className="wechat-music-play-icon" />
           </span>
@@ -159,7 +237,7 @@ function WechatMusicDock({
       >
         <X size={13} strokeWidth={2.2} />
       </button>
-      <img src={details.coverUrl} alt="" />
+      <img src={details.coverUrl} alt="" width={76} height={76} decoding="async" loading="eager" />
       <span className="wechat-music-dock-copy">
         <strong>{details.title}</strong>
         <small>{audioError ? "试听暂时不可用" : details.artist}</small>
@@ -207,10 +285,10 @@ function WechatMessageContent({
     );
   }
   if (presentation.media.kind === "image") {
-    const src = resolvePublicAssetPath(presentation.media.source);
+    const src = resolvePublicAssetPath(messageImagePreviewPath(presentation.media.source));
     return (
       <div className="wechat-image-card">
-        {src ? <img src={src} alt={presentation.media.alt} /> : (
+        {src ? <img src={src} alt={presentation.media.alt} decoding="async" loading="eager" /> : (
           <div className="wechat-photo-placeholder">
             <p>{presentation.media.description}</p>
           </div>
@@ -223,7 +301,7 @@ function WechatMessageContent({
     const src = cssCard ? undefined : resolvePublicAssetPath(presentation.media.source);
     return (
       <div className={cssCard ? "wechat-meme-card wechat-meme-card-css" : "wechat-meme-card"}>
-        {cssCard ? <JojoCssMemeCardView card={cssCard} /> : src ? <img src={src} alt={presentation.media.caption || "表情"} /> : <div className="wechat-meme-fallback">表情</div>}
+        {cssCard ? <JojoCssMemeCardView card={cssCard} /> : src ? <img src={src} alt={presentation.media.caption || "表情"} width={224} height={224} decoding="async" loading="eager" /> : <div className="wechat-meme-fallback">表情</div>}
         {!cssCard && presentation.media.caption ? <span>{presentation.media.caption}</span> : null}
       </div>
     );
@@ -234,6 +312,40 @@ function WechatMessageContent({
   return <div className="wechat-bubble">{message.text || message.ttsText || " "}</div>;
 }
 
+function WechatPendingSpeechRow({
+  project,
+  message,
+  jojoMode,
+  wechatGroupMode
+}: {
+  project: DramaProject;
+  message: ChatMessage;
+  jojoMode: boolean;
+  wechatGroupMode: boolean;
+}) {
+  const presentation = messagePresentationFor(project, message, "interactive");
+  if (presentation.isSystem) return null;
+  const { visualSide } = presentation;
+  return (
+    <div
+      className={`wechat-row wechat-row-${visualSide} wechat-row-pending-speech ${jojoMode ? `dingtalk-row ${visualSide === "right" ? "dingtalk-row-self" : "dingtalk-row-other"}` : ""} ${wechatGroupMode ? "wechat-group-row" : ""}`}
+      data-pending-message-id={message.id}
+      aria-hidden="true"
+    >
+      {visualSide === "left" && presentation.avatar ? <WechatAvatar avatar={presentation.avatar} /> : null}
+      <div className="wechat-message-stack">
+        {presentation.speakerName ? <div className="wechat-speaker-name">{presentation.speakerName}</div> : null}
+        <div className="wechat-bubble wechat-bubble-pending-speech">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      {visualSide === "right" && presentation.avatar ? <WechatAvatar avatar={presentation.avatar} /> : null}
+    </div>
+  );
+}
+
 function WechatContactAvatar({ project, session, className }: { project: DramaProject; session: ChatSession; className: string }) {
   if (isGroupChatSession(project, session)) {
     const participants = chatSessionParticipants(project, session).slice(0, 4);
@@ -242,7 +354,7 @@ function WechatContactAvatar({ project, session, className }: { project: DramaPr
         {participants.map((participant) => {
           const avatar = avatarPresentationForCharacter(participant);
           return avatar.source ? (
-            <img key={participant.id} className="wechat-group-avatar-cell" src={resolvePublicAssetPath(avatar.source)} alt="" />
+            <WechatDecodedAvatar key={participant.id} avatar={avatar} className="wechat-group-avatar-cell" />
           ) : (
             <span key={participant.id} className="wechat-group-avatar-cell wechat-group-avatar-fallback" style={{ background: avatar.gradient }}>
               {avatar.initial}
@@ -254,7 +366,7 @@ function WechatContactAvatar({ project, session, className }: { project: DramaPr
   }
   const character = chatSessionPeer(project, session);
   const avatar = avatarPresentationForCharacter(character);
-  if (avatar.source) return <img className={className} src={resolvePublicAssetPath(avatar.source)} alt="" />;
+  if (avatar.source) return <WechatDecodedAvatar className={className} avatar={avatar} />;
   return (
     <span className={`${className} wechat-contact-avatar-fallback`} style={{ background: avatar.gradient }} aria-hidden="true">
       {avatar.initial}
@@ -325,6 +437,7 @@ function WechatStoryPreviewComponent({
   showPeerName,
   onReplay,
   showReplay,
+  pendingSpeechMessage,
   phoneRef
 }: {
   project: DramaProject;
@@ -335,6 +448,7 @@ function WechatStoryPreviewComponent({
   showPeerName?: boolean;
   onReplay?: () => void;
   showReplay?: boolean;
+  pendingSpeechMessage?: ChatMessage | null;
   phoneRef?: Ref<HTMLDivElement>;
 }) {
   const jojoMode = isJojoProject(project);
@@ -483,7 +597,16 @@ function WechatStoryPreviewComponent({
         aria-label={jojoMode ? "钉钉手机版聊天预览" : wechatGroupMode ? "9:16 微信群聊预览" : "9:16 微信聊天预览"}
       >
         <div className={jojoMode ? "dingtalk-topbar" : `wechat-topbar ${mobileSessionListVisible ? "wechat-topbar-session-list" : ""}`}>
-          <img className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.webp" : "/wechat-ui/topbar.webp")} alt="" draggable={false} />
+          <img
+            className={jojoMode ? "dingtalk-topbar-img" : "wechat-topbar-img"}
+            src={publicAsset(jojoMode ? "/dingtalk-ui/topbar.webp" : "/wechat-ui/topbar.webp")}
+            alt=""
+            width={1206}
+            height={jojoMode ? 302 : 300}
+            decoding="async"
+            loading="eager"
+            draggable={false}
+          />
           {jojoMode ? (
             <strong className="dingtalk-topbar-title">{project.title || "工位蛐蛐小队"}</strong>
           ) : (
@@ -543,6 +666,14 @@ function WechatStoryPreviewComponent({
                     </div>
                   );
                 })}
+                {pendingSpeechMessage ? (
+                  <WechatPendingSpeechRow
+                    project={project}
+                    message={pendingSpeechMessage}
+                    jojoMode={jojoMode}
+                    wechatGroupMode={wechatGroupMode}
+                  />
+                ) : null}
                 {showReplay ? (
                   <div className="chat-replay-row">
                     <button className="chat-replay-button" type="button" onClick={onReplay} aria-label="再来一遍">
@@ -591,7 +722,16 @@ function WechatStoryPreviewComponent({
           }}
         />
         {mobileSessionListVisible ? null : (
-          <img className={jojoMode ? "dingtalk-inputbar-img" : "wechat-bottombar-img"} src={publicAsset(jojoMode ? "/dingtalk-ui/inputbar.webp" : "/wechat-ui/bottombar.webp")} alt="" draggable={false} />
+          <img
+            className={jojoMode ? "dingtalk-inputbar-img" : "wechat-bottombar-img"}
+            src={publicAsset(jojoMode ? "/dingtalk-ui/inputbar.webp" : "/wechat-ui/bottombar.webp")}
+            alt=""
+            width={1206}
+            height={jojoMode ? 376 : 270}
+            decoding="async"
+            loading="eager"
+            draggable={false}
+          />
         )}
       </div>
       {multiSessionMode ? (

@@ -79,6 +79,7 @@ export async function generateDeepSeekStorySegment({
   promptCards,
   allowMultiSession = false,
   activeSessionId,
+  customModel,
   signal
 }: {
   project: DramaProject;
@@ -86,9 +87,10 @@ export async function generateDeepSeekStorySegment({
   promptCards: PromptCard[];
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
-  const config = await resolveBrowserDeepSeekConfig(project);
+  const config = customModel || await resolveBrowserDeepSeekConfig(project);
   return generateDeepSeekStorySegmentWithConfig({
     project,
     prompt,

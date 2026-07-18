@@ -3,7 +3,7 @@ import { z } from "zod";
 import { DATA_DIR, SETTINGS_PATH } from "./paths.js";
 
 const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-const DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 
 const storedDeepSeekSchema = z.object({
   apiKey: z.string().optional(),
@@ -77,12 +77,6 @@ function normalizeBaseUrl(value: string | undefined): string | undefined {
   return next.replace(/\/+$/, "");
 }
 
-function maskApiKey(apiKey: string): string {
-  if (!apiKey) return "";
-  if (apiKey.length <= 10) return "已配置";
-  return `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`;
-}
-
 export async function getDeepSeekConfig(): Promise<DeepSeekRuntimeConfig> {
   const settings = await readSettings();
   const useSavedSettings = process.env.USE_SAVED_DEEPSEEK_SETTINGS === "1";
@@ -104,7 +98,7 @@ export async function getDeepSeekSettingsView(): Promise<DeepSeekSettingsView> {
   const config = await getDeepSeekConfig();
   return {
     hasApiKey: Boolean(config.apiKey),
-    apiKeyPreview: maskApiKey(config.apiKey),
+    apiKeyPreview: "",
     baseUrl: config.baseUrl,
     model: config.model,
     source: config.source

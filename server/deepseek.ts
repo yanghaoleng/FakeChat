@@ -14,7 +14,7 @@ import {
   type ScriptGenerateRequest
 } from "../src/shared/schema.js";
 import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/storyGeneration/deepseekCore.js";
-import type { DeepSeekSegmentResult } from "../src/shared/storyGeneration/contract.js";
+import type { DeepSeekCompletionConfig, DeepSeekSegmentResult } from "../src/shared/storyGeneration/contract.js";
 import { getDeepSeekConfig } from "./settings.js";
 
 const storyBeats = [
@@ -36,6 +36,13 @@ const promptCardSchema = z.object({
   summary: z.string()
 });
 
+const customModelConfigSchema = z.object({
+  apiKey: z.string().trim().min(1),
+  baseUrl: z.string().trim().url(),
+  model: z.string().trim().min(1),
+  label: z.string().trim().optional()
+});
+
 const storyContinueRequestSchema = z.object({
   project: projectSchema.extend({
     messages: z.array(chatMessageSchema).default([])
@@ -43,8 +50,19 @@ const storyContinueRequestSchema = z.object({
   prompt: z.string().min(1),
   promptCards: z.array(promptCardSchema).default([]),
   allowMultiSession: z.boolean().default(false),
-  activeSessionId: z.string().min(1).optional()
+  activeSessionId: z.string().min(1).optional(),
+  customModel: customModelConfigSchema.optional()
 });
+
+function resolveCustomModelConfig(value: z.infer<typeof customModelConfigSchema>): DeepSeekCompletionConfig {
+  return {
+    apiKey: value.apiKey,
+    baseUrl: value.baseUrl.replace(/\/+$/, ""),
+    model: value.model,
+    source: "custom",
+    label: value.label || "自定义模型"
+  };
+}
 
 function customizeFallback(request: ScriptGenerateRequest): DramaProject {
   return {
@@ -331,16 +349,25 @@ export async function generateScript(body: unknown): Promise<{ project: DramaPro
 
 export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeekSegmentResult> {
   const request = storyContinueRequestSchema.parse(body);
-  const { apiKey, baseUrl, model } = await getDeepSeekConfig();
-  if (!apiKey) throw new Error("后端 DeepSeek API key 未配置");
+  const savedConfig = request.customModel ? undefined : await getDeepSeekConfig();
+  const config = request.customModel
+    ? resolveCustomModelConfig(request.customModel)
+    : {
+        apiKey: savedConfig!.apiKey,
+        baseUrl: savedConfig!.baseUrl,
+        model: savedConfig!.model,
+        source: "server" as const,
+        label: "后端 DeepSeek"
+      };
+  if (!config.apiKey) throw new Error("后端 DeepSeek API key 未配置");
 
   return generateDeepSeekStorySegmentWithConfig({
     project: parseProject(request.project),
     prompt: request.prompt,
     promptCards: request.promptCards,
-    config: { apiKey, baseUrl, model },
+    config,
     allowMultiSession: request.allowMultiSession,
     activeSessionId: request.activeSessionId,
-    logLabel: "deepseek-server"
+    logLabel: request.customModel ? "deepseek-custom-server" : "deepseek-server"
   });
 }

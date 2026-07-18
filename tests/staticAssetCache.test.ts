@@ -31,10 +31,10 @@ describe("static visual asset cache manifest", () => {
   it("includes current project avatars and referenced media but not the whole catalog", () => {
     const paths = projectCriticalAssetPaths(sampleProject);
 
-    expect(paths).toContain("/avatars/boy-soft-selfie.webp");
-    expect(paths).toContain("/avatars/girl-sweater-soft.webp");
+    expect(paths).toContain("/avatars/thumbs/96/boy-soft-selfie.webp");
+    expect(paths).toContain("/avatars/thumbs/96/girl-sweater-soft.webp");
     expect(paths).toContain("/memes/qface/20.webp");
-    expect(paths).toContain("/viral-assets/photos/phone-chat-blur.webp");
+    expect(paths).toContain("/viral-assets/photos-480/phone-chat-blur.webp");
     expect(paths).not.toContain("/memes/qface/21.webp");
     expect(paths.length).toBeLessThan(sampleProject.assets.length);
   });
@@ -71,5 +71,16 @@ describe("static visual asset cache fallback", () => {
 
     expect(cacheWithWorker).toHaveBeenCalledWith(urls);
     expect(warmHttpCache).toHaveBeenCalledWith(urls);
+  });
+
+  it("decodes images after the worker cache is ready", async () => {
+    const cacheWithWorker = vi.fn(async () => true);
+    const warmHttpCache = vi.fn(async () => undefined);
+    const decodeImageCache = vi.fn(async () => undefined);
+    const urls = ["/avatars/thumbs/96/boy-soft-selfie.webp"];
+
+    await cacheStaticVisualAssetUrls(urls, cacheWithWorker, warmHttpCache, decodeImageCache);
+
+    expect(decodeImageCache).toHaveBeenCalledWith(urls);
   });
 });

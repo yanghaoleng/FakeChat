@@ -11,8 +11,16 @@
       "destination": "/api/settings/deepseek"
     },
     {
+      "source": "/api/settings/deepseek/test",
+      "destination": "/api/settings/deepseek/test"
+    },
+    {
       "source": "/api/music/preview",
       "destination": "/api/music/preview"
+    },
+    {
+      "source": "/api/fish-tts",
+      "destination": "/api/fish-tts"
     },
     {
       "source": "/api/(.*)",

@@ -9,6 +9,7 @@ import {
 import { resolvePublicAssetPath } from "./publicPath";
 import { buildTimeline, getDurationInFrames, getScrollY, type TimelineEntry } from "./timing";
 import type { TtsClipMap } from "./edgeTts";
+import { normalizedVoiceGain } from "./audioLoudness";
 
 export type VideoExportResult = {
   blob: Blob;
@@ -617,6 +618,7 @@ export async function exportBrowserVideo(
   const timeline = buildTimeline(project);
   const durationInFrames = getDurationInFrames(project, timeline);
   const decodedClips = new Map<string, AudioBuffer>();
+  const normalizedClipGains = new Map<string, number>();
   const chunks: BlobPart[] = [];
   const scheduledSources = new Set<AudioScheduledSourceNode>();
   const connectedAudioNodes = new Set<AudioNode>();
@@ -716,7 +718,10 @@ export async function exportBrowserVideo(
 
     for (const entry of timeline) {
       const decoded = await decodeClip(audioContext, clips[entry.message.id]);
-      if (decoded) decodedClips.set(entry.message.id, decoded);
+      if (decoded) {
+        decodedClips.set(entry.message.id, decoded);
+        normalizedClipGains.set(entry.message.id, normalizedVoiceGain(decoded));
+      }
     }
 
     await resumeAudioContext(audioContext);
@@ -804,7 +809,7 @@ export async function exportBrowserVideo(
             const source = activeAudioContext.createBufferSource();
             const gain = activeAudioContext.createGain();
             source.buffer = audioBuffer;
-            gain.gain.value = project.audioMix.ttsVolume;
+            gain.gain.value = project.audioMix.ttsVolume * (normalizedClipGains.get(entry.message.id) ?? 1);
             source.connect(gain).connect(audioDestination);
             source.start(startTime + 0.12);
             scheduledSources.add(source);

@@ -1,6 +1,7 @@
 import type { StoryPackage } from "./linearStory";
 import { publicAsset, resolvePublicAssetPath } from "./publicPath";
 import type { DramaProject } from "./schema";
+import { visualPreviewPath } from "./visualAssetVariants.js";
 
 const assetCacheMessageType = "CACHE_STATIC_ASSETS";
 const maxParallelWarmups = 5;
@@ -48,7 +49,7 @@ export function projectCriticalAssetPaths(project: DramaProject) {
       .filter((asset) => asset.kind !== "sound" && referencedAssetIds.has(asset.id))
       .map((asset) => asset.localPath)
       .filter(isLocalPublicPath)
-  ]);
+  ].map((path) => visualPreviewPath(path) || path));
 }
 
 export function buildStaticVisualAssetPaths({
@@ -100,14 +101,24 @@ type StaticVisualWarmupOptions = {
   project?: DramaProject;
 };
 
-let warmupStarted = false;
+const warmedStaticVisualAssetUrls = new Set<string>();
+const pendingStaticVisualAssetUrls = new Set<string>();
+let warmupScheduled = false;
 
 export function warmStaticVisualAssets({ storyPackage, project }: StaticVisualWarmupOptions) {
-  if (warmupStarted || typeof window === "undefined") return;
-  warmupStarted = true;
+  if (typeof window === "undefined") return;
+
+  for (const url of staticVisualAssetUrls(storyPackage, project)) {
+    if (!warmedStaticVisualAssetUrls.has(url)) pendingStaticVisualAssetUrls.add(url);
+  }
+  if (!pendingStaticVisualAssetUrls.size || warmupScheduled) return;
+  warmupScheduled = true;
 
   const startWarmup = () => {
-    const urls = staticVisualAssetUrls(storyPackage, project);
+    const urls = [...pendingStaticVisualAssetUrls];
+    pendingStaticVisualAssetUrls.clear();
+    warmupScheduled = false;
+    urls.forEach((url) => warmedStaticVisualAssetUrls.add(url));
     void cacheStaticVisualAssetUrls(urls);
   };
 
@@ -123,11 +134,13 @@ export function warmStaticVisualAssets({ storyPackage, project }: StaticVisualWa
 export async function cacheStaticVisualAssetUrls(
   urls: string[],
   cacheWithWorker: (urls: string[]) => Promise<boolean> = registerAssetCacheWorker,
-  warmHttpCache: (urls: string[]) => Promise<void> = warmHttpImageCache
+  warmHttpCache: (urls: string[]) => Promise<void> = warmHttpImageCache,
+  decodeImageCache: (urls: string[]) => Promise<void> = decodeVisualImageCache
 ) {
   if (!urls.length) return;
   const cachedByWorker = await cacheWithWorker(urls);
   if (!cachedByWorker) await warmHttpCache(urls);
+  await decodeImageCache(urls);
 }
 
 function waitForWorkerReply(worker: ServiceWorker, urls: string[]) {
@@ -205,4 +218,33 @@ async function warmHttpImageCache(urls: string[]) {
   };
 
   await Promise.all(Array.from({ length: Math.min(maxParallelWarmups, urls.length) }, warmNext));
+}
+
+async function decodeVisualImageCache(urls: string[]) {
+  if (typeof Image === "undefined") return;
+  let cursor = 0;
+
+  const decodeNext = async () => {
+    while (cursor < urls.length) {
+      const url = urls[cursor];
+      cursor += 1;
+
+      try {
+        const image = new Image();
+        image.decoding = "async";
+        image.loading = "eager";
+        image.src = url;
+        if (image.decode) await image.decode();
+        else await new Promise<void>((resolve) => {
+          image.onload = () => resolve();
+          image.onerror = () => resolve();
+        });
+      } catch {
+        // Decode support varies slightly across Safari versions; HTTP cache
+        // warming above is still useful when decode() refuses optional assets.
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(maxParallelWarmups, urls.length) }, decodeNext));
 }

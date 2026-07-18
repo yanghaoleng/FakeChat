@@ -9,7 +9,7 @@ export type DeepSeekCompletionConfig = {
   apiKey: string;
   baseUrl: string;
   model: string;
-  source?: "default" | "server";
+  source?: "default" | "server" | "custom";
   label?: string;
 };
 

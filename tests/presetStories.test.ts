@@ -91,9 +91,8 @@ describe("微信预制首卡", () => {
     expect(archive.cachedFirstSegment.suggestedPrompt.length).toBeLessThanOrEqual(120);
   });
 
-  it("职场、合租、偶遇三条简洁恋爱本都支持男女视角", () => {
+  it("合租、偶遇两条简洁恋爱本都支持男女视角", () => {
     for (const presetId of [
-      "viral-office-private-calendar",
       "viral-roommate-last-key",
       "viral-encounter-wrong-umbrella"
     ]) {
@@ -112,19 +111,17 @@ describe("微信预制首卡", () => {
       "viral-trump-takaichi-tariff-coupon",
       "viral-fengge-female-fan-private-chat",
       "viral-fengge-male-b-friend-advice",
-      "viral-luo-jia-next-week-live",
       "viral-luo-lei-crossroads-podcast",
       "viral-liu-qiangdong-passerby",
       "viral-journey-secret-cp-group",
       "viral-gta-release-city-summit",
-      "viral-office-private-calendar",
       "viral-roommate-last-key",
       "viral-encounter-wrong-umbrella"
     ];
 
-    expect(presetStoryCount("viral", { viralRole: "any" })).toBe(14);
-    expect(presetStoryCount("viral", { viralRole: "male" })).toBe(7);
-    expect(presetStoryCount("viral", { viralRole: "female" })).toBe(6);
+    expect(presetStoryCount("viral", { viralRole: "any" })).toBe(11);
+    expect(presetStoryCount("viral", { viralRole: "male" })).toBe(5);
+    expect(presetStoryCount("viral", { viralRole: "female" })).toBe(4);
     for (const presetId of presetIds) expect(archiveById("any", presetId).preset.id).toBe(presetId);
   });
 
@@ -199,9 +196,9 @@ describe("微信预制首卡", () => {
     expect(firstFive).toEqual([
       "viral-journey-secret-cp-group",
       "viral-daughter-kingdom-520",
-      "viral-baigujing-third-account",
       "viral-fengge-female-fan-private-chat",
-      "viral-fengge-male-b-friend-advice"
+      "viral-fengge-male-b-friend-advice",
+      "viral-gta-release-city-summit"
     ]);
   });
 
@@ -230,38 +227,29 @@ describe("微信预制首卡", () => {
     for (const archive of [privateChat, advice, privateChatFromAny, adviceFromAny]) {
       const fengge = archive.project.characters.find((character) => character.name === "峰哥");
       expect(fengge?.avatarUrl).toBe("/avatars/journey-1986-shaseng.webp");
+      expect(fengge?.avatarGender).toBe("boy");
+      expect(fengge?.voicePreset).toBe("young_male");
       expect(fengge?.voiceDescription).not.toMatch(/方言|口音|东北/);
       expect(archive.cachedFirstSegment.messages.map((message) => message.text).join(" "))
         .not.toMatch(/莫急|搞么事|搁这|咋说|莫慌|要得|巴适/);
     }
   });
 
-  it("男生视角可以抽到西游与水浒本，西游本同时支持男女视角", () => {
-    for (const presetId of [
-      "viral-daughter-kingdom-520",
-      "viral-baigujing-third-account"
-    ]) {
-      expect(archiveById("male", presetId).preset.id).toBe(presetId);
-      expect(archiveById("female", presetId).preset.id).toBe(presetId);
-    }
+  it("男生视角可以抽到西游与水浒本，女儿国本同时支持男女视角", () => {
+    expect(archiveById("male", "viral-daughter-kingdom-520").preset.id).toBe("viral-daughter-kingdom-520");
+    expect(archiveById("female", "viral-daughter-kingdom-520").preset.id).toBe("viral-daughter-kingdom-520");
     expect(archiveById("male", "viral-pan-jinlian-window-request").preset.id)
       .toBe("viral-pan-jinlian-window-request");
   });
 
   it("西游预制绑定专属 86 版妆造语言头像", () => {
     const daughterKingdom = archiveById("any", "viral-daughter-kingdom-520");
-    const baigujing = archiveById("any", "viral-baigujing-third-account");
 
     expect(daughterKingdom.project.characters.map((character) => character.avatarUrl)).toEqual([
       "/avatars/journey-1986-tang.webp",
       "/avatars/journey-1986-queen.webp"
     ]);
-    expect(baigujing.project.characters.map((character) => character.avatarUrl)).toEqual([
-      "/avatars/journey-1986-wukong.webp",
-      "/avatars/journey-1986-baigujing.webp"
-    ]);
     expect(daughterKingdom.cachedFirstSegment.messages.some((message) => message.text.includes("返程终点"))).toBe(true);
-    expect(baigujing.cachedFirstSegment.messages.some((message) => message.text.includes("战绩"))).toBe(true);
   });
 
   it("微信西游大群保留六名成员、真实 roleId 和秘密 CP 线", () => {

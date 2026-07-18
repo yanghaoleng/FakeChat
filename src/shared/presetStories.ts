@@ -533,7 +533,6 @@ function cloneBaseProject(project: DramaProject): DramaProject {
 const viralPresetPriority = [
   "viral-journey-secret-cp-group",
   "viral-daughter-kingdom-520",
-  "viral-baigujing-third-account",
   "viral-fengge-female-fan-private-chat",
   "viral-fengge-male-b-friend-advice",
   "viral-gta-release-city-summit"

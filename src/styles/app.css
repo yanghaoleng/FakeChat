@@ -2439,7 +2439,7 @@ button[disabled],
   padding: 8px;
 }
 
-.settings-dialog :is(button, a, select):focus-visible {
+.settings-dialog :is(button, a, select, input):focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--app-focus-ring);
 }
@@ -2465,9 +2465,24 @@ button[disabled],
   transition: background 0.16s ease;
 }
 
+.settings-option-row-stack {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
 .settings-option-row:hover,
 .settings-option-row:focus-within {
   background: rgba(255, 255, 255, 0.065);
+}
+
+.settings-option-row:has(:disabled) {
+  color: var(--app-text-subtle);
+  opacity: 0.54;
+}
+
+.settings-option-row:has(:disabled):hover {
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .settings-option-label {
@@ -2491,17 +2506,15 @@ button[disabled],
   min-width: 0;
 }
 
-.settings-option-control select {
+.settings-option-control select,
+.settings-option-control input {
   width: 100%;
   min-height: 34px;
   overflow: hidden;
-  appearance: none;
-  -webkit-appearance: none;
   border: 0;
   border-radius: 8px;
   background: var(--wechat-green-soft);
   color: var(--app-accent-readable);
-  cursor: pointer;
   padding: 0 30px 0 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2510,8 +2523,41 @@ button[disabled],
   font-weight: 780;
 }
 
-.settings-option-control select:hover {
+.settings-option-control select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.settings-option-control input {
+  padding-right: 11px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--app-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.settings-option-control input::placeholder {
+  color: rgba(207, 221, 232, 0.42);
+}
+
+.settings-option-control select:disabled,
+.settings-option-control input:disabled {
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--app-text-subtle);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.settings-option-control select:hover,
+.settings-option-control input:hover {
   background: var(--app-accent-hover-soft);
+}
+
+.settings-option-control select:disabled:hover,
+.settings-option-control input:disabled:hover {
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .settings-option-control select option {
@@ -2526,6 +2572,96 @@ button[disabled],
   color: var(--app-accent-readable);
   pointer-events: none;
   transform: translateY(-50%);
+}
+
+.settings-model-panel {
+  margin-bottom: 4px;
+}
+
+.settings-lab-panel {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 4px;
+  overflow-y: auto;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 8px;
+}
+
+.settings-lab-panel > .settings-option-list {
+  margin-bottom: 0;
+}
+
+.settings-lab-panel .title-menu-toggle:disabled {
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--app-text-subtle);
+  opacity: 0.54;
+}
+
+.settings-lab-panel .title-menu-toggle:disabled:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.settings-lab-panel .title-menu-toggle:disabled .title-menu-toggle-indicator {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-lab-section {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-model-test-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 5px 6px 6px;
+}
+
+.settings-model-test-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--wechat-green-soft);
+  color: var(--app-accent-readable);
+  cursor: pointer;
+  padding: 0 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+.settings-model-test-button:hover {
+  background: var(--app-accent-hover-soft);
+}
+
+.settings-model-test-button:disabled {
+  cursor: wait;
+  opacity: 0.66;
+}
+
+.settings-model-test-status {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--app-text-subtle);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-model-test-status-success {
+  color: var(--app-accent-readable);
+}
+
+.settings-model-test-status-error {
+  color: #ffb4b4;
 }
 
 .title-menu-tabs {
@@ -3109,6 +3245,10 @@ button[disabled],
   animation: about-backdrop-in 0.18s ease both;
 }
 
+.about-dialog-layer-closing .about-dialog-backdrop {
+  animation: about-backdrop-out 0.18s ease both;
+}
+
 .about-dialog {
   position: relative;
   z-index: 1;
@@ -3124,13 +3264,17 @@ button[disabled],
   animation: about-dialog-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.about-dialog-layer-closing .about-dialog {
+  animation: about-dialog-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 .about-dialog-layer-has-child > .about-dialog {
   pointer-events: none;
   filter: brightness(0.72) saturate(0.84);
 }
 
 .about-dialog-subview-layer {
-  z-index: 2;
+  z-index: 95;
 }
 
 .about-dialog-subview-backdrop {
@@ -3141,6 +3285,12 @@ button[disabled],
 
 .about-dialog-subview {
   animation-duration: 0.26s;
+}
+
+.settings-lab-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(680px, calc(100dvh - 40px));
 }
 
 .about-dialog-header {
@@ -3516,6 +3666,11 @@ button[disabled],
   to { opacity: 1; }
 }
 
+@keyframes about-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 @keyframes about-dialog-in {
   from {
     opacity: 0;
@@ -3524,6 +3679,17 @@ button[disabled],
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes about-dialog-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
   }
 }
 
@@ -4841,14 +5007,55 @@ button[disabled],
   gap: 8px;
 }
 
-.video-progress {
+.video-export-progress {
+  --video-export-progress: 0%;
+  --video-export-progress-color: var(--wechat-green);
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  color: var(--app-text-subtle);
+}
+
+.video-export-progress-wechat {
+  --video-export-progress-color: var(--wechat-green);
+}
+
+.video-export-progress-dingtalk {
+  --video-export-progress-color: #1677ff;
+}
+
+.video-export-progress-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 720;
+  line-height: 1;
+}
+
+.video-export-progress-number {
+  font-size: 13px;
+  opacity: 0.9;
+  text-shadow: none;
+}
+
+.video-export-progress-track {
+  display: block;
   width: 100%;
   height: 8px;
   overflow: hidden;
-  border: 0;
   border-radius: 999px;
-  background: var(--app-bg-raised);
-  accent-color: var(--wechat-green);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.video-export-progress-bar {
+  display: block;
+  width: var(--video-export-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--video-export-progress-color);
+  transition: width 0.22s ease;
 }
 
 .meme-results {
@@ -5751,6 +5958,61 @@ button[disabled],
   object-fit: cover;
 }
 
+.wechat-decoded-avatar {
+  position: relative;
+  display: grid !important;
+  place-items: center;
+  overflow: hidden;
+  color: #ffffff;
+  font-weight: 720;
+  line-height: 1;
+  text-align: center;
+  contain: paint;
+  isolation: isolate;
+}
+
+.wechat-decoded-avatar-initial {
+  position: relative;
+  z-index: 0;
+}
+
+.wechat-decoded-avatar-img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  transition: opacity 0.08s linear;
+}
+
+.wechat-decoded-avatar-img-ready {
+  opacity: 1;
+}
+
+.wechat-avatar.wechat-decoded-avatar,
+.wechat-session-rail-avatar.wechat-decoded-avatar {
+  font-size: 15px;
+  font-weight: 760;
+}
+
+.wechat-session-list-avatar.wechat-decoded-avatar {
+  font-size: 17px;
+}
+
+.wechat-topbar-group-avatar.wechat-decoded-avatar {
+  font-size: 11px;
+}
+
+.wechat-group-avatar-cell.wechat-decoded-avatar {
+  border-radius: 1px;
+  font-size: 0.42em;
+}
+
 .wechat-avatar-fallback {
   display: grid;
   place-items: center;
@@ -5776,6 +6038,36 @@ button[disabled],
 
 .wechat-row-right .wechat-bubble {
   background: #95ec69;
+}
+
+.wechat-row-pending-speech {
+  animation: wechat-pop 0.24s ease both;
+}
+
+.wechat-bubble-pending-speech {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 54px;
+  min-height: 38px;
+  animation: pending-speech-breathe 1.18s ease-in-out infinite;
+}
+
+.wechat-bubble-pending-speech span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.35;
+  animation: pending-speech-dot 1.05s ease-in-out infinite;
+}
+
+.wechat-bubble-pending-speech span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.wechat-bubble-pending-speech span:nth-child(3) {
+  animation-delay: 0.28s;
 }
 
 .wechat-row-left .wechat-bubble::before,
@@ -5823,6 +6115,30 @@ button[disabled],
   left: -5px;
   border-right: 6px solid #ffffff;
   border-left: 0;
+}
+
+@keyframes pending-speech-breathe {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(0.985);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes pending-speech-dot {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.72;
+    transform: translateY(-2px);
+  }
 }
 
 .dingtalk-row .wechat-avatar {

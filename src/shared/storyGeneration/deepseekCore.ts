@@ -37,7 +37,7 @@ import type {
 import { buildBoundedUserPrompt, generatedStoryDeltaInstruction } from "./context.js";
 import { normalizeGeneratedStoryOutput } from "./response.js";
 
-export const DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
+export const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 
 const storyBeats = [
   "3句内进入冲突",

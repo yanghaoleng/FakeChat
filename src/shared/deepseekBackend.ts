@@ -3,6 +3,7 @@ import type { DeepSeekSegmentResult } from "./storyGeneration/contract";
 import type { PromptCard } from "./linearStory";
 import { constrainGeneratedProjectSessions } from "./multiSession";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt";
+import type { DeepSeekCompletionConfig } from "./storyGeneration/contract";
 
 function parsePromptCard(value: unknown): PromptCard {
   if (!value || typeof value !== "object") throw new Error("后端返回的 Prompt 卡片无效");
@@ -51,6 +52,7 @@ export async function generateBackendStorySegment({
   promptCards,
   allowMultiSession = false,
   activeSessionId,
+  customModel,
   signal
 }: {
   project: DramaProject;
@@ -58,6 +60,7 @@ export async function generateBackendStorySegment({
   promptCards: PromptCard[];
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
   const promptContextCards = promptCards.map((card) => ({
@@ -75,7 +78,15 @@ export async function generateBackendStorySegment({
       prompt,
       promptCards: promptContextCards,
       allowMultiSession,
-      activeSessionId
+      activeSessionId,
+      ...(customModel ? {
+        customModel: {
+          apiKey: customModel.apiKey,
+          baseUrl: customModel.baseUrl,
+          model: customModel.model,
+          label: customModel.label
+        }
+      } : {})
     }),
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50000)]) : AbortSignal.timeout(50000)
   });
