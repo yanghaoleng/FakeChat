@@ -1,5 +1,6 @@
 import type { PromptCard } from "./linearStory.js";
 import type { DramaProject } from "./schema.js";
+import type { AppLanguage } from "./i18n.js";
 import {
   DEFAULT_DEEPSEEK_MODEL,
   generateDeepSeekStorySegmentWithConfig
@@ -79,6 +80,7 @@ export async function generateDeepSeekStorySegment({
   promptCards,
   allowMultiSession = false,
   activeSessionId,
+  language = "zh-CN",
   customModel,
   signal
 }: {
@@ -87,6 +89,7 @@ export async function generateDeepSeekStorySegment({
   promptCards: PromptCard[];
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  language?: AppLanguage;
   customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
@@ -98,6 +101,7 @@ export async function generateDeepSeekStorySegment({
     config,
     allowMultiSession,
     activeSessionId,
+    language,
     logLabel: "deepseek-browser-default",
     signal
   });

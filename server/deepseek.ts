@@ -51,6 +51,7 @@ const storyContinueRequestSchema = z.object({
   promptCards: z.array(promptCardSchema).default([]),
   allowMultiSession: z.boolean().default(false),
   activeSessionId: z.string().min(1).optional(),
+  language: z.enum(["zh-CN", "zh-TW", "en", "ja"]).default("zh-CN"),
   customModel: customModelConfigSchema.optional()
 });
 
@@ -368,6 +369,7 @@ export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeek
     config,
     allowMultiSession: request.allowMultiSession,
     activeSessionId: request.activeSessionId,
+    language: request.language,
     logLabel: request.customModel ? "deepseek-custom-server" : "deepseek-server"
   });
 }

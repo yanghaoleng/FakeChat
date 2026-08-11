@@ -9,7 +9,7 @@ const errorOverlaySelector = [
 ].join(",");
 
 async function expectHealthyAppShell(page: Page) {
-  await expect(page).toHaveTitle("蛐蛐模拟器");
+  await expect(page).toHaveTitle(/蛐蛐模拟器/);
   await expect(page.getByRole("heading", { name: "蛐蛐模拟器" })).toBeVisible();
   await expect(page.locator("body")).not.toHaveText("");
   await expect(page.locator(errorOverlaySelector)).toHaveCount(0);
@@ -51,13 +51,35 @@ test.describe("关键用户流程", () => {
 
     await page.getByRole("button", { name: "打开设置" }).click();
     const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    await expect(settingsDialog.getByRole("combobox")).toHaveCount(3);
-    const previewSelect = settingsDialog.getByRole("combobox", { name: "预览模式" });
+    await settingsDialog.getByRole("button", { name: "实验室" }).click();
+    const labDialog = page.getByRole("dialog", { name: "实验室" });
+    await expect(labDialog.getByRole("combobox")).toHaveCount(2);
+    const previewSelect = labDialog.getByRole("combobox", { name: "预览模式" });
     await previewSelect.selectOption("video");
 
     await expect(previewSelect).toHaveValue("video");
     await expect(page.locator(".player-frame")).toBeVisible();
     await expect(page.locator('[aria-label="正在加载视频预览"]')).toHaveCount(0);
+  });
+
+  test("语言设置跟随浏览器并可切换英文界面", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "打开设置" }).click();
+    const settingsDialog = page.getByRole("dialog", { name: "设置" });
+    const languageSelect = settingsDialog.getByRole("combobox", { name: "选择界面和对话语言" });
+    await expect(languageSelect).toHaveValue("auto");
+    await expect(languageSelect.locator("option").first()).toContainText("简体中文");
+
+    await languageSelect.selectOption("en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page).toHaveTitle(/AI Companion/);
+    await expect(page.getByRole("dialog", { name: "Settings" })).toContainText("About this site");
+
+    await page.getByRole("button", { name: "About this site" }).click();
+    const aboutSiteDialog = page.getByRole("dialog", { name: "About this site" });
+    await expect(aboutSiteDialog).toContainText("AI companionship");
+    await expect(aboutSiteDialog).toContainText("Simulated chat creation");
   });
 
   test("支持作者页面与设置菜单按 Escape 逐级返回", async ({ page }) => {
@@ -80,6 +102,14 @@ test.describe("关键用户流程", () => {
     await expect(supportDialog).toBeVisible();
     await expect(supportDialog.getByRole("button", { name: "返回设置", exact: true })).toBeVisible();
     await expect(supportDialog.getByRole("link", { name: "开源链接" })).toBeVisible();
+    await expect(supportDialog).toContainText("如果它给你带来了乐趣");
+    const wechatPaymentTab = supportDialog.getByRole("tab", { name: "微信" });
+    const alipayPaymentTab = supportDialog.getByRole("tab", { name: "支付宝" });
+    await expect(wechatPaymentTab).toHaveAttribute("aria-selected", "true");
+    await expect(supportDialog.getByRole("img", { name: "微信收款码" })).toHaveAttribute("src", /\/donate\/wechat-qr\.webp$/);
+    await alipayPaymentTab.click();
+    await expect(alipayPaymentTab).toHaveAttribute("aria-selected", "true");
+    await expect(supportDialog.getByRole("img", { name: "支付宝收款码" })).toHaveAttribute("src", /\/donate\/alipay-qr\.webp$/);
     const copyGithubButton = supportDialog.getByRole("button", { name: "复制开源链接" });
     await expect(copyGithubButton).toBeVisible();
     await expect(page.locator(".about-dialog")).toHaveCount(1);
@@ -135,6 +165,65 @@ test.describe("关键用户流程", () => {
     await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
   });
 
+  test("当前会话可自定义标题昵称与本地头像并在刷新后恢复", async ({ page }) => {
+    const localArchive = {
+      version: 1,
+      exportedAt: "2026-08-03T00:00:00.000Z",
+      promptCards: [],
+      project: sampleProject
+    };
+    const loadLocalArchive = () => page.locator('input[type="file"]').first().setInputFiles({
+      name: "local-customization-test.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(localArchive))
+    });
+
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expectHealthyAppShell(page);
+    await loadLocalArchive();
+
+    const titleButton = page.getByRole("button", { name: "自定义会话标题" });
+    await titleButton.hover();
+    await expect(titleButton.locator(".wechat-edit-pencil")).toHaveCSS("opacity", "0.78");
+    await titleButton.click();
+    const titleDialog = page.getByRole("dialog", { name: "自定义会话标题" });
+    await titleDialog.getByRole("textbox", { name: "会话标题" }).fill("只保存在本机的会话");
+    await titleDialog.getByRole("button", { name: "保存" }).click();
+    await expect(titleButton).toContainText("只保存在本机的会话");
+
+    await expect.poll(() => page.locator(".wechat-avatar-edit-target").count()).toBeGreaterThan(0);
+    const avatarButton = page.locator(".wechat-avatar-edit-target").first();
+    await avatarButton.click();
+    const avatarDialog = page.getByRole("dialog", { name: "自定义头像" });
+    await avatarDialog.locator('input[type="file"]').setInputFiles({
+      name: "avatar.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64")
+    });
+    await expect(avatarDialog.locator(".chat-profile-avatar-preview img")).toHaveAttribute("src", /^data:image\/jpeg;base64,/);
+    await avatarDialog.getByRole("button", { name: "保存" }).click();
+    await expect(avatarButton.locator("img")).toHaveAttribute("src", /^data:image\/jpeg;base64,/);
+    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((key) => key.includes("ququ-conversation-customization-v1")))).toBe(true);
+
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await loadLocalArchive();
+    await expect(page.getByRole("button", { name: "自定义会话标题" })).toContainText("只保存在本机的会话");
+    await expect.poll(() => page.locator(".wechat-avatar-edit-target img[src^='data:image/jpeg;base64,']").count()).toBeGreaterThan(0);
+
+    await page.goto("/ding/");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "开始编", exact: true }).click();
+    await expect.poll(() => page.locator(".wechat-speaker-name-edit-target").count()).toBeGreaterThan(0);
+    const nicknameButton = page.locator(".wechat-speaker-name-edit-target").first();
+    await nicknameButton.click();
+    const nicknameDialog = page.getByRole("dialog", { name: "自定义昵称" });
+    await nicknameDialog.getByRole("textbox", { name: "昵称" }).fill("本会话昵称");
+    await nicknameDialog.getByRole("button", { name: "保存" }).click();
+    await expect(nicknameButton).toContainText("本会话昵称");
+  });
+
   test("微信多会话测试开关默认关闭并在反复切换后保留存档数据", async ({ page }) => {
     const lawyer = {
       ...sampleProject.characters[1],
@@ -176,10 +265,21 @@ test.describe("关键用户流程", () => {
 
     await page.getByRole("button", { name: "打开设置" }).click();
     const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    const multiSessionSwitch = settingsDialog.getByRole("switch", { name: "多会话（测试版）" });
+    const labDialog = page.getByRole("dialog", { name: "实验室" });
+    const openLabDialog = async () => {
+      await settingsDialog.getByRole("button", { name: "实验室" }).click();
+      await expect(labDialog).toBeVisible();
+    };
+    const closeLabAndSettings = async () => {
+      await labDialog.getByRole("button", { name: "返回设置" }).click();
+      await expect(settingsDialog).toBeVisible();
+      await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
+      await expect(settingsDialog).toHaveCount(0);
+    };
+    await openLabDialog();
+    const multiSessionSwitch = labDialog.getByRole("switch", { name: "多会话" });
     await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "false");
-    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
-    await expect(settingsDialog).toHaveCount(0);
+    await closeLabAndSettings();
 
     await page.locator('input[type="file"]').setInputFiles({
       name: "legacy-mixed-sessions.json",
@@ -191,10 +291,10 @@ test.describe("关键用户流程", () => {
     await expect(sessionRail).toHaveCount(0);
 
     await page.getByRole("button", { name: "打开设置" }).click();
+    await openLabDialog();
     await multiSessionSwitch.click();
     await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "true");
-    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
-    await expect(settingsDialog).toHaveCount(0);
+    await closeLabAndSettings();
 
     await expect(sessionRail).toBeVisible();
     await expect(sessionRail.getByRole("button", { name: /切换到林夏/ })).toBeVisible();
@@ -206,17 +306,17 @@ test.describe("关键用户流程", () => {
     await expect(page.locator(".wechat-speaker-name")).toContainText(["周律师", "王总"]);
 
     await page.getByRole("button", { name: "打开设置" }).click();
+    await openLabDialog();
     await multiSessionSwitch.click();
     await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "false");
-    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
-    await expect(settingsDialog).toHaveCount(0);
+    await closeLabAndSettings();
     await expect(sessionRail).toHaveCount(0);
 
     await page.getByRole("button", { name: "打开设置" }).click();
+    await openLabDialog();
     await multiSessionSwitch.click();
     await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "true");
-    await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
-    await expect(settingsDialog).toHaveCount(0);
+    await closeLabAndSettings();
     await expect(sessionRail.getByRole("button", { name: /切换到林夏/ })).toBeVisible();
     const restoredGroupButton = sessionRail.getByRole("button", { name: /切换到合同核对群/ });
     await expect(restoredGroupButton).toBeVisible();

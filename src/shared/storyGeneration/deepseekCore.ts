@@ -4,6 +4,7 @@ import { resolveFirstViralPeerCharacters } from "../chatPeerName.js";
 import { defaultChatSessionId, getChatSessions, projectForChatSession } from "../chatSessions.js";
 import { isGenericImageCopy } from "../imageNarrative.js";
 import { isJojoProject } from "../jojoProject.js";
+import { languageGenerationInstruction, type AppLanguage } from "../i18n.js";
 import {
   describePhotoAssetCatalog,
   findJojoPhotoChoice,
@@ -38,6 +39,7 @@ import { buildBoundedUserPrompt, generatedStoryDeltaInstruction } from "./contex
 import { normalizeGeneratedStoryOutput } from "./response.js";
 
 export const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
+const deepSeekRequestTimeoutMs = 55000;
 
 const storyBeats = [
   "3句内进入冲突",
@@ -516,21 +518,23 @@ function systemPrompt(
   project: DramaProject,
   prompt = "",
   allowMultiSession = false,
-  activeSessionId?: string
+  activeSessionId?: string,
+  language: AppLanguage = "zh-CN"
 ) {
   if (isJojoProject(project)) {
     const jojoInstruction = jojoPerspectiveInstruction(project);
     return [
       "你是叫叫公司日常群聊编剧，输出必须是严格 JSON，不要 markdown。",
+      languageGenerationInstruction(language),
       jojoInstruction.sideRule,
-      "title 是群聊名称，要像同事背后蛐蛐用的小群名，4-10 个中文字，轻松、机灵、有梗，不要正式公司群名。示例：工位蛐蛐小队、早会避难所、需求受害者联盟、周报幸存者。",
+      "title 是群聊名称，要像同事私下吐槽用的小群名，使用所选语言写 4-18 个字符，轻松、机灵、有梗，不要正式公司群名。",
       "只写叫叫公司里的日常吐槽、自嘲、会议、需求、排期、周报、老板、客户、工位、电梯口、咖啡、deadline 等职场小反转。",
       "喜剧密度要更高：多写办公室荒诞、同事吐槽、反差包袱、系统无情补刀；每 4-6 条至少有一个轻笑点，但不要变成段子合集。",
       `固定角色和 senderId：${jojoRoleListInstruction(project)}。当前用户自己是${jojoInstruction.player.name}。`,
       jojoInstruction.messageRule,
       targetMessageRange(project),
       mediaRule(project),
-      "消息必须短，单条中文尽量 4-18 字；不要写小说旁白，不要写爱情误会，不要套网红短剧男女主。",
+      "消息必须短，单条尽量是一句适合手机气泡的口语；不要写小说旁白，不要写爱情误会，不要套网红短剧男女主。",
       "图片消息 text 必须描述真实办公室局部证据：手、电脑、咖啡、背影、走廊、电梯口、运动模糊。禁止真实正脸、卡通脸、吉祥物脸、全身角色、识别性人物。",
       "image 类型只用 text 一个字段描述图片内容，写清这张图里具体有什么；不要拆成 label/title/detail，也不要输出额外图片文案字段。",
       "可用图片 assetId 已在照片目录列出；优先按标签匹配当前剧情，偶尔用 1 张，最多 2 张。",
@@ -547,9 +551,10 @@ function systemPrompt(
   const groupIntent = currentPromptUsesGroupSession(project, prompt, allowMultiSession, activeSessionId);
   const standaloneGroupIntent = replacesWholeProjectWithGroup(project, prompt);
   const viralInstruction = viralPerspectiveInstruction(project, groupIntent, allowMultiSession, activeSessionId);
-  const englishStory = /\bLanguage:\s*English\b/i.test(project.brief);
+  const englishStory = language === "en";
   return [
     "你是爆款聊天记录短剧编剧，擅长写高密度微信聊天短剧。输出必须是严格 JSON，不要 markdown。",
+    languageGenerationInstruction(language),
     standaloneGroupIntent
       ? "当前故事是多人群聊：chatMode 必须是 group；title 必须像真实群名，使用 3-18 个字符，不能填某个成员的人名，也不能写成“某某和某某的聊天”。"
       : groupIntent
@@ -559,21 +564,18 @@ function systemPrompt(
         : allowMultiSession
           ? "当前故事是私聊或多会话故事：以 chatSessions.kind 为准，每个 direct 会话的 title 使用对应联系人的名字。"
           : "当前故事使用单会话模式：只推进当前私聊，禁止创建第二个会话。",
-    englishStory
-      ? "This story is in English. Write every chat message, ttsText, transferNote, image description, character name, and suggestedPrompt in concise, natural conversational English. Do not insert Chinese dialogue."
-      : "所有聊天内容使用自然中文。",
     "成片观感：横向聊天画布，大字号短消息，连续滚屏，像真实聊天局部放大。用户只看聊天，不看旁白，也必须看懂剧情。",
     project.messages.length ? "你正在续写同一条全局剧情时间线。只输出新段落，不要重复已有对话，不要混淆会话边界。" : "你正在写第一段。它要一次性生成到位，像能直接剪成短视频的完整开局。",
     `本段节拍：${storyBeats.join(" -> ")}。`,
     targetMessageRange(project),
     mediaRule(project),
     englishStory
-      ? "Keep each English message short, usually 2-12 words and occasionally up to 18 words; never write novel-style narration."
-      : "消息必须短，单条中文尽量 4-18 字；偶尔可到 24 字，但不能写小说旁白。",
+      ? "Keep each message short, usually 2-12 words and occasionally up to 18 words; never write novel-style narration."
+      : "消息必须短，单条尽量是一句适合手机气泡的口语；偶尔可稍长，但不能写小说旁白。",
     "每一句都要有信息量：试探、隐瞒、证据、反问、误会、旧称呼、金额、截图、沉默、钩子。不要写寒暄废话。",
     "网红版要更暧昧、更情绪化：多写拉扯、吃醋、克制、欲言又止、嘴硬心软、旧关系刺痛；情绪要递进，不要只靠大吵。",
     "当前新 Prompt 的明确修改优先级最高。用户如果更改名字、职业、性格、关系、性别、前史或世界设定，立即以新设定为准；默认用秘密、误会或身份揭露自然承接，不要反驳前后矛盾。只有用户明确说从头重写或重新开始时，才把修改视为硬重置。",
-    englishStory ? "The international-student story should use natural campus English." : "使用自然、清楚的普通中文。",
+    "使用所选语言中自然、清楚、符合人物身份的日常口语。",
     "第一条消息不得是问候，必须直接进入事件：下单、账单备注、现场照片、误会、旧称呼、截图、备注。",
     "如果 Prompt 里有陪聊/旧关系：第一屏必须出现下单、订单备注、只有两人知道的具体细节、现场照片或备注，不许从陌生人闲聊开始。",
     viralInstruction.sideRule,
@@ -602,7 +604,7 @@ function systemPrompt(
         ? allowMultiSession
           ? "沿用已经确定的人物姓名与 senderId；仅当新会话是推进剧情所必需时，才可追加左侧新联系人。"
           : "沿用已经确定的人物姓名与 senderId；单会话模式禁止追加联系人或会话。"
-      : `第一段必须在 characters 中确定左侧聊天对象（${viralInstruction.leftLabel}）的真实姓名：当前 Prompt 明确写了名字就原样采用；没有写名字就由你编一个自然的中文姓名。不要用“男主”“女主”“对方”等占位词。`,
+      : `第一段必须在 characters 中确定左侧聊天对象（${viralInstruction.leftLabel}）的真实姓名：当前 Prompt 明确写了名字就原样采用；没有写名字就用所选语言编一个自然姓名。不要使用泛称占位词。`,
     generatedStoryDeltaInstruction(),
     englishStory
       ? "For suggestedPrompt, write only the next core plot beat in 1-2 concise sentences. Do not prefix it with 'Continue' and do not repeat language or fixed character setup."
@@ -658,14 +660,16 @@ export function buildDeepSeekRequest({
   model,
   allowMultiSession = false,
   activeSessionId,
+  language = "zh-CN",
   repairAttempt = 0
 }: DeepSeekRequestInput): DeepSeekRequestBody {
   return {
     model,
     temperature: repairAttempt ? 0.94 : 0.86,
+    thinking: { type: "disabled" },
     response_format: { type: "json_object" as const },
     messages: [
-      { role: "system", content: systemPrompt(project, prompt, allowMultiSession, activeSessionId) },
+      { role: "system", content: systemPrompt(project, prompt, allowMultiSession, activeSessionId, language) },
       { role: "user", content: userPrompt(project, prompt, promptCards, allowMultiSession, activeSessionId) },
       ...(repairAttempt ? [{
         role: "user" as const,
@@ -682,6 +686,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
   config,
   allowMultiSession = false,
   activeSessionId,
+  language = "zh-CN",
   logLabel = "deepseek",
   signal
 }: GenerateDeepSeekSegmentInput): Promise<DeepSeekSegmentResult> {
@@ -717,23 +722,34 @@ export async function generateDeepSeekStorySegmentWithConfig({
       stateless: true
     });
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${normalizedConfig.apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(buildDeepSeekRequest({
-        project,
-        prompt: premise,
-        promptCards,
-        model: normalizedConfig.model,
-        allowMultiSession,
-        activeSessionId,
-        repairAttempt
-      })),
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45000)]) : AbortSignal.timeout(45000)
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${normalizedConfig.apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(buildDeepSeekRequest({
+          project,
+          prompt: premise,
+          promptCards,
+          model: normalizedConfig.model,
+          allowMultiSession,
+          activeSessionId,
+          language,
+          repairAttempt
+        })),
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(deepSeekRequestTimeoutMs)])
+          : AbortSignal.timeout(deepSeekRequestTimeoutMs)
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        throw new Error("DeepSeek 生成超时，请把这张故事卡拆短一点再试");
+      }
+      throw error;
+    }
 
     console.info(`[${logLabel}] response`, { ok: response.ok, status: response.status, repairAttempt });
 

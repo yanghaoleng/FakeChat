@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => {
   const storyPackage = env.VITE_STORY_PACKAGE === "viral" || process.env.STORY_PACKAGE === "viral" ? "viral" : "jojo";
   const base = env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || "/";
   const faviconPath = `${base}${storyPackage === "viral" ? "favicon-viral.svg" : "favicon-jojo.svg"}`;
+  const canonicalUrl = storyPackage === "viral" ? "https://ququ.mikeywa.icu/" : "https://ququ.mikeywa.icu/ding/";
+  const pageTitle = storyPackage === "viral"
+    ? "蛐蛐模拟器｜AI 情感陪伴与聊天对话模拟器"
+    : "蛐蛐模拟器钉钉版｜AI 职场群聊与模拟对话";
+  const pageDescription = storyPackage === "viral"
+    ? "蛐蛐模拟器是一款 AI 情感陪伴与聊天对话模拟工具，可创作微信风格的模拟聊天、关系故事与沉浸式对话短剧。"
+    : "使用蛐蛐模拟器创作 AI 职场群聊、办公室日常和钉钉风格模拟对话，快速生成自然连续的聊天故事。";
   const defaultDeepSeekModel = env.VITE_DEEPSEEK_MODEL || deepSeekV4FlashModel;
   const defaultDeepSeekProvider = {
     apiKey: env.VITE_DEEPSEEK_API_KEY || "",
@@ -24,7 +31,11 @@ export default defineConfig(({ mode }) => {
       {
         name: "story-favicon",
         transformIndexHtml(html) {
-          return html.replace("%STORY_FAVICON%", faviconPath);
+          return html
+            .replaceAll("%STORY_FAVICON%", faviconPath)
+            .replaceAll("%STORY_CANONICAL%", canonicalUrl)
+            .replaceAll("%STORY_TITLE%", pageTitle)
+            .replaceAll("%STORY_DESCRIPTION%", pageDescription);
         }
       },
       tailwindcss(),

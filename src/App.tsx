@@ -24,6 +24,7 @@ import { WechatStoryPreview } from "./features/chat-preview/WechatStoryPreview";
 import { AboutDialog } from "./features/settings/AboutDialog";
 import { LabDialog } from "./features/settings/LabDialog";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
+import { SiteAboutDialog } from "./features/settings/SiteAboutDialog";
 import { useEventCallback } from "./hooks/useEventCallback";
 import { normalizedVoiceGain } from "./shared/audioLoudness";
 import type { VideoExportResult } from "./shared/browserVideo";
@@ -65,6 +66,14 @@ import {
   type CustomModelTestState
 } from "./shared/customModel";
 import { isJojoProject } from "./shared/jojoProject";
+import {
+  appCopy,
+  languagePreferenceStorageKey,
+  readLanguagePreference,
+  resolveLanguage,
+  type AppLanguage,
+  type LanguagePreference
+} from "./shared/i18n";
 import { resolvePublicAssetPath } from "./shared/publicPath";
 import { getCharacter, type ChatMessage, type DramaProject } from "./shared/schema";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
@@ -179,21 +188,27 @@ const viralRoleOptions: Array<{ id: ViralPresetRole; label: string }> = [
   { id: "female", label: "女" }
 ];
 
-const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
-
-function packageTitle(_packageId: StoryPackage) {
-  return "蛐蛐模拟器";
+function viralRoleLabel(role: ViralPresetRole, language: AppLanguage) {
+  const labels: Record<AppLanguage, Record<ViralPresetRole, string>> = {
+    "zh-CN": { any: "不限", male: "男", female: "女" },
+    "zh-TW": { any: "不限", male: "男", female: "女" },
+    en: { any: "Any", male: "Male", female: "Female" },
+    ja: { any: "指定なし", male: "男性", female: "女性" }
+  };
+  return labels[language][role];
 }
 
-function packageSwitchLink(packageId: StoryPackage) {
+const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
+
+function packageSwitchLink(packageId: StoryPackage, copy: typeof appCopy["zh-CN"]) {
   return packageId === "jojo"
     ? {
         href: import.meta.env.VITE_VIRAL_APP_URL || defaultViralAppUrl,
-        label: "去微信版"
+        label: copy.switchWechat
       }
     : {
         href: import.meta.env.VITE_JOJO_APP_URL || defaultJojoAppUrl,
-        label: "去钉钉版"
+        label: copy.switchDingTalk
       };
 }
 
@@ -213,9 +228,9 @@ function readInitialAmbientSkin(packageId: StoryPackage) {
 }
 
 function readInitialFishAutoReadEnabled() {
-  if (typeof window === "undefined") return true;
+  if (typeof window === "undefined") return false;
   const storedValue = window.localStorage.getItem(fishAutoReadStorageKey);
-  return storedValue == null ? true : storedValue === "1";
+  return storedValue == null ? false : storedValue === "1";
 }
 
 function readInitialFishApiKey() {
@@ -243,8 +258,9 @@ function promptRiseAnimationMs(text: string) {
 }
 
 function estimatedGenerationMs(project: DramaProject, packageId: StoryPackage) {
-  if (!project.messages.length) return packageId === "jojo" ? 32000 : 36000;
-  return packageId === "jojo" ? 22000 : 26000;
+  const historyCostMs = Math.min(12000, project.messages.length * 140);
+  if (!project.messages.length) return packageId === "jojo" ? 46000 : 52000;
+  return (packageId === "jojo" ? 34000 : 40000) + historyCostMs;
 }
 
 function estimateGenerationProgress(startedAt: number, estimateMs: number) {
@@ -783,6 +799,7 @@ export default function App({ storyPackage }: AppProps) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [settingsMenuClosing, setSettingsMenuClosing] = useState(false);
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
+  const [siteAboutDialogOpen, setSiteAboutDialogOpen] = useState(false);
   const [labDialogOpen, setLabDialogOpen] = useState(false);
   const [labDialogClosing, setLabDialogClosing] = useState(false);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
@@ -801,6 +818,9 @@ export default function App({ storyPackage }: AppProps) {
   const [openPromptCardMenuId, setOpenPromptCardMenuId] = useState<string | null>(null);
   const [scrollTargetMessageId, setScrollTargetMessageId] = useState<string | null>(null);
   const [leftPanelScrolling, setLeftPanelScrolling] = useState(false);
+  const [languagePreference, setLanguagePreference] = useState<LanguagePreference>(readLanguagePreference);
+  const language = resolveLanguage(languagePreference);
+  const copy = appCopy[language];
   const clipsRef = useRef(clips);
   const previewModeRef = useRef(previewMode);
   const scrollTargetMessageIdRef = useRef<string | null>(null);
@@ -833,6 +853,7 @@ export default function App({ storyPackage }: AppProps) {
   const fishAudioContextRef = useRef<AudioContext | null>(null);
   const fishAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const fishAudioGainRef = useRef<GainNode | null>(null);
+  const fishAudioUnlockedRef = useRef(false);
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
   const ambientFeedbackTimerRef = useRef<number | undefined>(undefined);
   const ambientTransitionTimerRef = useRef<number | undefined>(undefined);
@@ -918,15 +939,42 @@ export default function App({ storyPackage }: AppProps) {
     revokeFishAudioObjectUrl();
   }
 
-  async function playNormalizedFishSpeech(blob: Blob, runId: number) {
+  async function ensureFishAudioContext() {
     const AudioContextConstructor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextConstructor) throw new Error("当前浏览器不支持 Web Audio");
     let audioContext = fishAudioContextRef.current;
     if (!audioContext || audioContext.state === "closed") {
       audioContext = new AudioContextConstructor();
       fishAudioContextRef.current = audioContext;
+      fishAudioUnlockedRef.current = false;
     }
     if (audioContext.state === "suspended") await audioContext.resume();
+    return audioContext;
+  }
+
+  async function unlockFishAudioPlayback() {
+    try {
+      const audioContext = await ensureFishAudioContext();
+      if (fishAudioUnlockedRef.current && audioContext.state === "running") return;
+      const source = audioContext.createBufferSource();
+      const gain = audioContext.createGain();
+      source.buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+      gain.gain.value = 0;
+      source.connect(gain).connect(audioContext.destination);
+      source.start();
+      source.stop(audioContext.currentTime + 0.01);
+      fishAudioUnlockedRef.current = true;
+      source.addEventListener("ended", () => {
+        source.disconnect();
+        gain.disconnect();
+      }, { once: true });
+    } catch {
+      fishAudioUnlockedRef.current = false;
+    }
+  }
+
+  async function playNormalizedFishSpeech(blob: Blob, runId: number) {
+    const audioContext = await ensureFishAudioContext();
     const audioBuffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
     if (fishRevealRunRef.current !== runId) return;
 
@@ -1027,6 +1075,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function toggleFishAutoRead() {
+    void unlockFishAudioPlayback();
     const nextValue = !fishAutoReadEnabledRef.current;
     fishAutoReadEnabledRef.current = nextValue;
     setFishAutoReadEnabled(nextValue);
@@ -1265,6 +1314,20 @@ export default function App({ storyPackage }: AppProps) {
   }, [project]);
 
   useEffect(() => {
+    window.localStorage.setItem(languagePreferenceStorageKey, languagePreference);
+    document.documentElement.lang = language;
+    document.title = copy.siteTitle;
+    const updateMeta = (selector: string, value: string) => {
+      document.querySelector<HTMLMetaElement>(selector)?.setAttribute("content", value);
+    };
+    updateMeta('meta[name="description"]', copy.siteDescription);
+    updateMeta('meta[property="og:title"]', copy.siteTitle);
+    updateMeta('meta[property="og:description"]', copy.siteDescription);
+    updateMeta('meta[name="twitter:title"]', copy.siteTitle);
+    updateMeta('meta[name="twitter:description"]', copy.siteDescription);
+  }, [copy, language, languagePreference]);
+
+  useEffect(() => {
     previewModeRef.current = previewMode;
   }, [previewMode]);
 
@@ -1280,6 +1343,20 @@ export default function App({ storyPackage }: AppProps) {
   useEffect(() => {
     fishApiKeyRef.current = fishApiKey;
   }, [fishApiKey]);
+
+  useEffect(() => {
+    const unlock = () => {
+      void unlockFishAudioPlayback();
+    };
+    window.addEventListener("pointerdown", unlock, { once: true, passive: true });
+    window.addEventListener("touchstart", unlock, { once: true, passive: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeChatSessionId !== resolvedActiveChatSessionId) {
@@ -2083,6 +2160,7 @@ export default function App({ storyPackage }: AppProps) {
     settingsMenuCloseTimerRef.current = undefined;
     labDialogCloseTimerRef.current = undefined;
     setAboutDialogOpen(false);
+    setSiteAboutDialogOpen(false);
     setLabDialogOpen(false);
     setLabDialogClosing(false);
     setOpenPromptCardMenuId(null);
@@ -2093,6 +2171,7 @@ export default function App({ storyPackage }: AppProps) {
   function closeSettingsMenu() {
     if (!settingsMenuOpen || settingsMenuClosing) return;
     setAboutDialogOpen(false);
+    setSiteAboutDialogOpen(false);
     setLabDialogOpen(false);
     setLabDialogClosing(false);
     setSettingsMenuClosing(true);
@@ -2163,6 +2242,24 @@ export default function App({ storyPackage }: AppProps) {
     });
   }
 
+  function openSiteAboutDialog() {
+    setSiteAboutDialogOpen(true);
+  }
+
+  function closeSiteAboutDialog() {
+    setSiteAboutDialogOpen(false);
+    window.requestAnimationFrame(() => {
+      settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-site-about]")?.focus();
+    });
+  }
+
+  function changeLanguagePreference(preference: LanguagePreference) {
+    setLanguagePreference(preference);
+    const nextLanguage = resolveLanguage(preference);
+    setStatus("done");
+    setStatusText(appCopy[nextLanguage].language);
+  }
+
   function openLabDialog() {
     if (labDialogCloseTimerRef.current) window.clearTimeout(labDialogCloseTimerRef.current);
     labDialogCloseTimerRef.current = undefined;
@@ -2230,6 +2327,7 @@ export default function App({ storyPackage }: AppProps) {
         promptCards: promptCardsSnapshot,
         allowMultiSession: allowMultiSessionSnapshot,
         activeSessionId: activeSessionIdSnapshot,
+        language,
         customModel,
         signal
       });
@@ -2251,6 +2349,7 @@ export default function App({ storyPackage }: AppProps) {
           promptCards: promptCardsSnapshot,
           allowMultiSession: allowMultiSessionSnapshot,
           activeSessionId: activeSessionIdSnapshot,
+          language,
           customModel,
           signal
         });
@@ -2538,6 +2637,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function continueStory() {
+    void unlockFishAudioPlayback();
     const prompt = draftPrompt.trim();
     if (!prompt) return;
     if (applyCachedInitialPresetSegment(prompt)) return;
@@ -2696,6 +2796,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function choosePreviewMode(nextMode: PreviewMode) {
+    void unlockFishAudioPlayback();
     changePreviewMode(nextMode);
     if (nextMode === "video") {
       cancelFishAutoReadReveal();
@@ -2908,6 +3009,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   async function exportVideo() {
+    void unlockFishAudioPlayback();
     if (!activeChatProject.messages.length) {
       setStatus("error");
       setStatusText("先生成对话，再导出视频");
@@ -3000,6 +3102,7 @@ export default function App({ storyPackage }: AppProps) {
           onReplay={replayConversationForPreview}
           showReplay={project.messages.length > 0 && visibleMessageCount >= project.messages.length}
           pendingSpeechMessage={pendingSpeechMessage}
+          language={language}
         />
       );
     }
@@ -3009,7 +3112,7 @@ export default function App({ storyPackage }: AppProps) {
           <div className="player-frame video-empty-frame" style={{ width: "100%", aspectRatio: `${activeChatProject.canvas.width} / ${activeChatProject.canvas.height}` }}>
             <div className="empty-state large-empty video-empty-state">
               <Play size={28} />
-              等待第一段剧情
+              {copy.waitForStory}
             </div>
           </div>
         </div>
@@ -3029,11 +3132,12 @@ export default function App({ storyPackage }: AppProps) {
     );
   }
 
-  const switchLink = packageSwitchLink(storyPackage);
+  const switchLink = packageSwitchLink(storyPackage, copy);
   const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
   const feedbackWechatId = import.meta.env.VITE_FEEDBACK_WECHAT_ID?.trim() || feedbackWechatPlaceholder;
   const hasFeedbackWechatId = feedbackWechatId !== feedbackWechatPlaceholder;
-  const alipayQrCodeUrl = resolvePublicAssetPath(import.meta.env.VITE_ALIPAY_QR_CODE_URL?.trim());
+  const wechatQrCodeUrl = resolvePublicAssetPath("/donate/wechat-qr.webp");
+  const alipayQrCodeUrl = resolvePublicAssetPath("/donate/alipay-qr.webp");
   const jojoRoleChoices = jojoRoleOptions
     .flatMap((roleId): Array<{ roleId: JojoPresetRole; label: string; avatarInitial: string; avatarUrl?: string }> => {
       const character = project.characters.find((character) => character.id === roleId);
@@ -3048,9 +3152,10 @@ export default function App({ storyPackage }: AppProps) {
   const viralRoleChoices = useMemo(
     () => viralRoleOptions.map((option) => ({
       ...option,
+      label: viralRoleLabel(option.id, language),
       symbol: option.id === "any" ? "＊" : option.id === "male" ? "♂" : "♀"
     })),
-    []
+    [language]
   );
   const storyCardCount = promptCards.length + pendingPromptCards.length;
   const canSubmitStory = Boolean(draftPrompt.trim());
@@ -3220,7 +3325,7 @@ export default function App({ storyPackage }: AppProps) {
       if (event.isComposing) return;
       const key = event.key;
       const primaryShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
-      if (aboutDialogOpen || labDialogOpen) return;
+      if (aboutDialogOpen || siteAboutDialogOpen || labDialogOpen) return;
       if (primaryShortcut && key.toLowerCase() === "k") {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -3317,7 +3422,7 @@ export default function App({ storyPackage }: AppProps) {
 
     window.addEventListener("keydown", handlePageShortcut, true);
     return () => window.removeEventListener("keydown", handlePageShortcut, true);
-  }, [aboutDialogOpen, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, labDialogOpen, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, settingsMenuClosing, settingsMenuOpen, status, suggestionDialogOpen]);
+  }, [aboutDialogOpen, siteAboutDialogOpen, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, labDialogOpen, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, settingsMenuClosing, settingsMenuOpen, status, suggestionDialogOpen]);
 
   return (
     <div
@@ -3330,7 +3435,7 @@ export default function App({ storyPackage }: AppProps) {
       <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
       <header className="topbar motion-in">
         <div className="brand-block">
-          <h1>{packageTitle(storyPackage)}</h1>
+          <h1>{copy.brandName}</h1>
         </div>
         <div className="settings-trigger-group">
           <kbd className="settings-trigger-shortcut">⌘K</kbd>
@@ -3341,8 +3446,8 @@ export default function App({ storyPackage }: AppProps) {
             aria-haspopup="dialog"
             aria-controls="settings-dialog"
             aria-expanded={settingsMenuOpen}
-            aria-label="打开设置"
-            title="设置 (⌘K)"
+            aria-label={copy.openSettings}
+            title={`${copy.settings} (⌘K)`}
             onClick={toggleSettingsMenu}
           >
             <Settings size={18} />
@@ -3350,7 +3455,7 @@ export default function App({ storyPackage }: AppProps) {
         </div>
         <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
       </header>
-      <StatusAnnouncer ref={statusAnnouncerRef} initialText="正在检查 DeepSeek 配置..." />
+      <StatusAnnouncer ref={statusAnnouncerRef} initialText={copy.initialStatus} />
       {toastMessage ? (
         <div className="app-toast" role="status" aria-live="polite">
           {toastMessage}
@@ -3359,18 +3464,23 @@ export default function App({ storyPackage }: AppProps) {
       <SettingsDialog
         open={settingsMenuOpen}
         closing={settingsMenuClosing}
-        suspended={aboutDialogOpen || labDialogOpen}
+        suspended={aboutDialogOpen || siteAboutDialogOpen || labDialogOpen}
         dialogRef={settingsDialogRef}
         storyPackage={storyPackage}
         activePresetRole={activePresetRole}
         jojoRoleChoices={jojoRoleChoices}
         viralRoleChoices={viralRoleChoices}
         switchLink={switchLink}
+        languagePreference={languagePreference}
+        resolvedLanguage={language}
+        copy={copy}
         onClose={closeSettingsMenu}
         onKeyDown={handleSettingsDialogKeyDown}
         onSwitchPresetRole={switchPresetRole}
         onOpenLab={openLabDialog}
         onOpenAbout={openAboutDialog}
+        onOpenSiteAbout={openSiteAboutDialog}
+        onChangeLanguage={changeLanguagePreference}
         onExportArchive={() => {
           closeSettingsMenu();
           void exportArchive();
@@ -3396,6 +3506,7 @@ export default function App({ storyPackage }: AppProps) {
           fishAutoReadEnabled={fishAutoReadEnabled}
           fishApiKey={fishApiKey}
           multiSessionToggleDisabled={status === "loading"}
+          language={language}
           onClose={closeLabDialog}
           onChoosePreviewMode={choosePreviewMode}
           onSelectAmbientSkin={selectAmbientSkin}
@@ -3412,13 +3523,18 @@ export default function App({ storyPackage }: AppProps) {
         <AboutDialog
           open
           githubRepositoryUrl={githubRepositoryUrl}
+          wechatQrCodeUrl={wechatQrCodeUrl}
           alipayQrCodeUrl={alipayQrCodeUrl}
           feedbackWechatId={feedbackWechatId}
           hasFeedbackWechatId={hasFeedbackWechatId}
+          language={language}
           onClose={closeAboutDialog}
           onCopyGithubRepositoryUrl={copyGithubRepositoryUrl}
           onCopyFeedbackWechatId={copyFeedbackWechatId}
         />
+      ) : null}
+      {siteAboutDialogOpen ? (
+        <SiteAboutDialog open copy={copy} onClose={closeSiteAboutDialog} />
       ) : null}
 
       <main className={`workspace static-workspace ${storyCardCount ? "workspace-has-story-cards" : ""}`}>
@@ -3426,7 +3542,7 @@ export default function App({ storyPackage }: AppProps) {
           <button
             className="story-panel-backdrop"
             type="button"
-            aria-label="收起编故事"
+            aria-label={copy.collapseComposer}
             onClick={() => {
               completeMobileStoryCoach();
               setStoryPanelOpenWithContinuity(false);
@@ -3447,18 +3563,18 @@ export default function App({ storyPackage }: AppProps) {
                 setStoryPanelOpenWithContinuity((current) => !current);
               }}
               aria-expanded={storyPanelOpen}
-              aria-label={storyPanelOpen ? "收起编故事" : "展开编故事"}
+              aria-label={storyPanelOpen ? copy.collapseComposer : copy.expandComposer}
             >
               <span className="story-panel-status-icon" aria-hidden="true">
                 {storyPanelOpen ? <ChevronDown size={16} /> : <PenLine size={16} />}
               </span>
-              <small>{storyCardCount ? `${storyCardCount} 张故事卡` : "准备生成"}</small>
+              <small>{storyCardCount ? copy.cardCount(storyCardCount) : copy.readyToGenerate}</small>
             </button>
             <SurfaceCard className="surface-card story-composer-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
               <SurfaceCardHeader className="card-header">
                 <div className="panel-title">
                   <Sparkles size={18} />
-                  编故事
+                  {copy.composerTitle}
                 </div>
               </SurfaceCardHeader>
               <SurfaceCardContent className="card-content">
@@ -3469,7 +3585,7 @@ export default function App({ storyPackage }: AppProps) {
                     value={draftPrompt}
                     onChange={(event) => handleDraftPromptChange(event.target.value)}
                     onFocus={handlePromptTextareaFocus}
-                    placeholder="输入下一段要推进的剧情。它会结合此前故事卡和现有对话继续往后写。"
+                    placeholder={copy.composerPlaceholder}
                     rows={1}
                   />
                   {promptSuggestionActive ? (
@@ -3494,7 +3610,7 @@ export default function App({ storyPackage }: AppProps) {
                     <button
                       className="prompt-suggestion-trigger"
                       type="button"
-                      aria-label="查看建议提示词"
+                      aria-label={copy.suggestedPrompt}
                       aria-expanded={suggestionDialogOpen}
                       onClick={() => setSuggestionDialogOpen(true)}
                     >
@@ -3502,20 +3618,20 @@ export default function App({ storyPackage }: AppProps) {
                     </button>
                   ) : null}
                   {deferredSuggestionText && suggestionDialogOpen ? (
-                    <div className="prompt-suggestion-popover" role="dialog" aria-label="建议提示词">
+                    <div className="prompt-suggestion-popover" role="dialog" aria-label={copy.suggestedPrompt}>
                       <div className="prompt-suggestion-popover-header">
-                        <strong>建议提示词</strong>
-                        <button type="button" onClick={dismissDeferredSuggestion} aria-label="关闭建议提示词">
+                        <strong>{copy.suggestedPrompt}</strong>
+                        <button type="button" onClick={dismissDeferredSuggestion} aria-label={copy.close}>
                           <X size={14} />
                         </button>
                       </div>
                       <p>{deferredSuggestionText}</p>
                       <div className="prompt-suggestion-popover-actions">
                         <button type="button" className="prompt-suggestion-secondary" onClick={dismissDeferredSuggestion}>
-                          关闭
+                          {copy.close}
                         </button>
                         <button type="button" className="prompt-suggestion-primary" onClick={adoptDeferredSuggestion}>
-                          采用
+                          {copy.adopt}
                         </button>
                       </div>
                     </div>
@@ -3531,17 +3647,17 @@ export default function App({ storyPackage }: AppProps) {
                   disabled={!canSubmitStory}
                 >
                   {status === "loading" ? <MessageSquarePlus size={17} /> : <MessageSquarePlus size={17} />}
-                  {status === "loading" ? "加入队列" : "开始编"}
+                  {status === "loading" ? copy.addToQueue : copy.startWriting}
                 </button>
               </SurfaceCardContent>
             </SurfaceCard>
 
             {storyCardCount ? (
-              <section className="prompt-history-card motion-in" aria-label="故事卡">
+              <section className="prompt-history-card motion-in" aria-label={copy.storyCards}>
                 <div className="card-header prompt-history-header">
                   <div className="panel-title">
                     <Save size={18} />
-                    故事卡
+                    {copy.storyCards}
                   </div>
                 </div>
                 <div className="card-content prompt-card-list">
@@ -3590,7 +3706,7 @@ export default function App({ storyPackage }: AppProps) {
                   })}
                   <ActionButton className="prompt-reset-button prompt-history-reset-button" fullWidth variant="secondary" onClick={clearLine}>
                     <RefreshCcw size={16} />
-                    重新开始
+                    {copy.restart}
                   </ActionButton>
                 </div>
               </section>

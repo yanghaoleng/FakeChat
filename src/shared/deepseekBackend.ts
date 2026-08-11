@@ -4,6 +4,9 @@ import type { PromptCard } from "./linearStory";
 import { constrainGeneratedProjectSessions } from "./multiSession";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt";
 import type { DeepSeekCompletionConfig } from "./storyGeneration/contract";
+import type { AppLanguage } from "./i18n";
+
+const backendStoryTimeoutMs = 65000;
 
 function parsePromptCard(value: unknown): PromptCard {
   if (!value || typeof value !== "object") throw new Error("后端返回的 Prompt 卡片无效");
@@ -52,6 +55,7 @@ export async function generateBackendStorySegment({
   promptCards,
   allowMultiSession = false,
   activeSessionId,
+  language = "zh-CN",
   customModel,
   signal
 }: {
@@ -60,6 +64,7 @@ export async function generateBackendStorySegment({
   promptCards: PromptCard[];
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  language?: AppLanguage;
   customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
@@ -79,6 +84,7 @@ export async function generateBackendStorySegment({
       promptCards: promptContextCards,
       allowMultiSession,
       activeSessionId,
+      language,
       ...(customModel ? {
         customModel: {
           apiKey: customModel.apiKey,
@@ -88,7 +94,9 @@ export async function generateBackendStorySegment({
         }
       } : {})
     }),
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50000)]) : AbortSignal.timeout(50000)
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(backendStoryTimeoutMs)])
+      : AbortSignal.timeout(backendStoryTimeoutMs)
   });
 
   if (!response.ok) {

@@ -3268,6 +3268,107 @@ button[disabled],
   animation: about-dialog-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
 }
 
+.about-dialog-support {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(760px, calc(100dvh - 40px));
+}
+
+.about-dialog-site {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(680px, calc(100dvh - 40px));
+}
+
+.site-about-content {
+  display: grid;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 22px;
+}
+
+.site-about-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--wechat-green-border);
+  border-radius: 15px;
+  background: var(--wechat-green-soft);
+  color: var(--app-accent-readable);
+}
+
+.site-about-lead,
+.site-about-disclaimer,
+.site-about-note p {
+  margin: 0;
+}
+
+.site-about-lead {
+  color: var(--app-text);
+  font-size: 13px;
+  line-height: 1.72;
+}
+
+.site-about-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.site-about-feature {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--app-text);
+  padding: 10px 12px;
+}
+
+.site-about-feature svg {
+  flex: 0 0 auto;
+  color: var(--app-accent-readable);
+}
+
+.site-about-feature strong {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.site-about-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--app-text-subtle);
+  padding: 12px;
+}
+
+.site-about-note svg {
+  color: var(--app-accent-readable);
+}
+
+.site-about-note p,
+.site-about-disclaimer {
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.site-about-disclaimer {
+  color: var(--app-text-subtle);
+}
+
+@media (max-width: 420px) {
+  .site-about-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .about-dialog-layer-has-child > .about-dialog {
   pointer-events: none;
   filter: brightness(0.72) saturate(0.84);
@@ -3457,24 +3558,29 @@ button[disabled],
 
 .about-support-qr,
 .about-support-placeholder {
-  width: 210px;
+  width: min(270px, 100%);
   aspect-ratio: 1;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .about-support-qr {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 7px;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(105deg, #9adfff, #c8b5ff, #ffb8d0, #ffe48d, #9ae8b7, #9adfff) border-box;
+  background-size: auto, 320% 100%;
+  padding: 8px;
+  animation: support-author-qr-spectrum 7.5s cubic-bezier(0.66, 0, 0.34, 1) infinite;
 }
 
 .about-support-qr img {
   display: block;
-  width: 145.73%;
-  max-width: none;
-  height: auto;
-  transform: translate(-15.93%, -33.59%);
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  object-fit: contain;
 }
 
 .about-support-placeholder {
@@ -3505,10 +3611,101 @@ button[disabled],
   display: grid;
   justify-items: center;
   gap: 14px;
+  min-height: 0;
   margin: 8px;
   border-radius: 13px;
   background: rgba(255, 255, 255, 0.04);
   padding: 18px 14px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.support-author-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.support-author-message {
+  width: 100%;
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: left;
+}
+
+.support-author-payment {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.support-author-payment-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 4px;
+}
+
+.support-author-payment-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text-subtle);
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 760;
+  letter-spacing: 0;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.support-author-payment-tab[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--app-text);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+}
+
+.support-author-payment-tab[data-payment-method="wechat"][aria-selected="true"] svg {
+  color: #16d98b;
+}
+
+.support-author-payment-tab[data-payment-method="alipay"][aria-selected="true"] svg {
+  color: #4b96ff;
+}
+
+.support-author-payment-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--app-focus-ring);
+}
+
+@keyframes support-author-qr-spectrum {
+  0%,
+  100% {
+    background-position: 0 0, 0% 50%;
+    box-shadow: 0 0 18px rgba(154, 223, 255, 0.18);
+  }
+
+  50% {
+    background-position: 0 0, 100% 50%;
+    box-shadow: 0 0 24px rgba(255, 184, 208, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-support-qr {
+    animation: none;
+  }
 }
 
 .support-author-links {
@@ -3526,6 +3723,11 @@ button[disabled],
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.045);
   padding: 8px 9px 8px 12px;
+}
+
+.support-author-row-link {
+  grid-template-columns: minmax(0, 1fr);
+  padding-right: 12px;
 }
 
 .support-author-copy {
@@ -5652,6 +5854,51 @@ button[disabled],
   gap: 7px;
 }
 
+.chat-title-edit-target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chat-title-edit-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wechat-edit-pencil {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  opacity: 0;
+  transform: translateY(1px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: none;
+}
+
+:is(.chat-title-edit-target, .wechat-speaker-name-edit-target, .wechat-avatar-edit-target):is(:hover, :focus-visible) .wechat-edit-pencil {
+  opacity: 0.78;
+  transform: translateY(0);
+}
+
+.chat-title-edit-target:focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.54);
+  outline-offset: 3px;
+}
+
+.dingtalk-phone .chat-title-edit-target:focus-visible {
+  outline-color: rgba(22, 119, 255, 0.58);
+}
+
 .wechat-topbar-group-copy {
   min-width: 0;
   overflow: hidden;
@@ -5933,6 +6180,29 @@ button[disabled],
   white-space: nowrap;
 }
 
+.wechat-speaker-name-edit-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.wechat-speaker-name-edit-target > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wechat-speaker-name-edit-target:focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.44);
+  outline-offset: 2px;
+}
+
 .wechat-group-row .wechat-speaker-name {
   color: #7b7b7b;
 }
@@ -5956,6 +6226,49 @@ button[disabled],
   border-radius: 5px;
   background: #d8d8d8;
   object-fit: cover;
+}
+
+.wechat-avatar-edit-target {
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wechat-avatar-edit-target > .wechat-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.wechat-avatar-edit-pencil {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(18, 18, 18, 0.78);
+  color: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+}
+
+.wechat-avatar-edit-target:focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.6);
+  outline-offset: 2px;
+}
+
+.dingtalk-row .wechat-avatar-edit-target {
+  border-radius: 9px;
+}
+
+.dingtalk-row .wechat-avatar-edit-target:focus-visible {
+  outline-color: rgba(22, 119, 255, 0.62);
 }
 
 .wechat-decoded-avatar {
@@ -6019,6 +6332,245 @@ button[disabled],
   color: #ffffff;
   font-size: 15px;
   font-weight: 760;
+}
+
+.chat-profile-editor-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.chat-profile-editor-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(18, 24, 22, 0.38);
+  backdrop-filter: blur(1.5px);
+  cursor: default;
+}
+
+.chat-profile-editor {
+  position: relative;
+  z-index: 1;
+  width: min(304px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #15181d;
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+  animation: chat-profile-editor-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.chat-profile-editor button,
+.chat-profile-editor input {
+  font: inherit;
+}
+
+.chat-profile-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid #eceef0;
+}
+
+.chat-profile-editor-header strong {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.chat-profile-editor-header button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #687079;
+  cursor: pointer;
+}
+
+.chat-profile-editor-header button:hover {
+  background: #f1f3f4;
+  color: #1f2429;
+}
+
+.chat-profile-text-field {
+  display: grid;
+  gap: 7px;
+  padding: 18px 16px 14px;
+}
+
+.chat-profile-text-field > span {
+  color: #5e6770;
+  font-size: 12px;
+}
+
+.chat-profile-text-field input {
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  border: 1px solid #cfd5da;
+  border-radius: 6px;
+  outline: 0;
+  background: #ffffff;
+  color: #15181d;
+  font-size: 15px;
+}
+
+.chat-profile-text-field input:focus {
+  border-color: #07c160;
+  box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.12);
+}
+
+.dingtalk-phone .chat-profile-text-field input:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+}
+
+.chat-profile-avatar-editor {
+  display: grid;
+  justify-items: center;
+  gap: 11px;
+  padding: 20px 16px 14px;
+}
+
+.chat-profile-avatar-preview {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 760;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.1), 0 8px 24px rgba(17, 24, 39, 0.14);
+}
+
+.chat-profile-select-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d6dadd;
+  border-radius: 6px;
+  background: #f7f8f8;
+  color: #242a30;
+  cursor: pointer;
+}
+
+.chat-profile-select-avatar:hover:not(:disabled) {
+  border-color: #bfc5ca;
+  background: #f0f2f3;
+}
+
+.chat-profile-select-avatar:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+.chat-profile-avatar-editor small {
+  color: #78818a;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.chat-profile-editor-error {
+  margin: 0;
+  padding: 0 16px 10px;
+  color: #d73535;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.chat-profile-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 54px;
+  padding: 9px 12px;
+  border-top: 1px solid #eceef0;
+}
+
+.chat-profile-editor-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #d6dadd;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #394149;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-profile-editor-confirm-actions {
+  display: inline-flex;
+  gap: 7px;
+}
+
+.chat-profile-editor-actions .chat-profile-reset-button {
+  padding: 0 8px;
+  border-color: transparent;
+  color: #707981;
+}
+
+.chat-profile-editor-actions .chat-profile-save-button {
+  border-color: #07c160;
+  background: #07c160;
+  color: #ffffff;
+}
+
+.dingtalk-phone .chat-profile-editor-actions .chat-profile-save-button {
+  border-color: #1677ff;
+  background: #1677ff;
+}
+
+.chat-profile-editor :is(button, input):focus-visible {
+  outline: 2px solid rgba(7, 193, 96, 0.52);
+  outline-offset: 2px;
+}
+
+.dingtalk-phone .chat-profile-editor :is(button, input):focus-visible {
+  outline-color: rgba(22, 119, 255, 0.56);
+}
+
+@keyframes chat-profile-editor-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (hover: none) {
+  .wechat-edit-pencil {
+    opacity: 0.58;
+    transform: translateY(0);
+  }
 }
 
 .wechat-bubble {
