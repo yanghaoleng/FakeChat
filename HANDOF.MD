@@ -273,6 +273,7 @@
 
 ## 2026-08-25 Fish Key、模型精简与品牌图标修正
 
-- `FISH_AUDIO_API_KEY` 已作为 Vercel Production 敏感变量配置到独立 Beta 工程，明文不进入源码、Git、文档或长期记忆；需重新部署后生效。
+- `FISH_AUDIO_API_KEY` 已作为 Vercel Production 敏感变量配置到独立 Beta 工程，明文不进入源码、Git、文档或长期记忆；部署后真实合成返回 `200 audio/mpeg`、21,732 字节音频。
 - 模型菜单移除智谱，豆包继续作为默认值并显示“豆包 Seed-2.0-mini（速度快）”；浏览器中残留的智谱选择会自动迁移到豆包，后端仅保留旧请求兼容。
 - Beta 网站标题左侧恢复随机品牌头像，功能菜单项继续保持纯文字；favicon 与标题头像共用同一选择，并加入单次刷新参数缓解 Safari favicon 缓存。
+- Beta 部署 `dpl_Bz37rNyqENE5sD22X2pjrwgra8rt` 已就绪；公网确认智谱入口消失、豆包默认勾选、标题头像与 favicon 同图，页面与健康接口均为 200。
