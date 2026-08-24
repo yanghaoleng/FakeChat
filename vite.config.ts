@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const storyPackage = env.VITE_STORY_PACKAGE === "viral" || process.env.STORY_PACKAGE === "viral" ? "viral" : "jojo";
   const base = env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || "/";
-  const faviconPath = `${base}${storyPackage === "viral" ? "favicon-viral.svg" : "favicon-jojo.svg"}`;
+  const faviconPath = `${base}${storyPackage === "viral" ? "brand-icons/ququ-viral-chat-bubble.webp" : "favicon-jojo.svg"}`;
   const canonicalUrl = storyPackage === "viral" ? "https://ququ.mikeywa.icu/" : "https://ququ.mikeywa.icu/ding/";
   const pageTitle = storyPackage === "viral"
     ? "蛐蛐模拟器｜AI 情感陪伴与聊天对话模拟器"

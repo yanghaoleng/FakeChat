@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { faviconUrlForBrandIcon, randomBrandIconPath, randomBrandIconPaths } from "../src/shared/randomBrandIcon";
+import {
+  brandIconUrlForStoryPackage,
+  faviconUrlForBrandIcon,
+  randomBrandIconPath,
+  randomBrandIconPaths,
+  viralBrandIconPath
+} from "../src/shared/randomBrandIcon";
 
 describe("random brand icon", () => {
   it("maps the random range across all six circular mascots", () => {
@@ -18,5 +24,11 @@ describe("random brand icon", () => {
   it("adds a per-load refresh token for Safari favicon caching", () => {
     expect(faviconUrlForBrandIcon("/beta/brand-icons/ququ.png", 36))
       .toBe("/beta/brand-icons/ququ.png?refresh=10");
+  });
+
+  it("keeps the WeChat edition fixed while JOJO remains random", () => {
+    expect(brandIconUrlForStoryPackage("viral", () => 0.8)).toBe(viralBrandIconPath);
+    expect(brandIconUrlForStoryPackage("jojo", () => 0)).toBe(randomBrandIconPaths[0]);
+    expect(brandIconUrlForStoryPackage("jojo", () => 0.999)).toBe(randomBrandIconPaths[5]);
   });
 });

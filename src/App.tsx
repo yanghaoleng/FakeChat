@@ -84,7 +84,7 @@ import {
   type LanguagePreference
 } from "./shared/i18n";
 import { resolvePublicAssetPath } from "./shared/publicPath";
-import { applyBrandFavicon, randomBrandIconUrl } from "./shared/randomBrandIcon";
+import { applyBrandFavicon, brandIconUrlForStoryPackage } from "./shared/randomBrandIcon";
 import { getCharacter, type ChatMessage, type DramaProject } from "./shared/schema";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
@@ -768,7 +768,7 @@ function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMes
 export default function App({ storyPackage }: AppProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const archiveExportingRef = useRef(false);
-  const [brandIconSrc] = useState(randomBrandIconUrl);
+  const [brandIconSrc] = useState(() => brandIconUrlForStoryPackage(storyPackage));
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
   const initialCustomModelSettingsRef = useRef<CustomModelSettings | null>(null);
   if (!initialPresetArchiveRef.current) {
