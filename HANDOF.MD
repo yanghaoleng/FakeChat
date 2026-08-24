@@ -263,9 +263,10 @@
 - 新增 `randomBrandIcon.ts`：每次页面加载随机选择一个头像；正式版顶栏和 favicon 共用同一结果，不在同一次渲染中重复随机。
 - 正式版产品名左侧显示 `30px` 圆形头像；Beta 遵循 Mac 菜单纯文字约束，不显示品牌或功能图标，移动端隐藏产品名以保证宽度。
 - 连续刷新验收确认六个头像均进入随机池；正式版标题头像与 favicon 路径一致，Beta 使用随机 favicon。6 张素材均为 `512×512`、透明角 `alpha=0`、中心 `alpha=255`。
-- 验证通过：`npm run typecheck`、`npm test`（26 个文件、168 项）、`npm run build:ququ`、`npm run build:beta`。仅生成本地正式版与 Beta 产物，尚未发布公网。
+- 验证通过：`npm run typecheck`、`npm test`（26 个文件、168 项）、`npm run build:ququ`、`npm run build:beta`。随机 favicon 与纯文字菜单已随 `955800a` 发布至 Beta；正式版仅完成构建，未发布。
 
 ## 2026-08-25 Fish 朗读与 Beta 菜单收口
 
 - 线上运行日志确认豆包请求成功；Fish 朗读连续请求 `/api/fish-tts` 时均返回 500，原因是 Beta 未配置服务端 `FISH_AUDIO_API_KEY`，页面自定义 Key 为空，并非 Safari 自动播放限制。
 - Beta 顶部菜单及下拉项移除装饰图标，只保留传统菜单文字、选中勾与加载状态；随机品牌头像继续用于 favicon，不在 Beta 菜单栏展示。
+- Beta 部署 `dpl_8jnpnJJrwhTLacwf8fjdNaFvV1VK` 已就绪；公网 `/beta/`、`/api/health` 均为 200，桌面与 390×844 验收无控制台错误、无失败资源、无横向溢出。
