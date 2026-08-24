@@ -277,3 +277,11 @@
 - 模型菜单移除智谱，豆包继续作为默认值并显示“豆包 Seed-2.0-mini（速度快）”；浏览器中残留的智谱选择会自动迁移到豆包，后端仅保留旧请求兼容。
 - Beta 网站标题左侧恢复随机品牌头像，功能菜单项继续保持纯文字；favicon 与标题头像共用同一选择，并加入单次刷新参数缓解 Safari favicon 缓存。
 - Beta 部署 `dpl_Bz37rNyqENE5sD22X2pjrwgra8rt` 已就绪；公网确认智谱入口消失、豆包默认勾选、标题头像与 favicon 同图，页面与健康接口均为 200。
+
+## 2026-08-25 Beta 顶部菜单扁平化与全版本发布
+
+- Beta 顶部 macOS 菜单横栏移除独立描边、底色、圆角、背景模糊和投影，直接贴合页面背景；下拉菜单继续保留承载面与轻投影，结构、勾选和展开交互不变。
+- 本机与公网均检查计算样式：顶栏 `border-width: 0`、透明背景、`border-radius: 0`、`box-shadow: none`、`backdrop-filter: none`；390px 窄屏页面宽度保持 390px，模型菜单可正常展开。
+- Beta 部署 `dpl_3AaryzzVgJPiHomgoh2tKcovP9Bd` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`；正式部署 `dpl_B7UA4Hh68g5AAT4yJ6Q87aNDYQXV` 同时覆盖微信版 `https://ququ.mikeywa.icu/` 与钉钉版 `https://ququ.mikeywa.icu/ding/`。
+- 三个页面与两套 `/api/health` 均返回 HTTP 200；浏览器无控制台错误、无失败资源、无错误覆盖层，两份 Vercel 部署近 30 分钟错误日志为空。
+- 验证通过：`npm run typecheck`、`npm test -- --run`（26 个文件、169 项）、`npm run build:beta`、`npm run build:ququ`。
