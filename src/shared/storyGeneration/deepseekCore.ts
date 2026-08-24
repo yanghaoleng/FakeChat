@@ -697,9 +697,10 @@ export async function generateDeepSeekStorySegmentWithConfig({
     source: config.source,
     label: config.label
   };
+  const providerLabel = normalizedConfig.label || "AI 模型";
   const premise = prompt.replace(/\s+/g, " ").trim();
   if (!premise) throw new Error("Prompt 为空");
-  if (!normalizedConfig.apiKey) throw new Error("DeepSeek API key 未配置");
+  if (!normalizedConfig.apiKey) throw new Error(`${providerLabel} API key 未配置`);
   const standaloneGroupIntent = replacesWholeProjectWithGroup(project, premise);
 
   const request: ScriptGenerateRequest = {
@@ -746,7 +747,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === "TimeoutError") {
-        throw new Error("DeepSeek 生成超时，请把这张故事卡拆短一点再试");
+        throw new Error(`${providerLabel} 生成超时，请把这张故事卡拆短一点再试`);
       }
       throw error;
     }
@@ -755,12 +756,12 @@ export async function generateDeepSeekStorySegmentWithConfig({
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(`DeepSeek 请求失败：${response.status}${text ? ` ${text.slice(0, 120)}` : ""}`);
+      throw new Error(`${providerLabel} 请求失败：${response.status}${text ? ` ${text.slice(0, 120)}` : ""}`);
     }
 
     const json = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = json.choices?.[0]?.message?.content;
-    if (!content) throw new Error("DeepSeek 响应没有 content");
+    if (!content) throw new Error(`${providerLabel} 响应没有 content`);
     const extracted = extractJson(content);
     const normalized = normalizeGeneratedStoryOutput({
       value: extracted,
@@ -844,7 +845,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
     prompt: premise,
     createdAt: new Date().toISOString(),
     messageIds: messages.map((message) => message.id),
-    summary: `DeepSeek 追加 ${messages.length} 条消息，承接 ${project.messages.length} 条历史对话`
+    summary: `${providerLabel} 追加 ${messages.length} 条消息，承接 ${project.messages.length} 条历史对话`
   };
 
   const nextProject = parseProject({

@@ -53,7 +53,7 @@ test.describe("关键用户流程", () => {
     const settingsDialog = page.getByRole("dialog", { name: "设置" });
     await settingsDialog.getByRole("button", { name: "实验室" }).click();
     const labDialog = page.getByRole("dialog", { name: "实验室" });
-    await expect(labDialog.getByRole("combobox")).toHaveCount(2);
+    await expect(labDialog.getByRole("combobox")).toHaveCount(3);
     const previewSelect = labDialog.getByRole("combobox", { name: "预览模式" });
     await previewSelect.selectOption("video");
 
@@ -80,6 +80,46 @@ test.describe("关键用户流程", () => {
     const aboutSiteDialog = page.getByRole("dialog", { name: "About this site" });
     await expect(aboutSiteDialog).toContainText("AI companionship");
     await expect(aboutSiteDialog).toContainText("Simulated chat creation");
+  });
+
+  test("实验室模型默认智谱，保留 V4 Flash，并按需展开自定义输入", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "打开设置" }).click();
+    const settingsDialog = page.getByRole("dialog", { name: "设置" });
+    await expect(settingsDialog.getByRole("combobox", { name: "选择续写使用的 AI 模型" })).toHaveCount(0);
+    await settingsDialog.getByRole("button", { name: "实验室" }).click();
+    const labDialog = page.getByRole("dialog", { name: "实验室" });
+    const modelSelect = labDialog.getByRole("combobox", { name: "选择续写使用的 AI 模型" });
+
+    await expect(modelSelect).toHaveText("智谱 GLM-4.7-Flash");
+    await modelSelect.click();
+    const modelListbox = labDialog.getByRole("listbox", { name: "选择续写使用的 AI 模型" });
+    await expect(modelListbox.getByRole("option")).toHaveText([
+      "智谱 GLM-4.7-Flash",
+      "豆包 Seed-2.0-mini",
+      "DeepSeek V4 Flash",
+      "自定义模型"
+    ]);
+    await modelSelect.click();
+    await expect(modelListbox).toHaveClass(/settings-model-select-menu-closing/);
+    await expect(modelListbox).toHaveCount(0);
+    await expect(labDialog.getByRole("textbox", { name: "自定义模型 Base URL" })).toHaveCount(0);
+
+    await modelSelect.click();
+    await modelListbox.getByRole("option", { name: "自定义模型" }).click();
+    await expect(labDialog.getByRole("textbox", { name: "自定义模型 Base URL" })).toBeVisible();
+    await expect(labDialog.getByRole("textbox", { name: "自定义模型名" })).toBeVisible();
+    await expect(labDialog.getByLabel("自定义模型 API Key")).toBeVisible();
+
+    await modelSelect.click();
+    await labDialog.getByRole("option", { name: "豆包 Seed-2.0-mini" }).click();
+    await expect(modelSelect).toHaveText("豆包 Seed-2.0-mini");
+    await expect(labDialog.getByRole("textbox", { name: "自定义模型 Base URL" })).toHaveCount(0);
+    await page.reload();
+    await page.getByRole("button", { name: "打开设置" }).click();
+    await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: "实验室" }).click();
+    await expect(page.getByRole("dialog", { name: "实验室" }).getByRole("combobox", { name: "选择续写使用的 AI 模型" })).toHaveText("豆包 Seed-2.0-mini");
   });
 
   test("支持作者页面与设置菜单按 Escape 逐级返回", async ({ page }) => {
@@ -162,6 +202,10 @@ test.describe("关键用户流程", () => {
     await page.getByRole("button", { name: "开始编", exact: true }).click();
     await expect.poll(() => page.locator("[data-message-id]").count()).toBeGreaterThan(0);
     await expect(page.getByRole("button", { name: "展开编故事" })).toBeVisible();
+    await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
+    await page.getByRole("button", { name: "打开设置" }).click();
+    await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: "实验室" }).click();
+    await expect(page.getByRole("dialog", { name: "实验室" }).getByRole("combobox", { name: "选择续写使用的 AI 模型" })).toBeVisible();
     await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
   });
 

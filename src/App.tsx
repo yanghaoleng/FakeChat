@@ -19,14 +19,23 @@ import {
 import { lazy, Suspense, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { StatusAnnouncer, type StatusAnnouncerHandle, type StatusTextUpdate } from "./components/StatusAnnouncer";
+import { RollingPercent } from "./components/RollingPercent";
 import { ActionButton, SurfaceCard, SurfaceCardContent, SurfaceCardHeader } from "./components/UiPrimitives";
 import { WechatStoryPreview } from "./features/chat-preview/WechatStoryPreview";
 import { AboutDialog } from "./features/settings/AboutDialog";
+import { BetaMenuBar } from "./features/settings/BetaMenuBar";
 import { LabDialog } from "./features/settings/LabDialog";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
 import { SiteAboutDialog } from "./features/settings/SiteAboutDialog";
 import { useEventCallback } from "./hooks/useEventCallback";
 import { normalizedVoiceGain } from "./shared/audioLoudness";
+import {
+  aiProviderForId,
+  readAiProviderId,
+  writeAiProviderId,
+  type AiModelChoiceId,
+  type AiProviderId
+} from "./shared/aiProviders";
 import type { VideoExportResult } from "./shared/browserVideo";
 import type { TtsClipMap } from "./shared/edgeTts";
 import { fishReadableText, fishVoiceHintFor, synthesizeFishAudio, synthesizeFishMessageClip } from "./shared/fishAudioTts";
@@ -83,6 +92,7 @@ import { normalizeSuggestedPrompt } from "./shared/suggestedPrompt";
 import { buildTimeline, getDurationInFrames, messageRevealDelayMs } from "./shared/timing";
 
 const VideoPreviewPane = lazy(() => import("./features/video/VideoPreviewPane"));
+const betaMenuEnabled = import.meta.env.BASE_URL.startsWith("/beta/");
 
 type ApiState = "idle" | "loading" | "error" | "done";
 type PreviewMode = "wechat" | "video";
@@ -123,7 +133,7 @@ type AppProps = {
   storyPackage: StoryPackage;
 };
 
-const deepSeekServiceToast = "DeepSeek 服务暂时连不上，已停止生成";
+const aiServiceToast = "AI 模型服务暂时连不上，已停止生成";
 const defaultJojoAppUrl = "https://ququ.mikeywa.icu/ding/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
@@ -411,7 +421,7 @@ function PendingPromptCardView({
       <div className="prompt-card-progress" aria-label={isGenerating ? `生成进度 ${progress}%` : `第 ${queuePosition} 张故事卡`}>
         {isGenerating ? (
           <div className="prompt-card-generating-progress">
-            <strong className="prompt-card-progress-number">{`${progress}%`}</strong>
+            <RollingPercent value={progress} className="prompt-card-progress-number" />
           </div>
         ) : (
           <div className="prompt-card-index">{queuePosition}</div>
@@ -780,6 +790,7 @@ export default function App({ storyPackage }: AppProps) {
   const [visibleMessageCount, setVisibleMessageCount] = useState(0);
   const [allowMultiSession, setAllowMultiSession] = useState(false);
   const allowMultiSessionRef = useRef(false);
+  const [aiProviderId, setAiProviderId] = useState<AiProviderId>(readAiProviderId);
   const [activeCustomModelSettings, setActiveCustomModelSettings] = useState<CustomModelSettings>(() => initialCustomModelSettingsRef.current!);
   const [customModelSettings, setCustomModelSettings] = useState<CustomModelSettings>(() => customModelDraftFromSaved(initialCustomModelSettingsRef.current!));
   const [customModelPanelOpen, setCustomModelPanelOpen] = useState(() => Boolean(initialCustomModelSettingsRef.current!.enabled));
@@ -1105,21 +1116,30 @@ export default function App({ storyPackage }: AppProps) {
     writeCustomModelSettingsCookie(normalized);
   }
 
-  function toggleCustomModel() {
-    const nextValue = !customModelPanelOpen;
-    setCustomModelPanelOpen(nextValue);
-    setCustomModelTestState("idle");
-    setCustomModelTestMessage("");
-    if (nextValue) {
-      setCustomModelSettings(customModelDraftFromSaved(activeCustomModelSettings));
-      setStatus("done");
-      setStatusText("请填写自定义模型并测试保存");
+  function selectAiProvider(providerId: AiProviderId) {
+    const provider = aiProviderForId(providerId);
+    setAiProviderId(provider.id);
+    writeAiProviderId(provider.id);
+    setCustomModelPanelOpen(false);
+    if (activeCustomModelSettings.enabled) {
+      saveActiveCustomModel({ ...activeCustomModelSettings, enabled: false });
+    }
+    setStatus("done");
+    setStatusText(`已选择 ${provider.label}`);
+  }
+
+  function selectAiModel(modelId: AiModelChoiceId) {
+    if (modelId !== "custom") {
+      selectAiProvider(modelId);
       return;
     }
 
-    saveActiveCustomModel({ ...activeCustomModelSettings, enabled: false });
+    setCustomModelPanelOpen(true);
+    setCustomModelTestState("idle");
+    setCustomModelTestMessage("");
+    setCustomModelSettings(customModelDraftFromSaved(activeCustomModelSettings));
     setStatus("done");
-    setStatusText("自定义模型已关闭");
+    setStatusText(activeCustomModelSettings.enabled ? "正在使用自定义模型" : "请填写自定义模型并测试保存");
   }
 
   function selectCustomModelProvider(providerId: string) {
@@ -1447,7 +1467,7 @@ export default function App({ storyPackage }: AppProps) {
       if (draftPromptRef.current.trim()) return;
       const nextPrompt = initialPresetArchiveRef.current?.nextPrompt || "";
       if (nextPrompt) showSuggestedPrompt(nextPrompt);
-      setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "预设提示词已载入" : current);
+      setStatusText((current) => current === "正在检查 AI 模型配置..." ? "预设提示词已载入" : current);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [storyPackage]);
@@ -2318,7 +2338,8 @@ export default function App({ storyPackage }: AppProps) {
   }) {
     let backendError: unknown;
     const customModel = customModelToCompletionConfig(activeCustomModelSettings);
-    setStatusText(customModel ? `正在请求 ${customModel.label || "自定义模型"} 续写...` : "正在请求后端 DeepSeek 续写...");
+    const managedProvider = aiProviderForId(aiProviderId);
+    setStatusText(customModel ? `正在请求 ${customModel.label || "自定义模型"} 续写...` : `正在请求 ${managedProvider.shortLabel} 续写...`);
     try {
       const { generateBackendStorySegment } = await import("./shared/deepseekBackend");
       const result = await generateBackendStorySegment({
@@ -2328,20 +2349,21 @@ export default function App({ storyPackage }: AppProps) {
         allowMultiSession: allowMultiSessionSnapshot,
         activeSessionId: activeSessionIdSnapshot,
         language,
+        modelProviderId: aiProviderId,
         customModel,
         signal
       });
       if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
-      return { result, statusText: `${customModel?.label || "DeepSeek 后端"} 已追加 ${result.messages.length} 条消息` };
+      return { result, statusText: `${customModel?.label || managedProvider.shortLabel} 已追加 ${result.messages.length} 条消息` };
     } catch (error) {
       if (!isCurrentGeneration(runId, signal)) throw error;
       backendError = error;
       console.warn("[deepseek] backend unavailable", error);
     }
 
-    const { generateDeepSeekStorySegment, hasBrowserDeepSeekKey } = await import("./shared/deepseekBrowser");
-    if (customModel || hasBrowserDeepSeekKey()) {
-      setStatusText(customModel ? "后端不可用，正在尝试浏览器直连自定义模型..." : "后端不可用，正在尝试浏览器公开配置...");
+    const { generateDeepSeekStorySegment, hasBrowserAiProviderKey } = await import("./shared/deepseekBrowser");
+    if (customModel || hasBrowserAiProviderKey(aiProviderId)) {
+      setStatusText(customModel ? "后端不可用，正在尝试浏览器直连自定义模型..." : `后端不可用，正在尝试浏览器直连 ${managedProvider.shortLabel}...`);
       try {
         const result = await generateDeepSeekStorySegment({
           project: projectSnapshot,
@@ -2350,21 +2372,22 @@ export default function App({ storyPackage }: AppProps) {
           allowMultiSession: allowMultiSessionSnapshot,
           activeSessionId: activeSessionIdSnapshot,
           language,
+          modelProviderId: aiProviderId,
           customModel,
           signal
         });
         if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
-        return { result, statusText: `${customModel?.label || "DeepSeek 前端"} 已追加 ${result.messages.length} 条消息` };
+        return { result, statusText: `${customModel?.label || managedProvider.shortLabel} 已追加 ${result.messages.length} 条消息` };
       } catch (browserError) {
         if (!isCurrentGeneration(runId, signal)) throw browserError;
         console.warn("[deepseek] browser direct unavailable", browserError);
-        setStatusText("DeepSeek 未连通，已停止生成");
+        setStatusText(`${managedProvider.shortLabel} 未连通，已停止生成`);
         throw browserError;
       }
     }
 
-    setStatusText("DeepSeek 未连通，已停止生成");
-    throw backendError instanceof Error ? backendError : new Error("DeepSeek 未连通");
+    setStatusText(`${managedProvider.shortLabel} 未连通，已停止生成`);
+    throw backendError instanceof Error ? backendError : new Error(`${managedProvider.shortLabel} 未连通`);
   }
 
   async function drainPromptQueue() {
@@ -2453,9 +2476,9 @@ export default function App({ storyPackage }: AppProps) {
           updatePendingPromptCards((cards) => cards.filter((card) => card.id !== activeCard.id));
         } catch (error) {
           if (!isCurrentGeneration(runId, signal)) continue;
-          console.error("[deepseek] queue failed", error);
-          showToast(deepSeekServiceToast);
-          const message = error instanceof Error ? error.message : "DeepSeek 续写失败";
+          console.error("[ai-model] queue failed", error);
+          showToast(aiServiceToast);
+          const message = error instanceof Error ? error.message : "AI 模型续写失败";
           restorePromptForEditing(activeCard.prompt);
           setStatus("error");
           setStatusText(message);
@@ -3068,7 +3091,7 @@ export default function App({ storyPackage }: AppProps) {
           >
             <span className="video-export-progress-meta">
               <span>{videoExportProgress.label}</span>
-              <strong className="prompt-card-progress-number video-export-progress-number">{`${videoExportPercent}%`}</strong>
+              <RollingPercent value={videoExportPercent} className="prompt-card-progress-number video-export-progress-number" />
             </span>
             <span className="video-export-progress-track" aria-hidden="true">
               <span className="video-export-progress-bar" />
@@ -3329,7 +3352,10 @@ export default function App({ storyPackage }: AppProps) {
       if (primaryShortcut && key.toLowerCase() === "k") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (!event.repeat) toggleSettingsMenu();
+        if (!event.repeat) {
+          if (betaMenuEnabled) openLabDialog();
+          else toggleSettingsMenu();
+        }
         return;
       }
       if (primaryShortcut && key.toLowerCase() === "s") {
@@ -3433,63 +3459,95 @@ export default function App({ storyPackage }: AppProps) {
       data-ambient-skin={visibleAmbientSkin}
     >
       <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
-      <header className="topbar motion-in">
-        <div className="brand-block">
-          <h1>{copy.brandName}</h1>
-        </div>
-        <div className="settings-trigger-group">
-          <kbd className="settings-trigger-shortcut">⌘K</kbd>
-          <button
-            ref={settingsButtonRef}
-            className={settingsMenuOpen ? "title-menu-button title-menu-button-open" : "title-menu-button"}
-            type="button"
-            aria-haspopup="dialog"
-            aria-controls="settings-dialog"
-            aria-expanded={settingsMenuOpen}
-            aria-label={copy.openSettings}
-            title={`${copy.settings} (⌘K)`}
-            onClick={toggleSettingsMenu}
-          >
-            <Settings size={18} />
-          </button>
-        </div>
-        <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
-      </header>
+      {betaMenuEnabled ? (
+        <BetaMenuBar
+          copy={copy}
+          language={language}
+          languagePreference={languagePreference}
+          storyPackage={storyPackage}
+          activePresetRole={activePresetRole}
+          jojoRoleChoices={jojoRoleChoices}
+          viralRoleChoices={viralRoleChoices}
+          previewMode={previewMode}
+          ambientSkins={ambientSkins}
+          ambientSkin={ambientSkin}
+          aiProviderId={aiProviderId}
+          customModelPanelOpen={customModelPanelOpen}
+          fishAutoReadEnabled={fishAutoReadEnabled}
+          switchLink={switchLink}
+          onChoosePreviewMode={choosePreviewMode}
+          onSelectAmbientSkin={selectAmbientSkin}
+          onSwitchPresetRole={switchPresetRole}
+          onChangeLanguage={changeLanguagePreference}
+          onSelectAiModel={selectAiModel}
+          onToggleFishAutoRead={toggleFishAutoRead}
+          onOpenAdvancedLab={openLabDialog}
+          onOpenAbout={openAboutDialog}
+          onOpenSiteAbout={openSiteAboutDialog}
+          onExportArchive={() => void exportArchive()}
+          onImportArchive={() => importInputRef.current?.click()}
+        />
+      ) : (
+        <header className="topbar motion-in">
+          <div className="brand-block">
+            <h1>{copy.brandName}</h1>
+          </div>
+          <div className="settings-trigger-group">
+            <kbd className="settings-trigger-shortcut">⌘K</kbd>
+            <button
+              ref={settingsButtonRef}
+              className={settingsMenuOpen ? "title-menu-button title-menu-button-open" : "title-menu-button"}
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="settings-dialog"
+              aria-expanded={settingsMenuOpen}
+              aria-label={copy.openSettings}
+              title={`${copy.settings} (⌘K)`}
+              onClick={toggleSettingsMenu}
+            >
+              <Settings size={18} />
+            </button>
+          </div>
+        </header>
+      )}
+      <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
       <StatusAnnouncer ref={statusAnnouncerRef} initialText={copy.initialStatus} />
       {toastMessage ? (
         <div className="app-toast" role="status" aria-live="polite">
           {toastMessage}
         </div>
       ) : null}
-      <SettingsDialog
-        open={settingsMenuOpen}
-        closing={settingsMenuClosing}
-        suspended={aboutDialogOpen || siteAboutDialogOpen || labDialogOpen}
-        dialogRef={settingsDialogRef}
-        storyPackage={storyPackage}
-        activePresetRole={activePresetRole}
-        jojoRoleChoices={jojoRoleChoices}
-        viralRoleChoices={viralRoleChoices}
-        switchLink={switchLink}
-        languagePreference={languagePreference}
-        resolvedLanguage={language}
-        copy={copy}
-        onClose={closeSettingsMenu}
-        onKeyDown={handleSettingsDialogKeyDown}
-        onSwitchPresetRole={switchPresetRole}
-        onOpenLab={openLabDialog}
-        onOpenAbout={openAboutDialog}
-        onOpenSiteAbout={openSiteAboutDialog}
-        onChangeLanguage={changeLanguagePreference}
-        onExportArchive={() => {
-          closeSettingsMenu();
-          void exportArchive();
-        }}
-        onImportArchive={() => {
-          closeSettingsMenu();
-          importInputRef.current?.click();
-        }}
-      />
+      {!betaMenuEnabled ? (
+        <SettingsDialog
+          open={settingsMenuOpen}
+          closing={settingsMenuClosing}
+          suspended={aboutDialogOpen || siteAboutDialogOpen || labDialogOpen}
+          dialogRef={settingsDialogRef}
+          storyPackage={storyPackage}
+          activePresetRole={activePresetRole}
+          jojoRoleChoices={jojoRoleChoices}
+          viralRoleChoices={viralRoleChoices}
+          switchLink={switchLink}
+          languagePreference={languagePreference}
+          resolvedLanguage={language}
+          copy={copy}
+          onClose={closeSettingsMenu}
+          onKeyDown={handleSettingsDialogKeyDown}
+          onSwitchPresetRole={switchPresetRole}
+          onOpenLab={openLabDialog}
+          onOpenAbout={openAboutDialog}
+          onOpenSiteAbout={openSiteAboutDialog}
+          onChangeLanguage={changeLanguagePreference}
+          onExportArchive={() => {
+            closeSettingsMenu();
+            void exportArchive();
+          }}
+          onImportArchive={() => {
+            closeSettingsMenu();
+            importInputRef.current?.click();
+          }}
+        />
+      ) : null}
       {labDialogOpen ? (
         <LabDialog
           open
@@ -3499,6 +3557,7 @@ export default function App({ storyPackage }: AppProps) {
           ambientSkins={ambientSkins}
           ambientSkin={ambientSkin}
           allowMultiSession={storyPackage === "viral" && allowMultiSession}
+          aiProviderId={aiProviderId}
           customModelPanelOpen={customModelPanelOpen}
           customModelSettings={customModelSettings}
           customModelTestState={customModelTestState}
@@ -3511,7 +3570,7 @@ export default function App({ storyPackage }: AppProps) {
           onChoosePreviewMode={choosePreviewMode}
           onSelectAmbientSkin={selectAmbientSkin}
           onToggleMultiSession={toggleMultiSessionMode}
-          onToggleCustomModel={toggleCustomModel}
+          onSelectAiModel={selectAiModel}
           onSelectCustomModelProvider={selectCustomModelProvider}
           onChangeCustomModelSettings={setCustomModel}
           onTestCustomModel={testCustomModel}

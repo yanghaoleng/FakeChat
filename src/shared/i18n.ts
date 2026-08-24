@@ -58,6 +58,8 @@ export type AppCopy = {
   language: string;
   selectLanguage: string;
   followBrowser: string;
+  aiModel: string;
+  selectAiModel: string;
   role: string;
   gender: string;
   selectRole: string;
@@ -106,6 +108,8 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     language: "语言",
     selectLanguage: "选择界面和对话语言",
     followBrowser: "跟随浏览器",
+    aiModel: "AI 模型",
+    selectAiModel: "选择续写使用的 AI 模型",
     role: "角色",
     gender: "性别",
     selectRole: "选择角色",
@@ -137,7 +141,7 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     close: "关闭",
     adopt: "采用",
     openSettings: "打开设置",
-    initialStatus: "正在检查 DeepSeek 配置...",
+    initialStatus: "正在检查 AI 模型配置...",
     waitForStory: "等待第一段剧情",
     cardCount: (count) => `${count} 张故事卡`
   },
@@ -152,6 +156,8 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     language: "語言",
     selectLanguage: "選擇介面與對話語言",
     followBrowser: "跟隨瀏覽器",
+    aiModel: "AI 模型",
+    selectAiModel: "選擇續寫使用的 AI 模型",
     role: "角色",
     gender: "性別",
     selectRole: "選擇角色",
@@ -183,7 +189,7 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     close: "關閉",
     adopt: "採用",
     openSettings: "開啟設定",
-    initialStatus: "正在檢查 DeepSeek 設定...",
+    initialStatus: "正在檢查 AI 模型設定...",
     waitForStory: "等待第一段劇情",
     cardCount: (count) => `${count} 張故事卡`
   },
@@ -198,6 +204,8 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     language: "Language",
     selectLanguage: "Choose interface and dialogue language",
     followBrowser: "Follow browser",
+    aiModel: "AI model",
+    selectAiModel: "Choose the AI model for story generation",
     role: "Role",
     gender: "Gender",
     selectRole: "Choose role",
@@ -229,7 +237,7 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     close: "Close",
     adopt: "Use it",
     openSettings: "Open settings",
-    initialStatus: "Checking DeepSeek configuration...",
+    initialStatus: "Checking AI model configuration...",
     waitForStory: "Waiting for the first story",
     cardCount: (count) => `${count} story card${count === 1 ? "" : "s"}`
   },
@@ -244,6 +252,8 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     language: "言語",
     selectLanguage: "表示と会話の言語を選択",
     followBrowser: "ブラウザに合わせる",
+    aiModel: "AIモデル",
+    selectAiModel: "ストーリー生成に使うAIモデルを選択",
     role: "役割",
     gender: "性別",
     selectRole: "役割を選択",
@@ -275,7 +285,7 @@ export const appCopy: Record<AppLanguage, AppCopy> = {
     close: "閉じる",
     adopt: "使用する",
     openSettings: "設定を開く",
-    initialStatus: "DeepSeekの設定を確認しています...",
+    initialStatus: "AIモデルの設定を確認しています...",
     waitForStory: "最初のストーリーを待っています",
     cardCount: (count) => `ストーリーカード ${count}件`
   }

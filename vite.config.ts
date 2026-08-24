@@ -24,6 +24,23 @@ export default defineConfig(({ mode }) => {
     baseUrl: env.VITE_DEEPSEEK_BASE_URL || "https://api.deepseek.com",
     model: defaultDeepSeekModel
   };
+  const browserAiProviders = {
+    zhipu: {
+      apiKey: env.VITE_ZHIPU_API_KEY || "",
+      baseUrl: env.VITE_ZHIPU_BASE_URL || "https://open.bigmodel.cn/api/paas/v4",
+      model: env.VITE_ZHIPU_MODEL || "glm-4.7-flash"
+    },
+    doubao: {
+      apiKey: env.VITE_DOUBAO_API_KEY || env.VITE_ARK_API_KEY || "",
+      baseUrl: env.VITE_DOUBAO_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3",
+      model: env.VITE_DOUBAO_MODEL || "doubao-seed-2-0-mini-260215"
+    },
+    v4flash: {
+      apiKey: defaultDeepSeekProvider.apiKey,
+      baseUrl: defaultDeepSeekProvider.baseUrl,
+      model: defaultDeepSeekProvider.model
+    }
+  };
 
   return {
     base,
@@ -46,7 +63,8 @@ export default defineConfig(({ mode }) => {
       __DEEPSEEK_BROWSER_CONFIG__: JSON.stringify({
         ...defaultDeepSeekProvider,
         defaultProvider: defaultDeepSeekProvider
-      })
+      }),
+      __AI_BROWSER_CONFIG__: JSON.stringify(browserAiProviders)
     },
     build: {
       assetsDir: "static"

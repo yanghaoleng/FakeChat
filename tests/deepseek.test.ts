@@ -603,7 +603,8 @@ describe("normalizeDeepSeekProject", () => {
       prompt: "继续核对",
       promptCards: [],
       allowMultiSession: false,
-      activeSessionId: "chat-main"
+      activeSessionId: "chat-main",
+      modelProviderId: "doubao"
     });
 
     expect(result.project.chatSessions.map((session) => session.id)).toEqual(["chat-main"]);
@@ -616,6 +617,6 @@ describe("normalizeDeepSeekProject", () => {
     });
     expect(result.messages[0].sessionId).toBe("chat-main");
     const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-    expect(requestBody).toMatchObject({ allowMultiSession: false, activeSessionId: "chat-main" });
+    expect(requestBody).toMatchObject({ allowMultiSession: false, activeSessionId: "chat-main", modelProviderId: "doubao" });
   });
 });

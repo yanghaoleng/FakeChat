@@ -5,6 +5,7 @@ import { constrainGeneratedProjectSessions } from "./multiSession";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt";
 import type { DeepSeekCompletionConfig } from "./storyGeneration/contract";
 import type { AppLanguage } from "./i18n";
+import { defaultAiProviderId, type AiProviderId } from "./aiProviders";
 
 const backendStoryTimeoutMs = 65000;
 
@@ -40,12 +41,12 @@ function parseSuggestedPrompt(value: Partial<DeepSeekSegmentResult> & Record<str
 
 async function readError(response: Response) {
   const text = await response.text().catch(() => "");
-  if (!text) return `后端 DeepSeek 请求失败：${response.status}`;
+  if (!text) return `后端 AI 模型请求失败：${response.status}`;
   try {
     const json = JSON.parse(text) as { error?: string };
-    return json.error || `后端 DeepSeek 请求失败：${response.status}`;
+    return json.error || `后端 AI 模型请求失败：${response.status}`;
   } catch {
-    return `后端 DeepSeek 请求失败：${response.status} ${text.slice(0, 120)}`;
+    return `后端 AI 模型请求失败：${response.status} ${text.slice(0, 120)}`;
   }
 }
 
@@ -56,6 +57,7 @@ export async function generateBackendStorySegment({
   allowMultiSession = false,
   activeSessionId,
   language = "zh-CN",
+  modelProviderId = defaultAiProviderId,
   customModel,
   signal
 }: {
@@ -65,6 +67,7 @@ export async function generateBackendStorySegment({
   allowMultiSession?: boolean;
   activeSessionId?: string;
   language?: AppLanguage;
+  modelProviderId?: AiProviderId;
   customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
@@ -85,6 +88,7 @@ export async function generateBackendStorySegment({
       allowMultiSession,
       activeSessionId,
       language,
+      modelProviderId,
       ...(customModel ? {
         customModel: {
           apiKey: customModel.apiKey,

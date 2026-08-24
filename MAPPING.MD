@@ -9,10 +9,20 @@
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
+| 线上 Beta | 独立 Vercel 工程 | `npm run build:beta`、`VITE_BASE_PATH=/beta/` | `ququ-fakechat-beta.vercel.app/beta/` |
+| Beta 顶部菜单 / Mac 菜单栏 | Beta 顶栏 | `BetaMenuBar`、`betaMenuEnabled` | `.beta-macos-menubar`、`.beta-menu-popover` |
+| 当前模型标签 | Beta 顶栏右侧 | `currentModel`、`aiProviderId` | `.beta-menu-current-model` |
+| 百分比滚动数字 / 加载数字 | 生成进度、导出进度 | `RollingPercent` | `.rolling-percent`、`.rolling-percent-digit` |
 | JOJO 内网预览 | 部署/预览 | `npm run preview:lan` | `HOST=0.0.0.0 API_PORT=4173 DIST_DIR=dist/jojo` |
 | 存档按钮 | 顶栏 | `exportJson` | `.ghost-top-actions` |
 | 读档按钮 | 顶栏 | `importInputRef`、`importJson` | `.ghost-top-actions` |
 | 错误状态提示 | 编故事 | `status === "error"`、`statusText` | `.deepseek-status-error` |
+| 免费模型拥堵提示 | 编故事 / 实验室 | 服务端原样返回模型错误、用户手动 `selectAiModel` | 不自动切换到可能计费的豆包 |
+| 模型 / 免费模型 | 实验室 | `aiProviderId`、`selectAiModel`、`aiProviders` | `.settings-model-select-trigger`、`.settings-model-select-menu` |
+| 智谱 / 默认模型 | AI 模型 | `modelProviderId: "zhipu"`、`glm-4.7-flash` | `ZHIPU_API_KEY`；旧称 GLM-4.5-Flash 已迁移为 4.7 |
+| 豆包 / Seed mini | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY` |
+| DeepSeek V4 Flash / V4 | AI 模型 | `modelProviderId: "v4flash"`、`deepseek-v4-flash` | `DEEPSEEK_API_KEY`，兼容 `COMPANY_DEEPSEEK_API_KEY` |
+| 自定义模型输入框 | 实验室 AI 模型 | `customModelPanelOpen`、`CustomModelSettings` | 仅当模型选择值为 `custom` 时渲染 `.settings-model-panel` 内输入项 |
 | token 服务 Toast | 全局状态反馈 | `toastMessage`、`showToast(tokenServiceWifiToast)` | `.app-toast` |
 | 左侧面板 | 主工作区 | `ScrollShadow` | `.left-panel.panel-scroll` |
 | 桌面编故事垂直位置 | 主工作区 | CSS 变量 | `--desktop-story-panel-top-offset: 190px` |
@@ -67,6 +77,8 @@
 | 电梯背影照片 | JOJO 图片 | `assetId: "jojo-photo-corridor-blur"` | `/jojo-assets/photos/company-corridor-blur.webp` |
 | JOJO 表情卡 | JOJO 表情 | `assetId: "jojo-meme-*"` | `/jojo-assets/memes/*.webp` |
 | 公司中转配置 | 后端模型 | `getDeepSeekConfig` | `server/settings.ts` |
+| 官方模型配置 | 后端模型 | `getManagedAiConfig` | `server/aiProviders.ts`；智谱/豆包密钥只从服务端环境变量读取 |
+| 模型选择记忆 | 浏览器本地设置 | `aiProviderStorageKey` | `localStorage: ququ-ai-provider-v1` |
 | 静态部署公司中转 | 构建注入 | `VITE_INCLUDE_COMPANY_TOKEN=1`、`VITE_COMPANY_DEEPSEEK_API_KEY` | `vite.config.ts` 仅从环境变量读取 token |
 | 后端公司中转 token | 后端模型 | `COMPANY_DEEPSEEK_API_KEY`、`DEEPSEEK_API_KEY` | `server/settings.ts`，不再硬编码真实 key |
 | 微信版 README 截图 | GitHub 文档 | README 图片引用 | `docs/screenshots/fakechat-wechat.webp` |

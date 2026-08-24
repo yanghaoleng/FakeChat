@@ -15,7 +15,8 @@ import {
 } from "../src/shared/schema.js";
 import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/storyGeneration/deepseekCore.js";
 import type { DeepSeekCompletionConfig, DeepSeekSegmentResult } from "../src/shared/storyGeneration/contract.js";
-import { getDeepSeekConfig } from "./settings.js";
+import { aiProviderIds, defaultAiProviderId } from "../src/shared/aiProviders.js";
+import { getManagedAiConfig } from "./aiProviders.js";
 
 const storyBeats = [
   "陪聊下单",
@@ -52,6 +53,7 @@ const storyContinueRequestSchema = z.object({
   allowMultiSession: z.boolean().default(false),
   activeSessionId: z.string().min(1).optional(),
   language: z.enum(["zh-CN", "zh-TW", "en", "ja"]).default("zh-CN"),
+  modelProviderId: z.enum(aiProviderIds).default(defaultAiProviderId),
   customModel: customModelConfigSchema.optional()
 });
 
@@ -297,13 +299,13 @@ function systemPrompt() {
 
 export async function generateScript(body: unknown): Promise<{ project: DramaProject; usedFallback: boolean; warning?: string }> {
   const request = scriptGenerateRequestSchema.parse(body);
-  const { apiKey, baseUrl, model } = await getDeepSeekConfig();
+  const { apiKey, baseUrl, model } = getManagedAiConfig();
 
   if (!apiKey) {
     return {
       project: customizeFallback(request),
       usedFallback: true,
-      warning: "DEEPSEEK_API_KEY is not set; returned editable fallback script."
+      warning: "ZHIPU_API_KEY is not set; returned editable fallback script."
     };
   }
 
@@ -350,17 +352,11 @@ export async function generateScript(body: unknown): Promise<{ project: DramaPro
 
 export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeekSegmentResult> {
   const request = storyContinueRequestSchema.parse(body);
-  const savedConfig = request.customModel ? undefined : await getDeepSeekConfig();
+  const managedConfig = request.customModel ? undefined : getManagedAiConfig(request.modelProviderId);
   const config = request.customModel
     ? resolveCustomModelConfig(request.customModel)
-    : {
-        apiKey: savedConfig!.apiKey,
-        baseUrl: savedConfig!.baseUrl,
-        model: savedConfig!.model,
-        source: "server" as const,
-        label: "后端 DeepSeek"
-      };
-  if (!config.apiKey) throw new Error("后端 DeepSeek API key 未配置");
+    : managedConfig!;
+  if (!config.apiKey) throw new Error(`${config.label || "AI 模型"} API key 未配置`);
 
   return generateDeepSeekStorySegmentWithConfig({
     project: parseProject(request.project),
@@ -370,6 +366,6 @@ export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeek
     allowMultiSession: request.allowMultiSession,
     activeSessionId: request.activeSessionId,
     language: request.language,
-    logLabel: request.customModel ? "deepseek-custom-server" : "deepseek-server"
+    logLabel: request.customModel ? "ai-custom-server" : `ai-${request.modelProviderId}-server`
   });
 }

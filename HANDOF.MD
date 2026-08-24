@@ -189,3 +189,50 @@
 - 桌面端“编故事”面板已改为固定像素垂直偏移 `--desktop-story-panel-top-offset: 190px`，不再依赖百分比/视口高度居中；移动端底部半弹窗结构不变。
 - 桌面端视频版右侧预览面板已使用 `--desktop-preview-window-top-offset`，在 `--desktop-story-panel-top-offset: 190px` 上补 `12px` 视觉内边距，视频窗口顶部和可见“编故事”卡片保持同高。
 - README 已补充微信版截图：`docs/screenshots/fakechat-wechat.png`。
+
+## 2026-08-20 智谱 / 豆包模型切换
+
+- 已在实验室增加 AI 模型选择：默认智谱 `glm-4.7-flash`（免费），可切换豆包 `doubao-seed-2-0-mini-260215`，并用 `localStorage` 记住选择。
+- 已确认智谱旧 `GLM-4.5-Flash` 于 2026-01-30 下线并自动迁移到 `GLM-4.7-Flash`，项目使用当前官方模型 ID。
+- 已打通服务端与浏览器降级链路：请求携带 `modelProviderId`；服务端分别读取 `ZHIPU_API_KEY`、`DOUBAO_API_KEY`（兼容 `ARK_API_KEY`），实验室自定义模型继续保留。
+- 已补充 `.env.example`、模型元数据与单元/端到端测试；密钥只写本地 `.env` 或部署平台服务端环境变量，不进入源码和 Git。
+- 已验证 `npm run typecheck`、`npm test`（25 个文件、162 项）、`npm run build:ququ` 与 `npm run test:e2e`（9 项）全部通过；Playwright 首次缺少 Chromium，安装后完整通过。
+- 平台进度：智谱与火山方舟“蛐蛐模拟器”Key 均已写入本地 `.env`。火山最小真实请求返回 HTTP 200，响应模型为 `doubao-seed-2-0-mini-260215`；智谱连续两次请求均通过鉴权抵达服务端，但免费 `glm-4.7-flash` 返回 HTTP 429 / 错误码 1305“当前访问量过大”，需在低峰时复测。
+- 已部署独立线上 Beta；正式站保持原部署。Beta 工程已配置智谱、豆包和 DeepSeek 三项服务端敏感变量。
+- 按最新产品要求，模型选择已从设置主菜单移入实验室；选项为智谱 GLM-4.7-Flash、豆包 Seed-2.0-mini、DeepSeek V4 Flash、自定义模型，只有选到自定义模型才显示配置输入框。
+- DeepSeek V4 Flash 已作为 `modelProviderId: "v4flash"` 恢复，继续复用 `DEEPSEEK_*`（兼容 `COMPANY_DEEPSEEK_API_KEY`）配置。
+- 智谱与火山方舟两枚 API Key 均命名为“蛐蛐模拟器”，方便分别查看用量；火山已完整连通，智谱密钥有效但免费模型当前拥堵。
+- 两家控制台在 Codex 应用内浏览器中对控件读取、截图和页面刷新持续超时，桌面级控制也因应用安全限制不可用；两枚 Key 最终均由用户手动创建/复制后完成本地安全配置。
+- 最新验证：类型检查、25 个单元测试文件（162 项）、微信/钉钉组合构建和 9 项 Playwright 回归全部通过，包含自定义表单按需展开与 390px 移动端无横向溢出。
+
+## 2026-08-20 本地全栈预览
+
+- 已重新执行 `npm run build:jojo`，类型检查和生产构建通过；仅保留既有的大包体积提示。
+- 全栈预览运行于 `0.0.0.0:4173`，本机地址 `http://127.0.0.1:4173/`，局域网地址 `http://10.131.59.53:4173/`；Node PID `98179`，当前任务运行会话 `83812`。
+- `/`、`/api/health`、`/api/project/sample` 与站点图标均返回 200；服务端在两枚本地 `.env` 密钥写入后启动。
+- 已在真实本地页面打开“设置 → 实验室”，确认默认智谱，豆包、DeepSeek V4 Flash、自定义模型均可见，自定义输入框默认不渲染。
+- 390×844 手机宽度实测 `innerWidth`、页面 `scrollWidth` 与 `body.scrollWidth` 均为 390，无横向溢出；浏览器已恢复默认尺寸并停留在实验室页面供验收。
+
+## 2026-08-20 线上 Beta 与模型下拉优化
+
+- 按 taste 规范将原生模型下拉改为自定义可访问列表框；展开 `180ms`、收起 `160ms`，支持方向键、Home、End、Escape、外部点击和减少动态效果。
+- 显示名称固定为“智谱 GLM-4.7-Flash”“豆包 Seed-2.0-mini”“DeepSeek V4 Flash”“自定义模型”，去掉智谱和 V4 后缀括号。
+- 本地桌面与 390×844 手机端已确认四项完整可见、菜单不裁切；定向 Playwright 用例验证收起阶段类名与卸载时序。
+- 独立 Vercel 工程 `ququ-fakechat-beta` 已发布到 `https://ququ-fakechat-beta.vercel.app/beta/`，部署 ID `dpl_GEbDv89ea4fGjk6BMMw4bfDFYiEE`；正式域名仍指向原部署 `dpl_AeYu1GMD3FRrBXZTReTreKUWWi8j`。
+- Beta 页面、静态资源与 `/api/health` 均返回 HTTP 200；线上豆包真实续写返回 HTTP 200、32 条新消息。智谱密钥有效，但免费模型仍返回 HTTP 429 / 错误码 1305“当前访问量过大”。
+
+## 2026-08-24 智谱连通性复测
+
+- 本地使用现有 `ZHIPU_API_KEY` 直连 `glm-4.7-flash`，智谱返回 HTTP 429 / 错误码 1305“该模型当前访问量过大，请您稍后再试”；请求已通过鉴权，不是 Key 无效或模型名错误。
+- 线上 Beta `/api/health` 返回 HTTP 200；通过 `/api/story/continue` 选择 `modelProviderId: "zhipu"` 后返回 HTTP 502，内部错误仍是同一条智谱 429/1305，确认页面、Beta 函数与环境变量链路正常，故障点在智谱免费模型容量。
+- 未修改代码或模型配置，也未自动切换到会计费的豆包。
+
+## 2026-08-24 Beta 顶部菜单、滚动百分比与三模型复测
+
+- 仅 Beta 版启用 macOS 风格顶部菜单栏；文件、显示、角色、语言、实验室和帮助可直接展开，选中项显示勾选，桌面右侧显示当前模型。正式版保留原设置弹窗。
+- 生成与视频导出的百分比数字改为上下滚动切换，数值增加向上、减少向下，并兼容减少动态效果设置。
+- 新增 `RollingPercent` 与 `BetaMenuBar`，本地桌面和 390×844 窄屏均无横向溢出；菜单展开、模型勾选、默认智谱和豆包切换已验证。
+- 线上豆包真实续写返回 HTTP 200，新增 10 条消息；Safari/Vercel 路由不是豆包故障点。智谱仍为上游 HTTP 429 / 1305 免费模型繁忙。
+- 用户提供的 DeepSeek Key 与当前部署 Key 尾号一致，线上真实请求返回 HTTP 401 `invalid`；没有再次写入或重复发布，需换一枚有效 Key。
+- Beta 已重新发布到 `https://ququ-fakechat-beta.vercel.app/beta/`，部署 ID `dpl_6xm5PWgExnWC2snhoKRuL4eFYsCh`；页面和 `/api/health` 均为 HTTP 200，正式站未部署。
+- 已通过 `npm run typecheck`、`npm test`（25 个文件、162 项）和 `npm run build:beta`；Vite 仅保留既有大包体积提醒。

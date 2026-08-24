@@ -25,9 +25,9 @@ export const customModelCookieName = "ququ-custom-model-settings-v1";
 export const customModelProviders: CustomModelProvider[] = [
   { id: "deepseek", region: "domestic", label: "DeepSeek", baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash" },
   { id: "qwen", region: "domestic", label: "通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus" },
-  { id: "zhipu", region: "domestic", label: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4", model: "glm-4-flash" },
+  { id: "zhipu", region: "domestic", label: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4", model: "glm-4.7-flash" },
   { id: "moonshot", region: "domestic", label: "月之暗面", baseUrl: "https://api.moonshot.cn/v1", model: "moonshot-v1-8k" },
-  { id: "doubao", region: "domestic", label: "豆包", baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "doubao-seed-1-6-flash-250615" },
+  { id: "doubao", region: "domestic", label: "豆包", baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "doubao-seed-2-0-mini-260215" },
   { id: "siliconflow", region: "domestic", label: "硅基流动", baseUrl: "https://api.siliconflow.cn/v1", model: "deepseek-ai/DeepSeek-V3" },
   { id: "openai", region: "global", label: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
   { id: "claude-openrouter", region: "global", label: "Claude（OpenRouter）", baseUrl: "https://openrouter.ai/api/v1", model: "anthropic/claude-3.5-haiku" },
