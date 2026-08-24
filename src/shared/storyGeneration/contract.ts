@@ -74,6 +74,7 @@ export type DeepSeekPromptMessage = {
 export type DeepSeekRequestBody = {
   model: string;
   temperature: number;
+  max_tokens: number;
   thinking: { type: "disabled" };
   response_format: { type: "json_object" };
   messages: DeepSeekPromptMessage[];

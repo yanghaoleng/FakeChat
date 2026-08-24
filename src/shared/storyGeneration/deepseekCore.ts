@@ -350,7 +350,14 @@ function chatSessionGenerationInstruction(
 }
 
 function targetMessageRange(project: DramaProject) {
-  return project.messages.length ? "本段新增 20-32 条 messages，最多不要超过 36 条。" : "第一段要一次性成片，生成 48-68 条 messages，绝对不要少于 44 条。";
+  if (project.messages.length) return "本段新增 20-32 条 messages，最多不要超过 36 条。";
+  if (isJojoProject(project)) return "第一段要完整但紧凑，生成 24-36 条 messages，最多不要超过 36 条；完成后立刻闭合 JSON。";
+  return "第一段要一次性成片，生成 48-68 条 messages，绝对不要少于 44 条。";
+}
+
+function outputTokenLimit(project: DramaProject) {
+  if (project.messages.length) return 4800;
+  return isJojoProject(project) ? 5200 : 7200;
 }
 
 function mediaRule(project: DramaProject) {
@@ -676,6 +683,7 @@ export function buildDeepSeekRequest({
   return {
     model,
     temperature: repairAttempt ? 0.94 : 0.86,
+    max_tokens: outputTokenLimit(project),
     thinking: { type: "disabled" },
     response_format: { type: "json_object" as const },
     messages: [
