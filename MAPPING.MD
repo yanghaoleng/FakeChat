@@ -10,7 +10,7 @@
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
 | 线上 Beta | 独立 Vercel 工程 | `npm run build:beta`、`VITE_BASE_PATH=/beta/` | `ququ-fakechat-beta.vercel.app/beta/` |
-| Beta 顶部菜单 / Mac 菜单栏 | Beta 顶栏 | `BetaMenuBar`、`betaMenuEnabled` | `.beta-macos-menubar`、`.beta-menu-popover`；显示菜单含语言，模型菜单不打开弹窗 |
+| Beta 顶部菜单 / Mac 菜单栏 | Beta 顶栏 | `BetaMenuBar`、`betaMenuEnabled` | `.beta-macos-menubar` 为无描边、无底色、无圆角和无投影的透明横栏；`.beta-menu-popover` 保留菜单承载面；显示菜单含语言，模型菜单不打开弹窗 |
 | 当前模型标签 | Beta 顶栏右侧 | `currentModel`、`aiProviderId` | `.beta-menu-current-model` |
 | 自定义 Fish Audio API | Beta 模型菜单 | `fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；仅一个密钥输入框和测试按钮 |
 | 百分比滚动数字 / 加载数字 | 生成进度、导出进度 | `RollingPercent`、Calligraph `variant="number"` | `.rolling-percent`、`.rolling-percent-digits` |
