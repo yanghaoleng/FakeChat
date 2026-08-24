@@ -512,9 +512,10 @@ function scrubStaleMotifs(value: string) {
   return staleMotifs.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
 }
 
-function isLowQualitySegment(messages: ChatMessage[]) {
+function isLowQualitySegment(project: DramaProject, messages: ChatMessage[]) {
   const firstScreen = messages.slice(0, 8).map((message) => message.text || message.ttsText || "").join("\n");
   const hasEmptyImageCopy = messages.some((message) => message.type === "image" && isGenericImageCopy(message.text));
+  if (isJojoProject(project)) return hasEmptyImageCopy;
   return hasEmptyImageCopy || /你好|聊什么|声音好熟悉|声音.*像|同学.*像|像一个人|像初恋|大众脸|大众嗓|认错人了|你是谁呀|谁呀|不认识$|真的吗|怎么会这样|我不知道你在说什么/.test(firstScreen);
 }
 
@@ -826,7 +827,7 @@ export async function generateDeepSeekStorySegmentWithConfig({
       }
       continue;
     }
-    if (!isLowQualitySegment(generated.project.messages)) break;
+    if (!isLowQualitySegment(project, generated.project.messages)) break;
     if (repairAttempt < 2) {
       console.warn(`[${logLabel}] low-quality opening; retrying with repair prompt`, { repairAttempt: repairAttempt + 1 });
     }

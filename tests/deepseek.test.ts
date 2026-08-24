@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateBackendStorySegment } from "../src/shared/deepseekBackend";
 import { normalizeDeepSeekProject } from "../src/shared/deepseekProject";
 import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/deepseekBrowser";
+import { jojoProject } from "../src/shared/jojoProject";
 import { sampleProject } from "../src/shared/sampleProject";
 
 afterEach(() => {
@@ -561,6 +562,27 @@ describe("normalizeDeepSeekProject", () => {
     }]);
     expect(new Set(result.messages.map((message) => message.roleId))).toEqual(new Set(["me", "li", "wang", "zhao"]));
     expect(result.messages.every((message) => message.sessionId === "chat-main")).toBe(true);
+  });
+
+  it("does not charge a second JOJO request for ordinary office dialogue", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({
+        newMessages: [
+          { senderId: "lingdang", side: "left", type: "text", text: "真的吗，工牌都办好了？" },
+          { senderId: "jiaojiao", side: "right", type: "text", text: "座位就在老板门口" }
+        ]
+      }) } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    const result = await generateDeepSeekStorySegmentWithConfig({
+      project: { ...jojoProject, messages: [] },
+      prompt: "公司来了个关系户。",
+      promptCards: [],
+      config: { apiKey: "test-key", baseUrl: "https://example.test", model: "doubao-test" }
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.messages).toHaveLength(2);
   });
 
   it("defensively constrains an old backend multi-session response when the capability is off", async () => {
