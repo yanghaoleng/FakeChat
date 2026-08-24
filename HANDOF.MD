@@ -304,4 +304,7 @@
 - 原 6 张角色 PNG 已转换为 `512×512` 有透明通道的压缩 WebP，单张约 `22–28KB`；微信气泡 WebP 约 `14KB`。旧 PNG 已从项目素材目录移除，原始生成图仍可从 Codex 生成目录恢复。
 - `brandIconUrlForStoryPackage` 按版本分流：`viral` 固定绿色气泡，`jojo` 才进入随机池；Safari favicon 单次刷新参数保留。
 - 390×844 浏览器连续刷新验收：微信版始终使用固定气泡；钉钉正式版与 Beta 均正常轮换角色；三版页面头像、favicon 和 Apple Touch Icon 路径一致，页面无横向溢出。
-- 验证通过：`npm test`（26 个文件、170 项）、`npm run build:ququ`、`npm run build:beta`；三份构建中均不再包含品牌 PNG。仅完成本地实现与构建，尚未重新发布公网。
+- 验证通过：`npm test`（26 个文件、170 项）、`npm run build:ququ`、`npm run build:beta`；三份构建中均不再包含品牌 PNG。
+- 正式部署 `dpl_8hYoBuFQipZAzfqQShoirP9ion9M` 已覆盖微信版 `https://ququ.mikeywa.icu/` 与钉钉版 `https://ququ.mikeywa.icu/ding/`；独立 Beta 部署 `dpl_EhXAekU5TVBSRUVkzcbaKac519wT` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`。
+- 公网 390×844 多次刷新确认三版页面与 favicon 行为正确、无横向溢出；两套 `/api/health` 均返回 HTTP 200，微信气泡素材返回 `image/webp`、14,570 字节。
+- 发布前后均同步并核对 `origin/codex/production-sync`；本次实现基于最新 `6e4995d`，未覆盖同期顶部菜单变更。Beta 发布后已恢复本地正式 Vercel 项目绑定与正式构建配置。
