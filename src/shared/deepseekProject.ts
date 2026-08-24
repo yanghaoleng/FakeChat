@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair";
 import { sampleProject } from "./sampleProject.js";
 import { isGenericImageCopy } from "./imageNarrative.js";
 import { localMemeAssets, normalizeMemeMessage } from "./memeLibrary.js";
@@ -35,7 +36,20 @@ export function extractJson(text: string): unknown {
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) throw new Error("No JSON object found in model response");
-  return JSON.parse(raw.slice(start, end + 1));
+  const candidate = raw.slice(start, end + 1);
+  try {
+    return JSON.parse(candidate);
+  } catch (error) {
+    try {
+      const repaired = jsonrepair(candidate);
+      console.warn("[ai-json] repaired malformed model JSON", {
+        reason: error instanceof Error ? error.message : "invalid JSON"
+      });
+      return JSON.parse(repaired);
+    } catch {
+      throw error;
+    }
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

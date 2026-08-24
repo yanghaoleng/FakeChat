@@ -117,9 +117,9 @@ DOUBAO_MODEL=doubao-seed-2-0-mini-260215
 
 `npm run build:beta` 生成以 `/beta/` 为基路径的钉钉版产物。独立 Vercel 工程 `ququ-fakechat-beta` 只在服务端保存三家预置模型密钥，不会把密钥写进浏览器产物，也不会覆盖正式站。
 
-Beta 版把原设置入口改成 macOS 风格顶部菜单栏：文件、显示、角色、语言、实验室和帮助中的常用选项可直接展开选择，当前项显示勾选；模型选择位于“实验室”，右侧常驻显示当前模型。生成与导出的百分比使用上下滚动数字动效。正式版继续保留原设置弹窗。
+Beta 版把原设置入口改成 macOS 风格顶部菜单栏：文件、显示、角色、模型和帮助中的常用选项可直接展开选择，当前项显示勾选；语言选择并入“显示”，“模型”内直接选择三家预置模型，并提供 Fish 朗读和单一“自定义 Fish Audio API”输入/测试，不再打开实验室弹窗。生成与导出的百分比使用 Calligraph 逐位上下滚动。正式版继续保留原设置弹窗。
 
-模型不可用时会保留现有项目并显示明确错误，不会用固定套路伪造一次成功续写。Edge TTS 在浏览器端连接微软语音服务，网络策略拦截 WebSocket 时会在界面和控制台中报错。
+模型不可用时会保留现有项目并显示明确错误，不会用固定套路伪造一次成功续写。模型返回轻微损坏或截断的 JSON 时会先修复再归一化；Beta 错误 Toast 在用户没有操作时持续显示，鼠标移动或点击停止两秒后消失。Edge TTS 在浏览器端连接微软语音服务，网络策略拦截 WebSocket 时会在界面和控制台中报错。
 
 ## 多会话与数据格式
 
@@ -192,7 +192,7 @@ e2e/                                    Playwright 关键流程
 
 - `GET /api/health`：健康检查。
 - `GET/POST /api/settings/deepseek`：读取或更新本地 DeepSeek 配置；读取接口不返回明文密钥。
-- `POST /api/story/continue`：按请求中的 `modelProviderId`（`zhipu` 或 `doubao`，默认 `zhipu`）生成下一段增量剧情。
+- `POST /api/story/continue`：按请求中的 `modelProviderId`（`zhipu`、`doubao` 或 `v4flash`，默认 `doubao`）生成下一段增量剧情。
 - `GET /api/project/sample`：示例项目。
 - `POST /api/script/generate`：从 Brief 生成剧情项目。
 - `GET /api/memes/search`：搜索表情素材。

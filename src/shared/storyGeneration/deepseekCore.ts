@@ -40,6 +40,16 @@ import { normalizeGeneratedStoryOutput } from "./response.js";
 
 export const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash";
 const deepSeekRequestTimeoutMs = 55000;
+const storyGenerationBudgetMs = 54000;
+const minimumRepairBudgetMs = 8000;
+
+class GeneratedStoryFormatError extends Error {
+  constructor(providerLabel: string, cause: unknown) {
+    super(`${providerLabel} 返回的数据格式异常，请重试`);
+    this.name = "GeneratedStoryFormatError";
+    this.cause = cause;
+  }
+}
 
 const storyBeats = [
   "3句内进入冲突",
@@ -709,6 +719,12 @@ export async function generateDeepSeekStorySegmentWithConfig({
     styleNotes: project.messages.length ? "线性续写当前卡片，不要重复旧对话。" : "第一段一次性生成到位，冲突强，反转密。"
   };
   const url = `${normalizedConfig.baseUrl}/chat/completions`;
+  const generationDeadline = Date.now() + storyGenerationBudgetMs;
+
+  function remainingRequestTimeoutMs() {
+    return Math.max(1000, Math.min(deepSeekRequestTimeoutMs, generationDeadline - Date.now()));
+  }
+
   async function fetchGeneratedProject(repairAttempt: number) {
     const requestId = makeId("fresh");
     console.info(`[${logLabel}] request`, {
@@ -742,8 +758,8 @@ export async function generateDeepSeekStorySegmentWithConfig({
           repairAttempt
         })),
         signal: signal
-          ? AbortSignal.any([signal, AbortSignal.timeout(deepSeekRequestTimeoutMs)])
-          : AbortSignal.timeout(deepSeekRequestTimeoutMs)
+          ? AbortSignal.any([signal, AbortSignal.timeout(remainingRequestTimeoutMs())])
+          : AbortSignal.timeout(remainingRequestTimeoutMs())
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === "TimeoutError") {
@@ -762,14 +778,23 @@ export async function generateDeepSeekStorySegmentWithConfig({
     const json = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = json.choices?.[0]?.message?.content;
     if (!content) throw new Error(`${providerLabel} 响应没有 content`);
-    const extracted = extractJson(content);
-    const normalized = normalizeGeneratedStoryOutput({
-      value: extracted,
-      project,
-      request,
-      allowMultiSession,
-      activeSessionId
-    });
+    let normalized;
+    try {
+      const extracted = extractJson(content);
+      normalized = normalizeGeneratedStoryOutput({
+        value: extracted,
+        project,
+        request,
+        allowMultiSession,
+        activeSessionId
+      });
+    } catch (error) {
+      console.warn(`[${logLabel}] unusable model response`, {
+        repairAttempt,
+        reason: error instanceof Error ? error.message : "invalid response"
+      });
+      throw new GeneratedStoryFormatError(providerLabel, error);
+    }
     console.info(`[${logLabel}] normalized response`, {
       format: normalized.format,
       newMessages: normalized.project.messages.length,
@@ -778,11 +803,27 @@ export async function generateDeepSeekStorySegmentWithConfig({
     return normalized;
   }
 
-  let generated = await fetchGeneratedProject(0);
-  for (let repairAttempt = 1; repairAttempt <= 2 && isLowQualitySegment(generated.project.messages); repairAttempt += 1) {
-    console.warn(`[${logLabel}] low-quality opening; retrying with repair prompt`, { repairAttempt });
-    generated = await fetchGeneratedProject(repairAttempt);
+  let generated: Awaited<ReturnType<typeof fetchGeneratedProject>> | undefined;
+  let lastFormatError: GeneratedStoryFormatError | undefined;
+  for (let repairAttempt = 0; repairAttempt <= 2; repairAttempt += 1) {
+    if (repairAttempt > 0 && generationDeadline - Date.now() < minimumRepairBudgetMs) break;
+    try {
+      generated = await fetchGeneratedProject(repairAttempt);
+      lastFormatError = undefined;
+    } catch (error) {
+      if (!(error instanceof GeneratedStoryFormatError)) throw error;
+      lastFormatError = error;
+      if (repairAttempt < 2) {
+        console.warn(`[${logLabel}] malformed response; retrying with repair prompt`, { repairAttempt: repairAttempt + 1 });
+      }
+      continue;
+    }
+    if (!isLowQualitySegment(generated.project.messages)) break;
+    if (repairAttempt < 2) {
+      console.warn(`[${logLabel}] low-quality opening; retrying with repair prompt`, { repairAttempt: repairAttempt + 1 });
+    }
   }
+  if (!generated) throw lastFormatError ?? new Error(`${providerLabel} 生成失败，请重试`);
   const identityCharacters = standaloneGroupIntent
     ? mergeGeneratedGroupCharacters(project, generated.project, premise)
     : resolveFirstViralPeerCharacters(project, generated.project, premise);

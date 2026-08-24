@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PromptCard } from "../src/shared/linearStory";
 import { sampleProject } from "../src/shared/sampleProject";
+import { extractJson } from "../src/shared/deepseekProject";
 import type { ChatMessage, DramaProject, ScriptGenerateRequest } from "../src/shared/schema";
 import {
   buildBoundedStoryContext,
@@ -130,6 +131,17 @@ describe("bounded DeepSeek story context", () => {
 });
 
 describe("DeepSeek generated response compatibility", () => {
+  it("repairs a missing comma in otherwise usable model JSON", () => {
+    const parsed = extractJson(`{
+      "newMessages": [
+        { "text": "第一句" }
+        { "text": "第二句" }
+      ]
+    }`) as { newMessages: Array<{ text: string }> };
+
+    expect(parsed.newMessages.map((message) => message.text)).toEqual(["第一句", "第二句"]);
+  });
+
   it("normalizes the historical full-project JSON contract", () => {
     const normalized = normalizeGeneratedStoryOutput({
       value: {

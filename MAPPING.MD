@@ -10,9 +10,10 @@
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
 | 线上 Beta | 独立 Vercel 工程 | `npm run build:beta`、`VITE_BASE_PATH=/beta/` | `ququ-fakechat-beta.vercel.app/beta/` |
-| Beta 顶部菜单 / Mac 菜单栏 | Beta 顶栏 | `BetaMenuBar`、`betaMenuEnabled` | `.beta-macos-menubar`、`.beta-menu-popover` |
+| Beta 顶部菜单 / Mac 菜单栏 | Beta 顶栏 | `BetaMenuBar`、`betaMenuEnabled` | `.beta-macos-menubar`、`.beta-menu-popover`；显示菜单含语言，模型菜单不打开弹窗 |
 | 当前模型标签 | Beta 顶栏右侧 | `currentModel`、`aiProviderId` | `.beta-menu-current-model` |
-| 百分比滚动数字 / 加载数字 | 生成进度、导出进度 | `RollingPercent` | `.rolling-percent`、`.rolling-percent-digit` |
+| 自定义 Fish Audio API | Beta 模型菜单 | `fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；仅一个密钥输入框和测试按钮 |
+| 百分比滚动数字 / 加载数字 | 生成进度、导出进度 | `RollingPercent`、Calligraph `variant="number"` | `.rolling-percent`、`.rolling-percent-digits` |
 | JOJO 内网预览 | 部署/预览 | `npm run preview:lan` | `HOST=0.0.0.0 API_PORT=4173 DIST_DIR=dist/jojo` |
 | 存档按钮 | 顶栏 | `exportJson` | `.ghost-top-actions` |
 | 读档按钮 | 顶栏 | `importInputRef`、`importJson` | `.ghost-top-actions` |
@@ -23,7 +24,7 @@
 | 豆包 / 默认模型 / Seed mini | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY` |
 | DeepSeek V4 Flash / V4 | AI 模型 | `modelProviderId: "v4flash"`、`deepseek-v4-flash` | `DEEPSEEK_API_KEY`，兼容 `COMPANY_DEEPSEEK_API_KEY` |
 | 自定义模型输入框 | 实验室 AI 模型 | `customModelPanelOpen`、`CustomModelSettings` | 仅当模型选择值为 `custom` 时渲染 `.settings-model-panel` 内输入项 |
-| token 服务 Toast | 全局状态反馈 | `toastMessage`、`showToast(tokenServiceWifiToast)` | `.app-toast` |
+| Toast / AI 连接失败提示 | Beta 状态反馈 | `toastMessage`、`showToast` | `.app-toast`；Beta 静置常驻，鼠标移动或点击后延迟 2 秒消失 |
 | 左侧面板 | 主工作区 | `ScrollShadow` | `.left-panel.panel-scroll` |
 | 桌面编故事垂直位置 | 主工作区 | CSS 变量 | `--desktop-story-panel-top-offset: 190px` |
 | 桌面视频窗口垂直位置 | 视频预览 | CSS 变量 | `.right-panel:has(.video-preview-stack)` 使用 `--desktop-preview-window-top-offset` |

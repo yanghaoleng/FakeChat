@@ -23,7 +23,7 @@ import { RollingPercent } from "./components/RollingPercent";
 import { ActionButton, SurfaceCard, SurfaceCardContent, SurfaceCardHeader } from "./components/UiPrimitives";
 import { WechatStoryPreview } from "./features/chat-preview/WechatStoryPreview";
 import { AboutDialog } from "./features/settings/AboutDialog";
-import { BetaMenuBar } from "./features/settings/BetaMenuBar";
+import { BetaMenuBar, betaModelMenuOpenEvent, type FishApiTestState } from "./features/settings/BetaMenuBar";
 import { LabDialog } from "./features/settings/LabDialog";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
 import { SiteAboutDialog } from "./features/settings/SiteAboutDialog";
@@ -798,6 +798,8 @@ export default function App({ storyPackage }: AppProps) {
   const [customModelTestMessage, setCustomModelTestMessage] = useState("");
   const [fishAutoReadEnabled, setFishAutoReadEnabled] = useState(readInitialFishAutoReadEnabled);
   const [fishApiKey, setFishApiKey] = useState(readInitialFishApiKey);
+  const [fishApiTestState, setFishApiTestState] = useState<FishApiTestState>("idle");
+  const [fishApiTestMessage, setFishApiTestMessage] = useState("");
   const fishAutoReadEnabledRef = useRef(fishAutoReadEnabled);
   const fishApiKeyRef = useRef(fishApiKey);
   const [pendingSpeechMessageId, setPendingSpeechMessageId] = useState<string | null>(null);
@@ -1198,6 +1200,39 @@ export default function App({ storyPackage }: AppProps) {
   function changeFishApiKey(nextApiKey: string) {
     setFishApiKey(nextApiKey);
     fishApiKeyRef.current = nextApiKey;
+    setFishApiTestState("idle");
+    setFishApiTestMessage("");
+  }
+
+  async function testFishApiKey() {
+    const apiKey = fishApiKeyRef.current.trim();
+    if (!apiKey) {
+      setFishApiTestState("error");
+      setFishApiTestMessage("请先粘贴 API Key");
+      return;
+    }
+    const character = projectRef.current.characters.find((item) => item.id !== "xitong") ?? projectRef.current.characters[0];
+    setFishApiTestState("testing");
+    setFishApiTestMessage("正在连接 Fish Audio...");
+    try {
+      const audio = await synthesizeFishAudio(
+        "蛐蛐模拟器语音测试",
+        apiKey,
+        fishVoiceHintFor(character),
+        AbortSignal.timeout(28000)
+      );
+      if (!audio.size) throw new Error("Fish Audio 没有返回音频");
+      setFishApiTestState("success");
+      setFishApiTestMessage("连接成功，本次打开期间可用");
+      setStatus("done");
+      setStatusText("Fish Audio API 测试成功");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Fish Audio 连接失败";
+      setFishApiTestState("error");
+      setFishApiTestMessage(message);
+      setStatus("error");
+      setStatusText(message);
+    }
   }
 
   function handleLeftPanelScroll() {
@@ -1363,6 +1398,27 @@ export default function App({ storyPackage }: AppProps) {
   useEffect(() => {
     fishApiKeyRef.current = fishApiKey;
   }, [fishApiKey]);
+
+  useEffect(() => {
+    if (!betaMenuEnabled || !toastMessage) return;
+    const scheduleDismiss = () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => {
+        setToastMessage(null);
+        toastTimerRef.current = undefined;
+      }, 2000);
+    };
+    window.addEventListener("pointermove", scheduleDismiss, { passive: true });
+    window.addEventListener("pointerdown", scheduleDismiss, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", scheduleDismiss);
+      window.removeEventListener("pointerdown", scheduleDismiss);
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = undefined;
+      }
+    };
+  }, [toastMessage]);
 
   useEffect(() => {
     const unlock = () => {
@@ -1690,11 +1746,14 @@ export default function App({ storyPackage }: AppProps) {
 
   function showToast(message: string) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = undefined;
     setToastMessage(message);
-    toastTimerRef.current = window.setTimeout(() => {
-      setToastMessage(null);
-      toastTimerRef.current = undefined;
-    }, 4200);
+    if (!betaMenuEnabled) {
+      toastTimerRef.current = window.setTimeout(() => {
+        setToastMessage(null);
+        toastTimerRef.current = undefined;
+      }, 4200);
+    }
   }
 
   async function copyText(value: string, successMessage: string, errorLabel: string) {
@@ -2337,7 +2396,7 @@ export default function App({ storyPackage }: AppProps) {
     signal: AbortSignal;
   }) {
     let backendError: unknown;
-    const customModel = customModelToCompletionConfig(activeCustomModelSettings);
+    const customModel = betaMenuEnabled ? undefined : customModelToCompletionConfig(activeCustomModelSettings);
     const managedProvider = aiProviderForId(aiProviderId);
     setStatusText(customModel ? `正在请求 ${customModel.label || "自定义模型"} 续写...` : `正在请求 ${managedProvider.shortLabel} 续写...`);
     try {
@@ -3353,7 +3412,7 @@ export default function App({ storyPackage }: AppProps) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) {
-          if (betaMenuEnabled) openLabDialog();
+          if (betaMenuEnabled) window.dispatchEvent(new Event(betaModelMenuOpenEvent));
           else toggleSettingsMenu();
         }
         return;
@@ -3472,8 +3531,10 @@ export default function App({ storyPackage }: AppProps) {
           ambientSkins={ambientSkins}
           ambientSkin={ambientSkin}
           aiProviderId={aiProviderId}
-          customModelPanelOpen={customModelPanelOpen}
           fishAutoReadEnabled={fishAutoReadEnabled}
+          fishApiKey={fishApiKey}
+          fishApiTestState={fishApiTestState}
+          fishApiTestMessage={fishApiTestMessage}
           switchLink={switchLink}
           onChoosePreviewMode={choosePreviewMode}
           onSelectAmbientSkin={selectAmbientSkin}
@@ -3481,7 +3542,8 @@ export default function App({ storyPackage }: AppProps) {
           onChangeLanguage={changeLanguagePreference}
           onSelectAiModel={selectAiModel}
           onToggleFishAutoRead={toggleFishAutoRead}
-          onOpenAdvancedLab={openLabDialog}
+          onChangeFishApiKey={changeFishApiKey}
+          onTestFishApiKey={() => void testFishApiKey()}
           onOpenAbout={openAboutDialog}
           onOpenSiteAbout={openSiteAboutDialog}
           onExportArchive={() => void exportArchive()}
