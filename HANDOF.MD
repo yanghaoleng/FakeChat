@@ -285,3 +285,14 @@
 - Beta 部署 `dpl_3AaryzzVgJPiHomgoh2tKcovP9Bd` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`；正式部署 `dpl_B7UA4Hh68g5AAT4yJ6Q87aNDYQXV` 同时覆盖微信版 `https://ququ.mikeywa.icu/` 与钉钉版 `https://ququ.mikeywa.icu/ding/`。
 - 三个页面与两套 `/api/health` 均返回 HTTP 200；浏览器无控制台错误、无失败资源、无错误覆盖层，两份 Vercel 部署近 30 分钟错误日志为空。
 - 验证通过：`npm run typecheck`、`npm test -- --run`（26 个文件、169 项）、`npm run build:beta`、`npm run build:ququ`。
+
+## 2026-08-25 全版本统一顶部菜单
+
+- Beta 顶部菜单能力已启用到正式微信和正式钉钉：文件、显示、角色、模型、帮助、语言、预览、背景、模型与 Fish 设置均走同一套菜单；`⌘K` 统一打开模型菜单。
+- 正式微信原有“多会话（测试版）”开关迁移到顶部“显示”菜单，默认关闭、选中显示勾，生成中禁用；没有因移除旧设置弹窗而丢失入口。
+- 三个版本均彻底移除右上角当前模型文字及 `.beta-menu-current-model` 样式，模型选中态只在“模型”菜单内显示。
+- 正式 Production 已补齐豆包并更新 DeepSeek 服务端敏感配置，Fish 沿用正式工程既有敏感配置；密钥未进入源码、Git、日志或文档。
+- Beta 部署 `dpl_7L6a8Vth5yxExPMDiUbAVBEbNQpP` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`；正式部署 `dpl_2tWsshm1GkcLpvJ3A73RWTX8uDfs` 同时覆盖 `https://ququ.mikeywa.icu/` 与 `https://ququ.mikeywa.icu/ding/`。
+- 公网确认三版菜单均出现、右上角无模型文字、模型菜单可展开、微信多会话入口存在，390px 无横向溢出；页面、健康接口均为 HTTP 200，浏览器与 Vercel 错误日志为空。
+- 正式豆包最小真实续写返回 HTTP 200、10 条消息；正式 Fish Audio 返回 HTTP 200、`audio/mpeg`、16,717 字节。
+- 验证通过：本机 26 个文件、170 项测试；干净提交的 Vercel 正式构建 26 个文件、169 项测试，并完成 Beta 与正式组合构建。
