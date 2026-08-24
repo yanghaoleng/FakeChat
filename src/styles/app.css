@@ -232,12 +232,25 @@ button[disabled],
 }
 
 .beta-menu-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   flex: 0 0 auto;
   padding: 0 8px 0 4px;
   font-size: 13px;
   font-weight: 780;
   letter-spacing: -0.01em;
   white-space: nowrap;
+}
+
+.beta-menu-brand-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(2, 8, 18, 0.26);
 }
 
 .beta-menu-nav {
@@ -589,6 +602,10 @@ button[disabled],
 
 @media (max-width: 520px) {
   .beta-menu-brand {
+    padding: 0 2px 0 0;
+  }
+
+  .beta-menu-brand-text {
     display: none;
   }
 

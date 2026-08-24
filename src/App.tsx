@@ -3526,6 +3526,7 @@ export default function App({ storyPackage }: AppProps) {
       <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
       {betaMenuEnabled ? (
         <BetaMenuBar
+          brandIconSrc={brandIconSrc}
           copy={copy}
           language={language}
           languagePreference={languagePreference}

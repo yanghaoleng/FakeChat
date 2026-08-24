@@ -270,3 +270,9 @@
 - 线上运行日志确认豆包请求成功；Fish 朗读连续请求 `/api/fish-tts` 时均返回 500，原因是 Beta 未配置服务端 `FISH_AUDIO_API_KEY`，页面自定义 Key 为空，并非 Safari 自动播放限制。
 - Beta 顶部菜单及下拉项移除装饰图标，只保留传统菜单文字、选中勾与加载状态；随机品牌头像继续用于 favicon，不在 Beta 菜单栏展示。
 - Beta 部署 `dpl_8jnpnJJrwhTLacwf8fjdNaFvV1VK` 已就绪；公网 `/beta/`、`/api/health` 均为 200，桌面与 390×844 验收无控制台错误、无失败资源、无横向溢出。
+
+## 2026-08-25 Fish Key、模型精简与品牌图标修正
+
+- `FISH_AUDIO_API_KEY` 已作为 Vercel Production 敏感变量配置到独立 Beta 工程，明文不进入源码、Git、文档或长期记忆；需重新部署后生效。
+- 模型菜单移除智谱，豆包继续作为默认值并显示“豆包 Seed-2.0-mini（速度快）”；浏览器中残留的智谱选择会自动迁移到豆包，后端仅保留旧请求兼容。
+- Beta 网站标题左侧恢复随机品牌头像，功能菜单项继续保持纯文字；favicon 与标题头像共用同一选择，并加入单次刷新参数缓解 Safari favicon 缓存。

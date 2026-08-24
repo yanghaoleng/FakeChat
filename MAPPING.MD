@@ -4,7 +4,7 @@
 | --- | --- | --- | --- |
 | 顶栏 | 全局 | `header` | `.topbar` |
 | 产品名 | 顶栏 | `packageTitle(storyPackage)` | `.brand-block h1` |
-| 随机圆形品牌头像 / 网站小 logo | 正式顶栏、favicon | `randomBrandIconPaths`、`randomBrandIconUrl`、`applyBrandFavicon`，素材位于 `/brand-icons/` | `.brand-logo`；每次刷新选一次且页面头像与 favicon 同图，Beta 菜单不展示图标 |
+| 随机圆形品牌头像 / 网站小 logo | 正式顶栏、Beta 网站标题、favicon | `randomBrandIconPaths`、`randomBrandIconUrl`、`applyBrandFavicon`，素材位于 `/brand-icons/` | `.brand-logo`、`.beta-menu-brand-icon`；每次刷新选一次且页面头像与 favicon 同图，功能菜单不展示图标 |
 | 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
@@ -19,9 +19,9 @@
 | 读档按钮 | 顶栏 | `importInputRef`、`importJson` | `.ghost-top-actions` |
 | 错误状态提示 | 编故事 | `status === "error"`、`statusText` | `.deepseek-status-error` |
 | 免费模型拥堵提示 | 编故事 / 实验室 | 服务端原样返回模型错误、用户手动 `selectAiModel` | 不自动切换到可能计费的豆包 |
-| 模型 / 免费模型 | 实验室 | `aiProviderId`、`selectAiModel`、`aiProviders` | `.settings-model-select-trigger`、`.settings-model-select-menu` |
-| 智谱 / 免费模型 | AI 模型 | `modelProviderId: "zhipu"`、`glm-4.7-flash` | `ZHIPU_API_KEY`；旧称 GLM-4.5-Flash 已迁移为 4.7 |
-| 豆包 / 默认模型 / Seed mini | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY` |
+| 模型 / 可选模型 | 模型设置 | `aiProviderId`、`selectAiModel`、`selectableAiProviders` | `.settings-model-select-trigger`、`.settings-model-select-menu`；智谱不再展示 |
+| 智谱 / 旧兼容模型 | AI 后端 | `modelProviderId: "zhipu"`、`glm-4.7-flash` | `ZHIPU_API_KEY`；仅保留旧请求兼容，不在模型菜单出现 |
+| 豆包 / 默认模型 / Seed mini / 速度快 | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY`；显示“豆包 Seed-2.0-mini（速度快）” |
 | DeepSeek V4 Flash / V4 | AI 模型 | `modelProviderId: "v4flash"`、`deepseek-v4-flash` | `DEEPSEEK_API_KEY`，兼容 `COMPANY_DEEPSEEK_API_KEY` |
 | 自定义模型输入框 | 实验室 AI 模型 | `customModelPanelOpen`、`CustomModelSettings` | 仅当模型选择值为 `custom` 时渲染 `.settings-model-panel` 内输入项 |
 | Toast / AI 连接失败提示 | Beta 状态反馈 | `toastMessage`、`showToast` | `.app-toast`；Beta 静置常驻，鼠标移动或点击后延迟 2 秒消失 |

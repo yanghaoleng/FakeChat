@@ -1,6 +1,6 @@
 import { ArrowLeft, Bot, Check, ChevronDown, Globe2, KeyRound, MessageSquarePlus, PlugZap, Smartphone, Sparkles, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { aiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
+import { selectableAiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
 import { customModelProviders, type CustomModelSettings, type CustomModelTestState } from "../../shared/customModel";
 import type { AppLanguage } from "../../shared/i18n";
 import type { StoryPackage } from "../../shared/linearStory";
@@ -139,7 +139,7 @@ export function LabDialog({
 
   const selectedAiModel: AiModelChoiceId = customModelPanelOpen ? "custom" : aiProviderId;
   const modelChoices: Array<{ id: AiModelChoiceId; label: string }> = [
-    ...aiProviders.map((provider) => ({ id: provider.id, label: provider.label })),
+    ...selectableAiProviders.map((provider) => ({ id: provider.id, label: provider.label })),
     { id: "custom", label: text.customModel }
   ];
   const selectedModelLabel = modelChoices.find((choice) => choice.id === selectedAiModel)?.label ?? modelChoices[0].label;

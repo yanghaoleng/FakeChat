@@ -4,6 +4,7 @@ import {
   aiProviderForId,
   aiProviders,
   defaultAiProviderId,
+  selectableAiProviders,
   readAiProviderId
 } from "../src/shared/aiProviders";
 import { getManagedAiConfig } from "../server/aiProviders";
@@ -36,12 +37,13 @@ describe("managed AI providers", () => {
 
   it("keeps the requested providers and the original V4 Flash choice", () => {
     expect(aiProviders.map((provider) => provider.id)).toEqual(["zhipu", "doubao", "v4flash"]);
+    expect(selectableAiProviders.map((provider) => provider.id)).toEqual(["doubao", "v4flash"]);
     expect(aiProviderForId("doubao").model).toBe("doubao-seed-2-0-mini-260215");
     expect(aiProviderForId("v4flash").model).toBe("deepseek-v4-flash");
   });
 
   it("moves the old Zhipu default to Doubao while preserving an explicit legacy DeepSeek choice", () => {
-    const values = new Map<string, string>([["ququ-ai-provider-v1", "zhipu"]]);
+    const values = new Map<string, string>([[aiProviderStorageKey, "zhipu"]]);
     vi.stubGlobal("window", {
       localStorage: {
         getItem: (key: string) => values.get(key) ?? null,
@@ -50,6 +52,8 @@ describe("managed AI providers", () => {
     });
 
     expect(readAiProviderId()).toBe("doubao");
+    expect(values.get(aiProviderStorageKey)).toBe("doubao");
+    values.delete(aiProviderStorageKey);
     values.set("ququ-ai-provider-v1", "v4flash");
     expect(readAiProviderId()).toBe("v4flash");
     expect(values.get(aiProviderStorageKey)).toBe("v4flash");

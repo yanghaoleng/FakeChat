@@ -23,8 +23,8 @@ export const aiProviders: readonly AiProvider[] = [
   },
   {
     id: "doubao",
-    label: "豆包 Seed-2.0-mini",
-    shortLabel: "豆包 Seed-2.0-mini",
+    label: "豆包 Seed-2.0-mini（速度快）",
+    shortLabel: "豆包 Seed-2.0-mini（速度快）",
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
     model: "doubao-seed-2-0-mini-260215",
     costNote: "按量计费，适合低延迟、低成本生成"
@@ -38,6 +38,8 @@ export const aiProviders: readonly AiProvider[] = [
     costNote: "保留原有 DeepSeek V4 Flash 配置"
   }
 ] as const;
+
+export const selectableAiProviders = aiProviders.filter((provider) => provider.id !== "zhipu");
 
 export const defaultAiProviderId: AiProviderId = "doubao";
 export const aiProviderStorageKey = "ququ-ai-provider-v2";
@@ -55,6 +57,10 @@ export function aiProviderForId(providerId: string | null | undefined): AiProvid
 export function readAiProviderId(): AiProviderId {
   if (typeof window === "undefined") return defaultAiProviderId;
   const stored = window.localStorage.getItem(aiProviderStorageKey);
+  if (stored === "zhipu") {
+    window.localStorage.setItem(aiProviderStorageKey, defaultAiProviderId);
+    return defaultAiProviderId;
+  }
   if (isAiProviderId(stored)) return stored;
 
   const legacyStored = window.localStorage.getItem(legacyAiProviderStorageKey);

@@ -1,6 +1,6 @@
 import { Check, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { aiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
+import { selectableAiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
 import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type LanguagePreference } from "../../shared/i18n";
 import type { StoryPackage } from "../../shared/linearStory";
 import type { JojoPresetRole, PresetRoleSelection, ViralPresetRole } from "../../shared/presetStories";
@@ -18,6 +18,7 @@ type RoleChoice = {
 };
 
 type BetaMenuBarProps = {
+  brandIconSrc: string;
   copy: AppCopy;
   language: AppLanguage;
   languagePreference: LanguagePreference;
@@ -74,6 +75,7 @@ function MenuItem({ checked, disabled, label, shortcut, onClick }: MenuItemProps
 }
 
 export function BetaMenuBar({
+  brandIconSrc,
   copy,
   language,
   languagePreference,
@@ -226,7 +228,7 @@ export function BetaMenuBar({
       return (
         <>
           <div className="beta-menu-section-label">{text.aiModel}</div>
-          {aiProviders.map((provider) => (
+          {selectableAiProviders.map((provider) => (
             <MenuItem key={provider.id} checked={aiProviderId === provider.id} label={provider.label} onClick={() => choose(() => onSelectAiModel(provider.id))} />
           ))}
           <div className="beta-menu-separator" role="separator" />
@@ -282,7 +284,10 @@ export function BetaMenuBar({
 
   return (
     <header ref={rootRef} className="topbar beta-macos-menubar motion-in" aria-label="Beta app menu bar">
-      <div className="beta-menu-brand" aria-label={copy.brandName}>{copy.brandName}</div>
+      <div className="beta-menu-brand" aria-label={copy.brandName}>
+        <img className="beta-menu-brand-icon" src={brandIconSrc} alt="" aria-hidden="true" />
+        <span className="beta-menu-brand-text">{copy.brandName}</span>
+      </div>
       <nav className="beta-menu-nav" aria-label={copy.settings}>
         {menus.map((menu) => {
           const isOpen = openMenu === menu.id;
@@ -308,7 +313,7 @@ export function BetaMenuBar({
         })}
       </nav>
       <span className="beta-menu-current-model" title={text.aiModel}>
-        {aiProviders.find((provider) => provider.id === aiProviderId)?.label}
+        {selectableAiProviders.find((provider) => provider.id === aiProviderId)?.label}
       </span>
     </header>
   );
