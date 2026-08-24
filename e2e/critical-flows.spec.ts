@@ -15,6 +15,18 @@ async function expectHealthyAppShell(page: Page) {
   await expect(page.locator(errorOverlaySelector)).toHaveCount(0);
 }
 
+async function openAppMenu(page: Page, label: string) {
+  const mobileToggle = page.locator(".beta-menu-mobile-toggle");
+  if (await mobileToggle.isVisible() && await mobileToggle.getAttribute("aria-expanded") !== "true") {
+    await mobileToggle.click();
+  }
+  const trigger = page.getByRole("button", { name: label, exact: true });
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  const menu = page.getByRole("menu", { name: label, exact: true });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
 test.describe("关键用户流程", () => {
   let browserErrors: string[];
 
@@ -49,15 +61,8 @@ test.describe("关键用户流程", () => {
     await expect(page.getByRole("region", { name: "故事卡" })).toBeVisible();
     await expect(page.getByRole("button", { name: /定位到第 1 张故事卡/ })).toBeVisible();
 
-    await page.getByRole("button", { name: "打开设置" }).click();
-    const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    await settingsDialog.getByRole("button", { name: "实验室" }).click();
-    const labDialog = page.getByRole("dialog", { name: "实验室" });
-    await expect(labDialog.getByRole("combobox")).toHaveCount(3);
-    const previewSelect = labDialog.getByRole("combobox", { name: "预览模式" });
-    await previewSelect.selectOption("video");
-
-    await expect(previewSelect).toHaveValue("video");
+    const viewMenu = await openAppMenu(page, "显示");
+    await viewMenu.getByRole("menuitemradio", { name: "视频版" }).click();
     await expect(page.locator(".player-frame")).toBeVisible();
     await expect(page.locator('[aria-label="正在加载视频预览"]')).toHaveCount(0);
   });
@@ -65,80 +70,50 @@ test.describe("关键用户流程", () => {
   test("语言设置跟随浏览器并可切换英文界面", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "打开设置" }).click();
-    const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    const languageSelect = settingsDialog.getByRole("combobox", { name: "选择界面和对话语言" });
-    await expect(languageSelect).toHaveValue("auto");
-    await expect(languageSelect.locator("option").first()).toContainText("简体中文");
-
-    await languageSelect.selectOption("en");
+    const viewMenu = await openAppMenu(page, "显示");
+    await expect(viewMenu.getByRole("menuitemradio", { name: /跟随浏览器/ })).toHaveAttribute("aria-checked", "true");
+    await viewMenu.getByRole("menuitemradio", { name: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page).toHaveTitle(/AI Companion/);
-    await expect(page.getByRole("dialog", { name: "Settings" })).toContainText("About this site");
 
-    await page.getByRole("button", { name: "About this site" }).click();
+    const helpMenu = await openAppMenu(page, "Help");
+    await helpMenu.getByRole("menuitem", { name: "About this site" }).click();
     const aboutSiteDialog = page.getByRole("dialog", { name: "About this site" });
     await expect(aboutSiteDialog).toContainText("AI companionship");
     await expect(aboutSiteDialog).toContainText("Simulated chat creation");
   });
 
-  test("实验室模型默认豆包，保留 V4 Flash，并按需展开自定义输入", async ({ page }) => {
+  test("模型菜单默认豆包并保留 DeepSeek V4 Flash", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: "打开设置" }).click();
-    const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    await expect(settingsDialog.getByRole("combobox", { name: "选择续写使用的 AI 模型" })).toHaveCount(0);
-    await settingsDialog.getByRole("button", { name: "实验室" }).click();
-    const labDialog = page.getByRole("dialog", { name: "实验室" });
-    const modelSelect = labDialog.getByRole("combobox", { name: "选择续写使用的 AI 模型" });
-
-    await expect(modelSelect).toHaveText("豆包 Seed-2.0-mini");
-    await modelSelect.click();
-    const modelListbox = labDialog.getByRole("listbox", { name: "选择续写使用的 AI 模型" });
-    await expect(modelListbox.getByRole("option")).toHaveText([
-      "智谱 GLM-4.7-Flash",
-      "豆包 Seed-2.0-mini",
+    const modelMenu = await openAppMenu(page, "模型");
+    const modelChoices = modelMenu.getByRole("menuitemradio");
+    await expect(modelChoices).toHaveText([
+      "豆包 Seed-2.0-mini（速度快）",
       "DeepSeek V4 Flash",
-      "自定义模型"
+      "Fish 朗读"
     ]);
-    await modelSelect.click();
-    await expect(modelListbox).toHaveClass(/settings-model-select-menu-closing/);
-    await expect(modelListbox).toHaveCount(0);
-    await expect(labDialog.getByRole("textbox", { name: "自定义模型 Base URL" })).toHaveCount(0);
+    await expect(modelMenu.getByRole("menuitemradio", { name: "豆包 Seed-2.0-mini（速度快）" })).toHaveAttribute("aria-checked", "true");
+    await expect(modelMenu).not.toContainText("智谱");
+    await expect(modelMenu).not.toContainText("自定义模型");
 
-    await modelSelect.click();
-    await modelListbox.getByRole("option", { name: "自定义模型" }).click();
-    await expect(labDialog.getByRole("textbox", { name: "自定义模型 Base URL" })).toBeVisible();
-    await expect(labDialog.getByRole("textbox", { name: "自定义模型名" })).toBeVisible();
-    await expect(labDialog.getByLabel("自定义模型 API Key")).toBeVisible();
-
-    await modelSelect.click();
-    await labDialog.getByRole("option", { name: "豆包 Seed-2.0-mini" }).click();
-    await expect(modelSelect).toHaveText("豆包 Seed-2.0-mini");
-    await expect(labDialog.getByRole("textbox", { name: "自定义模型 Base URL" })).toHaveCount(0);
+    await modelMenu.getByRole("menuitemradio", { name: "DeepSeek V4 Flash" }).click();
+    const reopenedModelMenu = await openAppMenu(page, "模型");
+    await expect(reopenedModelMenu.getByRole("menuitemradio", { name: "DeepSeek V4 Flash" })).toHaveAttribute("aria-checked", "true");
     await page.reload();
-    await page.getByRole("button", { name: "打开设置" }).click();
-    await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: "实验室" }).click();
-    await expect(page.getByRole("dialog", { name: "实验室" }).getByRole("combobox", { name: "选择续写使用的 AI 模型" })).toHaveText("豆包 Seed-2.0-mini");
+    const persistedModelMenu = await openAppMenu(page, "模型");
+    await expect(persistedModelMenu.getByRole("menuitemradio", { name: "DeepSeek V4 Flash" })).toHaveAttribute("aria-checked", "true");
   });
 
-  test("支持作者页面与设置菜单按 Escape 逐级返回", async ({ page }) => {
+  test("支持作者页面可从帮助菜单打开并按 Escape 关闭", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await expectHealthyAppShell(page);
 
-    await page.getByRole("button", { name: "打开设置" }).click();
-    const settingsSection = page.locator("#settings-dialog");
-    const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    await expect(settingsDialog).toBeVisible();
-    await settingsDialog.locator("[data-settings-about]").click();
+    const helpMenu = await openAppMenu(page, "帮助");
+    await helpMenu.getByRole("menuitem", { name: "支持作者" }).click();
 
     const supportDialog = page.getByRole("dialog", { name: "支持作者" });
-    await expect(settingsSection).toBeVisible();
-    await expect(settingsSection).toHaveAttribute("aria-hidden", "true");
-    await expect(settingsSection).toHaveAttribute("inert", "");
-    await expect(settingsSection).not.toHaveAttribute("aria-modal", "true");
-    await expect(settingsDialog).toHaveCount(0);
     await expect(supportDialog).toBeVisible();
     await expect(supportDialog.getByRole("button", { name: "返回设置", exact: true })).toBeVisible();
     await expect(supportDialog.getByRole("link", { name: "开源链接" })).toBeVisible();
@@ -160,15 +135,6 @@ test.describe("关键用户流程", () => {
 
     await page.keyboard.press("Escape");
     await expect(supportDialog).toHaveCount(0);
-    await expect(settingsDialog).toBeVisible();
-    await expect(settingsSection).not.toHaveAttribute("aria-hidden", "true");
-    await expect(settingsSection).not.toHaveAttribute("inert", "");
-    await expect(settingsSection).toHaveAttribute("aria-modal", "true");
-    await expect(settingsDialog.getByRole("button", { name: /^支持作者/ })).toBeFocused();
-
-    await page.keyboard.press("Escape");
-    await expect(settingsDialog).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "打开设置" })).toBeFocused();
   });
 
   test("存档封面导出为 800px 宽", async ({ page }) => {
@@ -176,9 +142,9 @@ test.describe("关键用户流程", () => {
     await page.waitForLoadState("networkidle");
     await expectHealthyAppShell(page);
 
-    await page.getByRole("button", { name: "打开设置" }).click();
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: /存档/ }).click();
+    const fileMenu = await openAppMenu(page, "文件");
+    await fileMenu.getByRole("menuitem", { name: "保存存档" }).click();
     const download = await downloadPromise;
     const path = await download.path();
     expect(path).not.toBeNull();
@@ -199,13 +165,52 @@ test.describe("关键用户流程", () => {
     }));
 
     await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
+    const brandIcon = page.locator(".beta-menu-brand-icon");
+    const mobileMenuButton = page.getByRole("button", { name: "打开菜单" });
+    await expect(brandIcon).toBeVisible();
+    await expect(brandIcon).toHaveAttribute("src", /\.webp$/);
+    await expect(page.getByRole("heading", { name: "蛐蛐模拟器" })).toBeVisible();
+    await expect(mobileMenuButton).toBeVisible();
+    await expect(page.locator(".beta-menu-trigger").first()).not.toBeVisible();
+
+    await mobileMenuButton.click();
+    const mobileNav = page.locator("#ququ-mobile-menu");
+    await expect(mobileNav).toBeVisible();
+    const topLevelPositions = await mobileNav.locator(":scope > .beta-menu-root > .beta-menu-trigger").evaluateAll((triggers) => triggers.map((trigger) => {
+      const rect = trigger.getBoundingClientRect();
+      return { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) };
+    }));
+    expect(topLevelPositions).toHaveLength(5);
+    expect(new Set(topLevelPositions.map((position) => position.left)).size).toBe(1);
+    expect(new Set(topLevelPositions.map((position) => position.width)).size).toBe(1);
+    expect(topLevelPositions.every((position) => position.height >= 44)).toBe(true);
+    expect(topLevelPositions.every((position, index) => index === 0 || position.top > topLevelPositions[index - 1]!.top)).toBe(true);
+
+    const modelMenu = await openAppMenu(page, "模型");
+    await expect(modelMenu.getByRole("menuitemradio", { name: /豆包 Seed-2\.0-mini/ })).toBeVisible();
+    const iconAndFavicon = await page.evaluate(() => ({
+      icon: new URL(document.querySelector<HTMLImageElement>(".beta-menu-brand-icon")!.src).pathname,
+      favicon: new URL(document.querySelector<HTMLLinkElement>('link[rel~="icon"]')!.href).pathname
+    }));
+    expect(iconAndFavicon.favicon).toBe(iconAndFavicon.icon);
+    await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
+
+    await page.getByRole("button", { name: "显示", exact: true }).click();
+    const viewMenu = page.getByRole("menu", { name: "显示", exact: true });
+    const japaneseLanguage = viewMenu.getByRole("menuitemradio", { name: "日本語" });
+    await page.setViewportSize({ width: 390, height: 520 });
+    await expect.poll(() => mobileNav.evaluate((nav) => nav.scrollHeight > nav.clientHeight)).toBe(true);
+    await japaneseLanguage.scrollIntoViewIfNeeded();
+    await expect(japaneseLanguage).toBeVisible();
+    await expect.poll(() => mobileNav.evaluate((nav) => nav.scrollTop > 0)).toBe(true);
+    await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
+
+    await page.getByRole("button", { name: "关闭菜单" }).click();
+    await expect(mobileNav).not.toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("button", { name: "开始编", exact: true }).click();
     await expect.poll(() => page.locator("[data-message-id]").count()).toBeGreaterThan(0);
     await expect(page.getByRole("button", { name: "展开编故事" })).toBeVisible();
-    await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
-    await page.getByRole("button", { name: "打开设置" }).click();
-    await page.getByRole("dialog", { name: "设置" }).getByRole("button", { name: "实验室" }).click();
-    await expect(page.getByRole("dialog", { name: "实验室" }).getByRole("combobox", { name: "选择续写使用的 AI 模型" })).toBeVisible();
     await expect.poll(horizontalOverflow).toEqual({ document: 0, body: 0 });
   });
 
@@ -307,23 +312,16 @@ test.describe("关键用户流程", () => {
     await expectHealthyAppShell(page);
     await expect(page.getByRole("navigation", { name: "切换会话" })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "打开设置" }).click();
-    const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    const labDialog = page.getByRole("dialog", { name: "实验室" });
-    const openLabDialog = async () => {
-      await settingsDialog.getByRole("button", { name: "实验室" }).click();
-      await expect(labDialog).toBeVisible();
+    const expectMultiSessionState = async (checked: boolean) => {
+      const viewMenu = await openAppMenu(page, "显示");
+      await expect(viewMenu.getByRole("menuitemradio", { name: "多会话（测试版）" })).toHaveAttribute("aria-checked", String(checked));
+      await page.keyboard.press("Escape");
     };
-    const closeLabAndSettings = async () => {
-      await labDialog.getByRole("button", { name: "返回设置" }).click();
-      await expect(settingsDialog).toBeVisible();
-      await settingsDialog.getByRole("button", { name: "关闭设置" }).click();
-      await expect(settingsDialog).toHaveCount(0);
+    const toggleMultiSession = async () => {
+      const viewMenu = await openAppMenu(page, "显示");
+      await viewMenu.getByRole("menuitemradio", { name: "多会话（测试版）" }).click();
     };
-    await openLabDialog();
-    const multiSessionSwitch = labDialog.getByRole("switch", { name: "多会话" });
-    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "false");
-    await closeLabAndSettings();
+    await expectMultiSessionState(false);
 
     await page.locator('input[type="file"]').setInputFiles({
       name: "legacy-mixed-sessions.json",
@@ -334,11 +332,8 @@ test.describe("关键用户流程", () => {
     const sessionRail = page.getByRole("navigation", { name: "切换会话" });
     await expect(sessionRail).toHaveCount(0);
 
-    await page.getByRole("button", { name: "打开设置" }).click();
-    await openLabDialog();
-    await multiSessionSwitch.click();
-    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "true");
-    await closeLabAndSettings();
+    await toggleMultiSession();
+    await expectMultiSessionState(true);
 
     await expect(sessionRail).toBeVisible();
     await expect(sessionRail.getByRole("button", { name: /切换到林夏/ })).toBeVisible();
@@ -349,18 +344,12 @@ test.describe("关键用户流程", () => {
     await expect(page.locator(".wechat-topbar-group-avatar.wechat-group-avatar")).toBeVisible();
     await expect(page.locator(".wechat-speaker-name")).toContainText(["周律师", "王总"]);
 
-    await page.getByRole("button", { name: "打开设置" }).click();
-    await openLabDialog();
-    await multiSessionSwitch.click();
-    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "false");
-    await closeLabAndSettings();
+    await toggleMultiSession();
+    await expectMultiSessionState(false);
     await expect(sessionRail).toHaveCount(0);
 
-    await page.getByRole("button", { name: "打开设置" }).click();
-    await openLabDialog();
-    await multiSessionSwitch.click();
-    await expect(multiSessionSwitch).toHaveAttribute("aria-checked", "true");
-    await closeLabAndSettings();
+    await toggleMultiSession();
+    await expectMultiSessionState(true);
     await expect(sessionRail.getByRole("button", { name: /切换到林夏/ })).toBeVisible();
     const restoredGroupButton = sessionRail.getByRole("button", { name: /切换到合同核对群/ });
     await expect(restoredGroupButton).toBeVisible();
@@ -384,9 +373,7 @@ test.describe("关键用户流程", () => {
     await expectHealthyAppShell(page);
     await expect(page).toHaveURL(/\/ding\/$/);
     await expect(page.locator('[aria-label="钉钉手机版聊天预览"]')).toBeVisible();
-    await page.getByRole("button", { name: "打开设置" }).click();
-    const settingsDialog = page.getByRole("dialog", { name: "设置" });
-    await expect(settingsDialog).toBeVisible();
-    await expect(settingsDialog.getByRole("switch", { name: "多会话（测试版）" })).toHaveCount(0);
+    const viewMenu = await openAppMenu(page, "显示");
+    await expect(viewMenu.getByRole("menuitemradio", { name: "多会话（测试版）" })).toHaveCount(0);
   });
 });

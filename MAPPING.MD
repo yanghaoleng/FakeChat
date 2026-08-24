@@ -3,14 +3,15 @@
 | 俗称 | 所属区域 | 代码变量/组件 | 样式类 |
 | --- | --- | --- | --- |
 | 顶栏 | 全局 | `header` | `.topbar` |
-| 产品名 | 顶栏 | `packageTitle(storyPackage)` | `.brand-block h1` |
+| 产品名 / 网站标题 | 顶栏 | `copy.brandName` | `.beta-menu-brand-text`；使用 `h1`，移动端不隐藏 |
 | 品牌头像 / 网站小 logo | 正式顶栏、Beta 网站标题、favicon | `viralBrandIconPath`、`randomBrandIconPaths`、`brandIconUrlForStoryPackage`、`applyBrandFavicon`，WebP 素材位于 `/brand-icons/` | 微信版固定绿色白气泡；钉钉正式版与 Beta 每次刷新随机选一个 JOJO 头像；页面头像与 favicon 同图 |
 | 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
 | 线上 Beta | 独立 Vercel 工程 | `npm run build:beta`、`VITE_BASE_PATH=/beta/` | `ququ-fakechat-beta.vercel.app/beta/` |
-| 顶部菜单 / Mac 菜单栏 | Beta、正式微信、正式钉钉顶栏 | `BetaMenuBar`、`appMenuEnabled` | `.beta-macos-menubar` 为无描边、无底色、无圆角和无投影的透明横栏；`.beta-menu-popover` 保留菜单承载面；显示菜单含语言，模型菜单不打开弹窗 |
+| 顶部菜单 / Mac 菜单栏 | Beta、正式微信、正式钉钉顶栏 | `BetaMenuBar`、`appMenuEnabled` | `.beta-macos-menubar` 为透明横栏；`.beta-menu-popover` 保留菜单承载面；显示菜单含语言，模型菜单不打开弹窗 |
+| 手机右上角菜单 / 汉堡菜单 | `760px` 及以下顶栏 | `mobileMenuOpen`、`openMenu`、`closingMenu` | `.beta-menu-mobile-toggle`、`.beta-menu-nav[data-mobile-open="true"]`；一级菜单纵向排列，子菜单原位展开，面板可内部滚动 |
 | 当前模型标签 | 全版本顶栏右侧 | 已移除；模型选中态仅保留在“模型”菜单内 | 不再渲染 `.beta-menu-current-model` |
 | 多会话开关 | 正式微信版顶部“显示”菜单 | `allowMultiSession`、`toggleMultiSessionMode` | `.beta-menu-item`；选中显示勾，生成中禁用 |
 | 自定义 Fish Audio API | Beta 模型菜单 | `fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；仅一个密钥输入框和测试按钮 |

@@ -1,4 +1,4 @@
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { selectableAiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
 import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type LanguagePreference } from "../../shared/i18n";
@@ -112,14 +112,17 @@ export function BetaMenuBar({
   onImportArchive
 }: BetaMenuBarProps) {
   const rootRef = useRef<HTMLElement>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
   const closeTimerRef = useRef<number | null>(null);
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [closingMenu, setClosingMenu] = useState<MenuId | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const text = {
-    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", background: "背景", aiModel: "AI 模型", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
-    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", background: "背景", aiModel: "AI 模型", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
-    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", background: "Background", aiModel: "AI model", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
-    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", background: "背景", aiModel: "AIモデル", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
+    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", background: "背景", aiModel: "AI 模型", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
+    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", background: "背景", aiModel: "AI 模型", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
+    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", background: "Background", aiModel: "AI model", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
+    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", background: "背景", aiModel: "AIモデル", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
   }[language];
 
   const roleChoices: RoleChoice[] = storyPackage === "jojo"
@@ -153,12 +156,17 @@ export function BetaMenuBar({
   }
 
   useEffect(() => {
-    if (!openMenu && !closingMenu) return;
+    if (!openMenu && !closingMenu && !mobileMenuOpen) return;
     const closeOnPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) closeCurrentMenu();
+      if (rootRef.current?.contains(event.target as Node)) return;
+      closeCurrentMenu();
+      setMobileMenuOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeCurrentMenu();
+      if (event.key !== "Escape") return;
+      closeCurrentMenu();
+      setMobileMenuOpen(false);
+      mobileToggleRef.current?.focus();
     };
     document.addEventListener("pointerdown", closeOnPointerDown, true);
     document.addEventListener("keydown", closeOnEscape, true);
@@ -166,12 +174,36 @@ export function BetaMenuBar({
       document.removeEventListener("pointerdown", closeOnPointerDown, true);
       document.removeEventListener("keydown", closeOnEscape, true);
     };
-  }, [closingMenu, openMenu]);
+  }, [closingMenu, mobileMenuOpen, openMenu]);
 
   useEffect(() => () => clearCloseTimer(), []);
 
   useEffect(() => {
-    const handleOpenModelMenu = () => openNextMenu("model");
+    const mobileViewport = window.matchMedia("(max-width: 760px)");
+    const resetMobileMenu = () => {
+      if (mobileViewport.matches) return;
+      clearCloseTimer();
+      setMobileMenuOpen(false);
+      setOpenMenu(null);
+      setClosingMenu(null);
+    };
+    mobileViewport.addEventListener("change", resetMobileMenu);
+    return () => mobileViewport.removeEventListener("change", resetMobileMenu);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const focusFrame = window.requestAnimationFrame(() => {
+      mobileNavRef.current?.querySelector<HTMLButtonElement>(".beta-menu-trigger")?.focus();
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleOpenModelMenu = () => {
+      if (window.matchMedia("(max-width: 760px)").matches) setMobileMenuOpen(true);
+      openNextMenu("model");
+    };
     window.addEventListener(betaModelMenuOpenEvent, handleOpenModelMenu);
     return () => window.removeEventListener(betaModelMenuOpenEvent, handleOpenModelMenu);
   }, []);
@@ -179,6 +211,7 @@ export function BetaMenuBar({
   function choose(action: () => void) {
     action();
     closeCurrentMenu();
+    if (window.matchMedia("(max-width: 760px)").matches) setMobileMenuOpen(false);
   }
 
   function renderMenu(id: MenuId) {
@@ -188,7 +221,16 @@ export function BetaMenuBar({
           <MenuItem label={text.save} shortcut="⌘S" onClick={() => choose(onExportArchive)} />
           <MenuItem label={text.load} shortcut="⌘I" onClick={() => choose(onImportArchive)} />
           <div className="beta-menu-separator" role="separator" />
-          <a className="beta-menu-link" href={switchLink.href} target="_blank" rel="noreferrer" onClick={closeCurrentMenu}>
+          <a
+            className="beta-menu-link"
+            href={switchLink.href}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              closeCurrentMenu();
+              setMobileMenuOpen(false);
+            }}
+          >
             <span className="beta-menu-check" />
             <span className="beta-menu-label">{switchLink.label}</span>
           </a>
@@ -293,27 +335,55 @@ export function BetaMenuBar({
 
   return (
     <header ref={rootRef} className="topbar beta-macos-menubar motion-in" aria-label={copy.settings}>
-      <div className="beta-menu-brand" aria-label={copy.brandName}>
+      <div className="beta-menu-brand">
         <img className="beta-menu-brand-icon" src={brandIconSrc} alt="" aria-hidden="true" />
-        <span className="beta-menu-brand-text">{copy.brandName}</span>
+        <h1 className="beta-menu-brand-text">{copy.brandName}</h1>
       </div>
-      <nav className="beta-menu-nav" aria-label={copy.settings}>
+      <button
+        ref={mobileToggleRef}
+        className="beta-menu-mobile-toggle"
+        type="button"
+        aria-label={mobileMenuOpen ? text.closeMenu : text.openMenu}
+        aria-controls="ququ-mobile-menu"
+        aria-expanded={mobileMenuOpen}
+        title={mobileMenuOpen ? text.closeMenu : text.openMenu}
+        onClick={() => {
+          if (mobileMenuOpen) closeCurrentMenu();
+          setMobileMenuOpen((current) => !current);
+        }}
+      >
+        {mobileMenuOpen ? <X size={21} strokeWidth={1.8} aria-hidden="true" /> : <Menu size={22} strokeWidth={1.8} aria-hidden="true" />}
+      </button>
+      <nav
+        ref={mobileNavRef}
+        id="ququ-mobile-menu"
+        className="beta-menu-nav"
+        aria-label={copy.settings}
+        data-mobile-open={mobileMenuOpen ? "true" : "false"}
+      >
         {menus.map((menu) => {
           const isOpen = openMenu === menu.id;
           const isClosing = closingMenu === menu.id;
           return (
-            <div className="beta-menu-root" key={menu.id} onPointerEnter={() => openMenu && openMenu !== menu.id && openNextMenu(menu.id)}>
+            <div
+              className="beta-menu-root"
+              key={menu.id}
+              onPointerEnter={() => {
+                if (!window.matchMedia("(max-width: 760px)").matches && openMenu && openMenu !== menu.id) openNextMenu(menu.id);
+              }}
+            >
               <button
                 className={isOpen ? "beta-menu-trigger beta-menu-trigger-open" : "beta-menu-trigger"}
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={isOpen}
+                aria-controls={isOpen || isClosing ? `ququ-menu-${menu.id}` : undefined}
                 onClick={() => isOpen ? closeCurrentMenu() : openNextMenu(menu.id)}
               >
                 {menu.label}
               </button>
               {isOpen || isClosing ? (
-                <div className={isClosing ? "beta-menu-popover beta-menu-popover-closing" : "beta-menu-popover"} role="menu" aria-label={menu.label}>
+                <div id={`ququ-menu-${menu.id}`} className={isClosing ? "beta-menu-popover beta-menu-popover-closing" : "beta-menu-popover"} role="menu" aria-label={menu.label}>
                   {renderMenu(menu.id)}
                 </div>
               ) : null}

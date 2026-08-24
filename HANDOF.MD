@@ -308,3 +308,11 @@
 - 正式部署 `dpl_8hYoBuFQipZAzfqQShoirP9ion9M` 已覆盖微信版 `https://ququ.mikeywa.icu/` 与钉钉版 `https://ququ.mikeywa.icu/ding/`；独立 Beta 部署 `dpl_EhXAekU5TVBSRUVkzcbaKac519wT` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`。
 - 公网 390×844 多次刷新确认三版页面与 favicon 行为正确、无横向溢出；两套 `/api/health` 均返回 HTTP 200，微信气泡素材返回 `image/webp`、14,570 字节。
 - 发布前后均同步并核对 `origin/codex/production-sync`；本次实现基于最新 `6e4995d`，未覆盖同期顶部菜单变更。Beta 发布后已恢复本地正式 Vercel 项目绑定与正式构建配置。
+
+## 2026-08-25 移动端顶部菜单适配
+
+- 修复 `520px` 以下强制隐藏网站标题的旧规则；品牌标题现使用真正的 `h1`，微信固定绿色气泡、钉钉/Beta 随机 JOJO 头像及 favicon 同图逻辑完整保留。
+- `760px` 及以下只在右上角显示菜单/关闭按钮，文件、显示、角色、模型、帮助纵向排列；子菜单在所属项下展开，长菜单限制在屏幕内独立滚动。
+- 菜单按钮为 `40×40px`，一级菜单触控高度至少 `44px`；整体展开仅使用透明度和上移，不缩放触控区，并支持 Escape、外部点击、键盘焦点和减少动态效果。
+- 自动化浏览器回归已从旧设置/实验室弹窗迁移到当前顶部菜单，新增 320/390px 品牌标题、Icon/Favicon 一致性、纵向几何、长菜单滚动与无横向溢出检查。
+- 本地验证：`npm run typecheck`、`npm test`（26 个文件、170 项）、`npm run build:beta`、`npm run build:ququ` 与 Playwright 9 项完整回归全部通过。浏览器实测覆盖 320/390px 微信和钉钉，Icon/Favicon 路径一致，标题可见，一级项均为 `44px`，页面无横向溢出、无错误遮罩和失败资源。待公网发布。
