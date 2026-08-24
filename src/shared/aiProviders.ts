@@ -39,8 +39,9 @@ export const aiProviders: readonly AiProvider[] = [
   }
 ] as const;
 
-export const defaultAiProviderId: AiProviderId = "zhipu";
-export const aiProviderStorageKey = "ququ-ai-provider-v1";
+export const defaultAiProviderId: AiProviderId = "doubao";
+export const aiProviderStorageKey = "ququ-ai-provider-v2";
+const legacyAiProviderStorageKey = "ququ-ai-provider-v1";
 
 export function isAiProviderId(value: string | null | undefined): value is AiProviderId {
   return aiProviderIds.includes(value as AiProviderId);
@@ -54,7 +55,14 @@ export function aiProviderForId(providerId: string | null | undefined): AiProvid
 export function readAiProviderId(): AiProviderId {
   if (typeof window === "undefined") return defaultAiProviderId;
   const stored = window.localStorage.getItem(aiProviderStorageKey);
-  return isAiProviderId(stored) ? stored : defaultAiProviderId;
+  if (isAiProviderId(stored)) return stored;
+
+  const legacyStored = window.localStorage.getItem(legacyAiProviderStorageKey);
+  if (legacyStored === "doubao" || legacyStored === "v4flash") {
+    window.localStorage.setItem(aiProviderStorageKey, legacyStored);
+    return legacyStored;
+  }
+  return defaultAiProviderId;
 }
 
 export function writeAiProviderId(providerId: AiProviderId) {

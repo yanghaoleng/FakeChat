@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  aiProviderStorageKey,
   aiProviderForId,
   aiProviders,
   defaultAiProviderId,
@@ -16,6 +17,7 @@ const originalEnv = {
 };
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   for (const [name, value] of Object.entries(originalEnv)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
@@ -23,12 +25,12 @@ afterEach(() => {
 });
 
 describe("managed AI providers", () => {
-  it("defaults to the current free Zhipu Flash model", () => {
-    expect(defaultAiProviderId).toBe("zhipu");
-    expect(readAiProviderId()).toBe("zhipu");
+  it("defaults to Doubao Seed 2.0 mini", () => {
+    expect(defaultAiProviderId).toBe("doubao");
+    expect(readAiProviderId()).toBe("doubao");
     expect(aiProviderForId("unknown")).toMatchObject({
-      id: "zhipu",
-      model: "glm-4.7-flash"
+      id: "doubao",
+      model: "doubao-seed-2-0-mini-260215"
     });
   });
 
@@ -36,6 +38,21 @@ describe("managed AI providers", () => {
     expect(aiProviders.map((provider) => provider.id)).toEqual(["zhipu", "doubao", "v4flash"]);
     expect(aiProviderForId("doubao").model).toBe("doubao-seed-2-0-mini-260215");
     expect(aiProviderForId("v4flash").model).toBe("deepseek-v4-flash");
+  });
+
+  it("moves the old Zhipu default to Doubao while preserving an explicit legacy DeepSeek choice", () => {
+    const values = new Map<string, string>([["ququ-ai-provider-v1", "zhipu"]]);
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value)
+      }
+    });
+
+    expect(readAiProviderId()).toBe("doubao");
+    values.set("ququ-ai-provider-v1", "v4flash");
+    expect(readAiProviderId()).toBe("v4flash");
+    expect(values.get(aiProviderStorageKey)).toBe("v4flash");
   });
 
   it("reads each provider key from its own server environment variable", () => {

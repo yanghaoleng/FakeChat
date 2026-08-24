@@ -19,8 +19,8 @@
 | 错误状态提示 | 编故事 | `status === "error"`、`statusText` | `.deepseek-status-error` |
 | 免费模型拥堵提示 | 编故事 / 实验室 | 服务端原样返回模型错误、用户手动 `selectAiModel` | 不自动切换到可能计费的豆包 |
 | 模型 / 免费模型 | 实验室 | `aiProviderId`、`selectAiModel`、`aiProviders` | `.settings-model-select-trigger`、`.settings-model-select-menu` |
-| 智谱 / 默认模型 | AI 模型 | `modelProviderId: "zhipu"`、`glm-4.7-flash` | `ZHIPU_API_KEY`；旧称 GLM-4.5-Flash 已迁移为 4.7 |
-| 豆包 / Seed mini | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY` |
+| 智谱 / 免费模型 | AI 模型 | `modelProviderId: "zhipu"`、`glm-4.7-flash` | `ZHIPU_API_KEY`；旧称 GLM-4.5-Flash 已迁移为 4.7 |
+| 豆包 / 默认模型 / Seed mini | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY` |
 | DeepSeek V4 Flash / V4 | AI 模型 | `modelProviderId: "v4flash"`、`deepseek-v4-flash` | `DEEPSEEK_API_KEY`，兼容 `COMPANY_DEEPSEEK_API_KEY` |
 | 自定义模型输入框 | 实验室 AI 模型 | `customModelPanelOpen`、`CustomModelSettings` | 仅当模型选择值为 `custom` 时渲染 `.settings-model-panel` 内输入项 |
 | token 服务 Toast | 全局状态反馈 | `toastMessage`、`showToast(tokenServiceWifiToast)` | `.app-toast` |
@@ -78,7 +78,7 @@
 | JOJO 表情卡 | JOJO 表情 | `assetId: "jojo-meme-*"` | `/jojo-assets/memes/*.webp` |
 | 公司中转配置 | 后端模型 | `getDeepSeekConfig` | `server/settings.ts` |
 | 官方模型配置 | 后端模型 | `getManagedAiConfig` | `server/aiProviders.ts`；智谱/豆包密钥只从服务端环境变量读取 |
-| 模型选择记忆 | 浏览器本地设置 | `aiProviderStorageKey` | `localStorage: ququ-ai-provider-v1` |
+| 模型选择记忆 | 浏览器本地设置 | `aiProviderStorageKey` | `localStorage: ququ-ai-provider-v2`；旧版智谱默认值迁移为新默认豆包 |
 | 静态部署公司中转 | 构建注入 | `VITE_INCLUDE_COMPANY_TOKEN=1`、`VITE_COMPANY_DEEPSEEK_API_KEY` | `vite.config.ts` 仅从环境变量读取 token |
 | 后端公司中转 token | 后端模型 | `COMPANY_DEEPSEEK_API_KEY`、`DEEPSEEK_API_KEY` | `server/settings.ts`，不再硬编码真实 key |
 | 微信版 README 截图 | GitHub 文档 | README 图片引用 | `docs/screenshots/fakechat-wechat.webp` |

@@ -236,3 +236,12 @@
 - 用户提供的 DeepSeek Key 与当前部署 Key 尾号一致，线上真实请求返回 HTTP 401 `invalid`；没有再次写入或重复发布，需换一枚有效 Key。
 - Beta 已重新发布到 `https://ququ-fakechat-beta.vercel.app/beta/`，部署 ID `dpl_6xm5PWgExnWC2snhoKRuL4eFYsCh`；页面和 `/api/health` 均为 HTTP 200，正式站未部署。
 - 已通过 `npm run typecheck`、`npm test`（25 个文件、162 项）和 `npm run build:beta`；Vite 仅保留既有大包体积提醒。
+
+## 2026-08-24 默认豆包与 DeepSeek 新 Key
+
+- 默认模型已从智谱改为豆包 Seed-2.0-mini；模型选择存储升级为 `ququ-ai-provider-v2`，旧版默认智谱会迁移到豆包，用户主动选择的豆包或 DeepSeek 会保留。
+- 新 DeepSeek Key 已通过官方 `/models` 与 `deepseek-v4-flash` 最小请求鉴权，并替换到 Beta 的 Vercel Production 敏感环境变量；明文未进入代码、Git 或前端产物。
+- 线上 Beta 不传 `modelProviderId` 时已确认默认走豆包并生成 10 条消息；选择 `v4flash` 时 DeepSeek V4 Flash 也成功生成 10 条消息。
+- 同一上下文、严格生成 10 条消息的成本样本：豆包 2498 输入 / 1014 输出 token；DeepSeek 2426 输入 / 951 输出 token，其中 1408 输入命中缓存。费用计算以 2026-08-24 官方价格和当日人民币汇率中间价为准。
+- Beta 部署 ID：`dpl_8DkySRE4e2bQv2bQ3vsm3cQGS2wJ`，正式站未部署；完成后已恢复本地 Vercel 正式项目绑定与正式构建配置。
+- 验证通过：`npm run typecheck`、`npm test`（25 个文件、163 项）、`npm run build:beta`、定向 Playwright 默认豆包用例及两条线上真实模型请求。

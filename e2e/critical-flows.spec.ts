@@ -82,7 +82,7 @@ test.describe("关键用户流程", () => {
     await expect(aboutSiteDialog).toContainText("Simulated chat creation");
   });
 
-  test("实验室模型默认智谱，保留 V4 Flash，并按需展开自定义输入", async ({ page }) => {
+  test("实验室模型默认豆包，保留 V4 Flash，并按需展开自定义输入", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "打开设置" }).click();
@@ -92,7 +92,7 @@ test.describe("关键用户流程", () => {
     const labDialog = page.getByRole("dialog", { name: "实验室" });
     const modelSelect = labDialog.getByRole("combobox", { name: "选择续写使用的 AI 模型" });
 
-    await expect(modelSelect).toHaveText("智谱 GLM-4.7-Flash");
+    await expect(modelSelect).toHaveText("豆包 Seed-2.0-mini");
     await modelSelect.click();
     const modelListbox = labDialog.getByRole("listbox", { name: "选择续写使用的 AI 模型" });
     await expect(modelListbox.getByRole("option")).toHaveText([
