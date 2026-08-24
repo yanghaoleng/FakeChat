@@ -315,4 +315,6 @@
 - `760px` 及以下只在右上角显示菜单/关闭按钮，文件、显示、角色、模型、帮助纵向排列；子菜单在所属项下展开，长菜单限制在屏幕内独立滚动。
 - 菜单按钮为 `40×40px`，一级菜单触控高度至少 `44px`；整体展开仅使用透明度和上移，不缩放触控区，并支持 Escape、外部点击、键盘焦点和减少动态效果。
 - 自动化浏览器回归已从旧设置/实验室弹窗迁移到当前顶部菜单，新增 320/390px 品牌标题、Icon/Favicon 一致性、纵向几何、长菜单滚动与无横向溢出检查。
-- 本地验证：`npm run typecheck`、`npm test`（26 个文件、170 项）、`npm run build:beta`、`npm run build:ququ` 与 Playwright 9 项完整回归全部通过。浏览器实测覆盖 320/390px 微信和钉钉，Icon/Favicon 路径一致，标题可见，一级项均为 `44px`，页面无横向溢出、无错误遮罩和失败资源。待公网发布。
+- 本地验证：`npm run typecheck`、`npm test`（26 个文件、170 项）、`npm run build:beta`、`npm run build:ququ` 与 Playwright 9 项完整回归全部通过。
+- 正式部署 `dpl_3EoLMofpK3mCmyxNwx1Lp7RsCqSS` 已覆盖微信版 `https://ququ.mikeywa.icu/` 与钉钉版 `https://ququ.mikeywa.icu/ding/`；独立 Beta 部署 `dpl_HKDzgWUd8HSSrK4enYfz4eFgQNPS` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`。
+- 公网以 320/390px 验收三版：网站标题与 Icon 均可见，Icon/Favicon 路径一致，一级菜单纵向对齐且均为 `44px`，520px 高度下长菜单可滚动；页面无横向溢出、控制台错误、失败资源，页面和两套 `/api/health` 均为 HTTP 200，部署错误日志为空。
