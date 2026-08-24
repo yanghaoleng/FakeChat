@@ -33,6 +33,7 @@
 - 支持 `text`、`image`、`meme`、`music`、`transfer`、`system` 消息。
 - 支持 Edge TTS 语音、Remotion 视频预览和浏览器端视频导出。
 - 存档导出为带封面的 PNG，聊天项目 JSON 内嵌在图片中；也可以读取旧版 PNG 或 JSON 存档继续创作。
+- 正式版与 Beta 共用 6 个 JOJO 圆形品牌头像；每次刷新随机选择一个 favicon，正式版同步显示在页面产品名左侧，Beta 的 Mac 菜单保持纯文字。
 
 ## 快速启动
 

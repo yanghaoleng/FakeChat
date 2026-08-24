@@ -4,7 +4,7 @@
 | --- | --- | --- | --- |
 | 顶栏 | 全局 | `header` | `.topbar` |
 | 产品名 | 顶栏 | `packageTitle(storyPackage)` | `.brand-block h1` |
-| 网站小 logo | 顶栏 / favicon | `/site-icon.svg` | `.brand-logo`，白底黑色蛐蛐 |
+| 随机圆形品牌头像 / 网站小 logo | 正式顶栏、favicon | `randomBrandIconPaths`、`randomBrandIconUrl`、`applyBrandFavicon`，素材位于 `/brand-icons/` | `.brand-logo`；每次刷新选一次且页面头像与 favicon 同图，Beta 菜单不展示图标 |
 | 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |

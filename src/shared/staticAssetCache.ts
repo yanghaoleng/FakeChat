@@ -21,7 +21,7 @@ const productUiAssetPaths: Record<StoryPackage, readonly string[]> = {
   ]
 };
 
-const localVisualAssetPattern = /\/(?:avatars|memes|viral-assets|jojo-assets|wechat-ui|dingtalk-ui)\//;
+const localVisualAssetPattern = /\/(?:avatars|brand-icons|memes|viral-assets|jojo-assets|wechat-ui|dingtalk-ui)\//;
 const localIconPattern = /\/(?:site-icon|favicon-(?:viral|jojo))\.svg$/;
 
 function isLocalPublicPath(path: string | undefined): path is string {

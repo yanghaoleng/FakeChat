@@ -1,5 +1,5 @@
-import { Bot, Check, ChevronRight, CircleHelp, FileDown, FileUp, Heart, Info, KeyRound, Languages, LoaderCircle, MonitorPlay, Palette, UserRound, Volume2 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Check, LoaderCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { aiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
 import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type LanguagePreference } from "../../shared/i18n";
 import type { StoryPackage } from "../../shared/linearStory";
@@ -51,14 +51,12 @@ type BetaMenuBarProps = {
 type MenuItemProps = {
   checked?: boolean;
   disabled?: boolean;
-  icon?: ReactNode;
   label: string;
   shortcut?: string;
-  submenu?: boolean;
   onClick?: () => void;
 };
 
-function MenuItem({ checked, disabled, icon, label, shortcut, submenu, onClick }: MenuItemProps) {
+function MenuItem({ checked, disabled, label, shortcut, onClick }: MenuItemProps) {
   return (
     <button
       className="beta-menu-item"
@@ -69,10 +67,8 @@ function MenuItem({ checked, disabled, icon, label, shortcut, submenu, onClick }
       onClick={onClick}
     >
       <span className="beta-menu-check" aria-hidden="true">{checked ? <Check size={14} strokeWidth={2.4} /> : null}</span>
-      <span className="beta-menu-icon" aria-hidden="true">{icon}</span>
       <span className="beta-menu-label">{label}</span>
       {shortcut ? <kbd>{shortcut}</kbd> : null}
-      {submenu ? <ChevronRight className="beta-menu-submenu-arrow" size={14} aria-hidden="true" /> : null}
     </button>
   );
 }
@@ -181,12 +177,11 @@ export function BetaMenuBar({
     if (id === "file") {
       return (
         <>
-          <MenuItem icon={<FileDown size={14} />} label={text.save} shortcut="⌘S" onClick={() => choose(onExportArchive)} />
-          <MenuItem icon={<FileUp size={14} />} label={text.load} shortcut="⌘I" onClick={() => choose(onImportArchive)} />
+          <MenuItem label={text.save} shortcut="⌘S" onClick={() => choose(onExportArchive)} />
+          <MenuItem label={text.load} shortcut="⌘I" onClick={() => choose(onImportArchive)} />
           <div className="beta-menu-separator" role="separator" />
           <a className="beta-menu-link" href={switchLink.href} target="_blank" rel="noreferrer" onClick={closeCurrentMenu}>
             <span className="beta-menu-check" />
-            <span className="beta-menu-icon"><MonitorPlay size={14} /></span>
             <span className="beta-menu-label">{switchLink.label}</span>
           </a>
         </>
@@ -200,12 +195,12 @@ export function BetaMenuBar({
           <MenuItem checked={previewMode === "wechat"} label={text.interface} onClick={() => choose(() => onChoosePreviewMode("wechat"))} />
           <MenuItem checked={previewMode === "video"} label={text.video} onClick={() => choose(() => onChoosePreviewMode("video"))} />
           <div className="beta-menu-separator" role="separator" />
-          <div className="beta-menu-section-label"><Palette size={12} />{text.background}</div>
+          <div className="beta-menu-section-label">{text.background}</div>
           {ambientSkins.map((skin) => (
             <MenuItem key={skin.id} checked={ambientSkin === skin.id} label={skin.label} onClick={() => choose(() => onSelectAmbientSkin(skin.id))} />
           ))}
           <div className="beta-menu-separator" role="separator" />
-          <div className="beta-menu-section-label"><Languages size={12} />{text.language}</div>
+          <div className="beta-menu-section-label">{text.language}</div>
           <MenuItem checked={languagePreference === "auto"} label={`${copy.followBrowser} (${languageLabels[language]})`} onClick={() => choose(() => onChangeLanguage("auto"))} />
           {appLanguages.map((item) => (
             <MenuItem key={item} checked={languagePreference === item} label={languageLabels[item]} onClick={() => choose(() => onChangeLanguage(item))} />
@@ -230,12 +225,12 @@ export function BetaMenuBar({
     if (id === "model") {
       return (
         <>
-          <div className="beta-menu-section-label"><Bot size={12} />{text.aiModel}</div>
+          <div className="beta-menu-section-label">{text.aiModel}</div>
           {aiProviders.map((provider) => (
             <MenuItem key={provider.id} checked={aiProviderId === provider.id} label={provider.label} onClick={() => choose(() => onSelectAiModel(provider.id))} />
           ))}
           <div className="beta-menu-separator" role="separator" />
-          <MenuItem checked={fishAutoReadEnabled} icon={<Volume2 size={14} />} label={text.fish} onClick={() => choose(onToggleFishAutoRead)} />
+          <MenuItem checked={fishAutoReadEnabled} label={text.fish} onClick={() => choose(onToggleFishAutoRead)} />
           <form
             className="beta-menu-inline-form"
             onSubmit={(event) => {
@@ -244,7 +239,6 @@ export function BetaMenuBar({
             }}
           >
             <label className="beta-menu-inline-label" htmlFor="beta-fish-api-key">
-              <KeyRound size={12} />
               {text.customFish}
             </label>
             <div className="beta-menu-inline-control">
@@ -272,18 +266,18 @@ export function BetaMenuBar({
 
     return (
       <>
-        <MenuItem icon={<Heart size={14} />} label={text.support} onClick={() => choose(onOpenAbout)} />
-        <MenuItem icon={<Info size={14} />} label={text.about} onClick={() => choose(onOpenSiteAbout)} />
+        <MenuItem label={text.support} onClick={() => choose(onOpenAbout)} />
+        <MenuItem label={text.about} onClick={() => choose(onOpenSiteAbout)} />
       </>
     );
   }
 
-  const menus: Array<{ id: MenuId; label: string; icon: ReactNode }> = [
-    { id: "file", label: text.file, icon: <FileDown size={13} /> },
-    { id: "view", label: text.view, icon: <MonitorPlay size={13} /> },
-    { id: "role", label: text.role, icon: <UserRound size={13} /> },
-    { id: "model", label: text.model, icon: <Bot size={13} /> },
-    { id: "help", label: text.help, icon: <CircleHelp size={13} /> }
+  const menus: Array<{ id: MenuId; label: string }> = [
+    { id: "file", label: text.file },
+    { id: "view", label: text.view },
+    { id: "role", label: text.role },
+    { id: "model", label: text.model },
+    { id: "help", label: text.help }
   ];
 
   return (
@@ -302,7 +296,6 @@ export function BetaMenuBar({
                 aria-expanded={isOpen}
                 onClick={() => isOpen ? closeCurrentMenu() : openNextMenu(menu.id)}
               >
-                <span className="beta-menu-trigger-icon" aria-hidden="true">{menu.icon}</span>
                 {menu.label}
               </button>
               {isOpen || isClosing ? (

@@ -84,6 +84,7 @@ import {
   type LanguagePreference
 } from "./shared/i18n";
 import { resolvePublicAssetPath } from "./shared/publicPath";
+import { applyBrandFavicon, randomBrandIconUrl } from "./shared/randomBrandIcon";
 import { getCharacter, type ChatMessage, type DramaProject } from "./shared/schema";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
@@ -767,6 +768,7 @@ function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMes
 export default function App({ storyPackage }: AppProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const archiveExportingRef = useRef(false);
+  const [brandIconSrc] = useState(randomBrandIconUrl);
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
   const initialCustomModelSettingsRef = useRef<CustomModelSettings | null>(null);
   if (!initialPresetArchiveRef.current) {
@@ -1381,6 +1383,10 @@ export default function App({ storyPackage }: AppProps) {
     updateMeta('meta[name="twitter:title"]', copy.siteTitle);
     updateMeta('meta[name="twitter:description"]', copy.siteDescription);
   }, [copy, language, languagePreference]);
+
+  useLayoutEffect(() => {
+    applyBrandFavicon(brandIconSrc);
+  }, [brandIconSrc]);
 
   useEffect(() => {
     previewModeRef.current = previewMode;
@@ -3552,6 +3558,7 @@ export default function App({ storyPackage }: AppProps) {
       ) : (
         <header className="topbar motion-in">
           <div className="brand-block">
+            <img className="brand-logo" src={brandIconSrc} alt="" aria-hidden="true" />
             <h1>{copy.brandName}</h1>
           </div>
           <div className="settings-trigger-group">

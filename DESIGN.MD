@@ -60,7 +60,7 @@
 - 微信预览顶底图：`.wechat-topbar-img` 使用 `topbar.webp`，`.wechat-bottombar-img` 使用 `bottombar.webp`；联系人名用 `.wechat-topbar-title` 叠在顶栏中间。
 - 钉钉预览顶底图：`.dingtalk-topbar-img`、`.dingtalk-inputbar-img`；聊天区 `.dingtalk-chat-scroll`。
 - JOJO 气泡：`.dingtalk-row-self .wechat-bubble` 为蓝底白字，`.dingtalk-row-other .wechat-bubble` 为白底深色字。
-- 品牌图标：`.brand-logo` 使用白底黑色单色蛐蛐，和 favicon 同源。
+- 品牌图标：使用叫叫、铃铛、猪小弟的 6 个夸张表情圆形头像，蓝底、粗轮廓、透明圆外区域；每次刷新随机选择一次，favicon 与正式版 `.brand-logo` 必须保持同图。正式版为 `30px`、`50%` 圆角；Beta Mac 菜单保持纯文字，不显示品牌图标或功能图标，只保留选中勾和加载状态。
 - 状态文案：`.deepseek-status` 只在错误时展示，正常待机不显示 AI 模型常驻状态；生成中和成功提示使用当前模型名称。免费模型拥堵时显示明确错误，不自动切换到付费模型。
 
 ## JOJO 素材审美
