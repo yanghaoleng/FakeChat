@@ -507,22 +507,6 @@ button[disabled],
   color: rgba(253, 164, 175, 0.92);
 }
 
-.beta-menu-current-model {
-  min-width: 0;
-  max-width: 240px;
-  margin-left: auto;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.055);
-  color: rgba(194, 210, 230, 0.74);
-  padding: 5px 8px;
-  font-size: 10px;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 @keyframes beta-menu-popover-in {
   from {
     opacity: 0;
@@ -583,10 +567,6 @@ button[disabled],
     gap: 0;
     padding-inline: 6px;
     font-size: 11px;
-  }
-
-  .beta-menu-current-model {
-    display: none;
   }
 
   .beta-menu-root:nth-last-child(-n + 2) .beta-menu-popover {

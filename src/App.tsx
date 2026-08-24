@@ -93,7 +93,7 @@ import { normalizeSuggestedPrompt } from "./shared/suggestedPrompt";
 import { buildTimeline, getDurationInFrames, messageRevealDelayMs } from "./shared/timing";
 
 const VideoPreviewPane = lazy(() => import("./features/video/VideoPreviewPane"));
-const betaMenuEnabled = import.meta.env.BASE_URL.startsWith("/beta/");
+const appMenuEnabled = true;
 
 type ApiState = "idle" | "loading" | "error" | "done";
 type PreviewMode = "wechat" | "video";
@@ -1406,7 +1406,7 @@ export default function App({ storyPackage }: AppProps) {
   }, [fishApiKey]);
 
   useEffect(() => {
-    if (!betaMenuEnabled || !toastMessage) return;
+    if (!appMenuEnabled || !toastMessage) return;
     const scheduleDismiss = () => {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
       toastTimerRef.current = window.setTimeout(() => {
@@ -1754,7 +1754,7 @@ export default function App({ storyPackage }: AppProps) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = undefined;
     setToastMessage(message);
-    if (!betaMenuEnabled) {
+    if (!appMenuEnabled) {
       toastTimerRef.current = window.setTimeout(() => {
         setToastMessage(null);
         toastTimerRef.current = undefined;
@@ -2402,7 +2402,7 @@ export default function App({ storyPackage }: AppProps) {
     signal: AbortSignal;
   }) {
     let backendError: unknown;
-    const customModel = betaMenuEnabled ? undefined : customModelToCompletionConfig(activeCustomModelSettings);
+    const customModel = appMenuEnabled ? undefined : customModelToCompletionConfig(activeCustomModelSettings);
     const managedProvider = aiProviderForId(aiProviderId);
     setStatusText(customModel ? `正在请求 ${customModel.label || "自定义模型"} 续写...` : `正在请求 ${managedProvider.shortLabel} 续写...`);
     try {
@@ -3418,7 +3418,7 @@ export default function App({ storyPackage }: AppProps) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) {
-          if (betaMenuEnabled) window.dispatchEvent(new Event(betaModelMenuOpenEvent));
+          if (appMenuEnabled) window.dispatchEvent(new Event(betaModelMenuOpenEvent));
           else toggleSettingsMenu();
         }
         return;
@@ -3524,7 +3524,7 @@ export default function App({ storyPackage }: AppProps) {
       data-ambient-skin={visibleAmbientSkin}
     >
       <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
-      {betaMenuEnabled ? (
+      {appMenuEnabled ? (
         <BetaMenuBar
           brandIconSrc={brandIconSrc}
           copy={copy}
@@ -3538,6 +3538,8 @@ export default function App({ storyPackage }: AppProps) {
           ambientSkins={ambientSkins}
           ambientSkin={ambientSkin}
           aiProviderId={aiProviderId}
+          allowMultiSession={storyPackage === "viral" && allowMultiSession}
+          multiSessionToggleDisabled={status === "loading"}
           fishAutoReadEnabled={fishAutoReadEnabled}
           fishApiKey={fishApiKey}
           fishApiTestState={fishApiTestState}
@@ -3548,6 +3550,7 @@ export default function App({ storyPackage }: AppProps) {
           onSwitchPresetRole={switchPresetRole}
           onChangeLanguage={changeLanguagePreference}
           onSelectAiModel={selectAiModel}
+          onToggleMultiSession={toggleMultiSessionMode}
           onToggleFishAutoRead={toggleFishAutoRead}
           onChangeFishApiKey={changeFishApiKey}
           onTestFishApiKey={() => void testFishApiKey()}
@@ -3587,7 +3590,7 @@ export default function App({ storyPackage }: AppProps) {
           {toastMessage}
         </div>
       ) : null}
-      {!betaMenuEnabled ? (
+      {!appMenuEnabled ? (
         <SettingsDialog
           open={settingsMenuOpen}
           closing={settingsMenuClosing}

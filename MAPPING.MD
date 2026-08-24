@@ -10,8 +10,9 @@
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
 | 线上 Beta | 独立 Vercel 工程 | `npm run build:beta`、`VITE_BASE_PATH=/beta/` | `ququ-fakechat-beta.vercel.app/beta/` |
-| Beta 顶部菜单 / Mac 菜单栏 | Beta 顶栏 | `BetaMenuBar`、`betaMenuEnabled` | `.beta-macos-menubar` 为无描边、无底色、无圆角和无投影的透明横栏；`.beta-menu-popover` 保留菜单承载面；显示菜单含语言，模型菜单不打开弹窗 |
-| 当前模型标签 | Beta 顶栏右侧 | `currentModel`、`aiProviderId` | `.beta-menu-current-model` |
+| 顶部菜单 / Mac 菜单栏 | Beta、正式微信、正式钉钉顶栏 | `BetaMenuBar`、`appMenuEnabled` | `.beta-macos-menubar` 为无描边、无底色、无圆角和无投影的透明横栏；`.beta-menu-popover` 保留菜单承载面；显示菜单含语言，模型菜单不打开弹窗 |
+| 当前模型标签 | 全版本顶栏右侧 | 已移除；模型选中态仅保留在“模型”菜单内 | 不再渲染 `.beta-menu-current-model` |
+| 多会话开关 | 正式微信版顶部“显示”菜单 | `allowMultiSession`、`toggleMultiSessionMode` | `.beta-menu-item`；选中显示勾，生成中禁用 |
 | 自定义 Fish Audio API | Beta 模型菜单 | `fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；仅一个密钥输入框和测试按钮 |
 | 百分比滚动数字 / 加载数字 | 生成进度、导出进度 | `RollingPercent`、Calligraph `variant="number"` | `.rolling-percent`、`.rolling-percent-digits` |
 | JOJO 内网预览 | 部署/预览 | `npm run preview:lan` | `HOST=0.0.0.0 API_PORT=4173 DIST_DIR=dist/jojo` |
