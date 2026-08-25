@@ -5,6 +5,7 @@ import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type Lang
 import type { StoryPackage } from "../../shared/linearStory";
 import type { JojoPresetRole, PresetRoleSelection, ViralPresetRole } from "../../shared/presetStories";
 import type { SettingsAmbientSkinId, SettingsPreviewMode } from "./SettingsDialog";
+import { GlitchBrandMark } from "./GlitchBrandMark";
 
 type MenuId = "file" | "view" | "role" | "model" | "help";
 
@@ -49,6 +50,7 @@ type BetaMenuBarProps = {
   onChangeFishApiKey: (apiKey: string) => void;
   onTestFishApiKey: () => void;
   onToggleUiSound: () => void;
+  onCycleBrandIcon: () => void;
   onOpenAbout: () => void;
   onOpenSiteAbout: () => void;
   onExportArchive: () => void;
@@ -114,6 +116,7 @@ export function BetaMenuBar({
   onChangeFishApiKey,
   onTestFishApiKey,
   onToggleUiSound,
+  onCycleBrandIcon,
   onOpenAbout,
   onOpenSiteAbout,
   onExportArchive,
@@ -346,10 +349,19 @@ export function BetaMenuBar({
 
   return (
     <header ref={rootRef} className="topbar beta-macos-menubar motion-in" aria-label={copy.settings}>
-      <div className="beta-menu-brand">
-        <img className="beta-menu-brand-icon" src={brandIconSrc} alt="" aria-hidden="true" />
-        <h1 className="beta-menu-brand-text">{copy.brandName}</h1>
-      </div>
+      {storyPackage === "jojo" ? (
+        <GlitchBrandMark
+          brandIconSrc={brandIconSrc}
+          brandName={copy.brandName}
+          language={language}
+          onCycle={onCycleBrandIcon}
+        />
+      ) : (
+        <div className="beta-menu-brand">
+          <img className="beta-menu-brand-icon" src={brandIconSrc} alt="" aria-hidden="true" />
+          <h1 className="beta-menu-brand-text">{copy.brandName}</h1>
+        </div>
+      )}
       <button
         ref={mobileToggleRef}
         className="beta-menu-mobile-toggle"

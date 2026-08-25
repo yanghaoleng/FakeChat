@@ -25,6 +25,12 @@ export function brandIconUrlForStoryPackage(storyPackage: StoryPackage, random =
   return storyPackage === "viral" ? publicAsset(viralBrandIconPath) : randomBrandIconUrl(random);
 }
 
+export function nextBrandIconUrl(currentIconUrl: string) {
+  const currentIndex = randomBrandIconPaths.findIndex((path) => currentIconUrl.split("?")[0].endsWith(path));
+  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % randomBrandIconPaths.length;
+  return publicAsset(randomBrandIconPaths[nextIndex]);
+}
+
 export function faviconUrlForBrandIcon(iconUrl: string, refreshToken = Date.now()) {
   const separator = iconUrl.includes("?") ? "&" : "?";
   return `${iconUrl}${separator}refresh=${refreshToken.toString(36)}`;

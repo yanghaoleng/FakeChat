@@ -9,14 +9,14 @@ import {
 } from "lucide-react";
 import { useRef, type KeyboardEvent } from "react";
 import type { AppCopy, AppLanguage } from "../../shared/i18n";
-import { publicAsset } from "../../shared/publicPath";
 import { BetaAboutIdentity } from "./BetaAboutIdentity";
 
 type SiteAboutDialogProps = {
   open: boolean;
   copy: AppCopy;
   language?: AppLanguage;
-  betaHackathon?: boolean;
+  playerGuide?: boolean;
+  showUiSoundControl?: boolean;
   uiSoundEnabled?: boolean;
   onToggleUiSound?: () => void;
   onClose: () => void;
@@ -55,7 +55,6 @@ const betaAboutText = {
         body: "AI 负责即兴和接戏，你负责决定场景、冲突和下一次转弯。多试几种开头，多给角色一点明确的变化，最好玩的版本通常不是一次生成出来的，而是被你一步步带出来的。"
       }
     ],
-    coverAlt: "早点走进会议室的群聊故事宣传图",
     privacyTitle: "关于你的内容"
   },
   "zh-TW": {
@@ -72,7 +71,6 @@ const betaAboutText = {
       { title: "它為什麼會讓人想再玩一輪", body: "熟悉的群聊介面讓你幾乎不用學規則，不同角色的性格又會讓同一句開場長出完全不同的反應。笑點常常就藏在意料之外的接話裡。" },
       { title: "你才是這場群聊的導演", body: "AI 負責即興和接戲，你負責決定場景、衝突和下一次轉彎。多試幾種開頭，多給角色明確的變化，最好玩的版本通常是被你一步步帶出來的。" }
     ],
-    coverAlt: "早點走進會議室的群聊故事宣傳圖",
     privacyTitle: "關於你的內容"
   },
   en: {
@@ -89,7 +87,6 @@ const betaAboutText = {
       { title: "Why it is worth another round", body: "The familiar chat interface makes the rules effortless, while the cast can give the same opening completely different reactions. Much of the fun comes from expecting one reply and getting something else." },
       { title: "You are still the director", body: "AI improvises and keeps the scene moving; you choose the setup, tension, and next turn. Try several openings and give the cast clear changes—the funniest version is usually guided into being, one step at a time." }
     ],
-    coverAlt: "A group-chat story about getting to the meeting room early",
     privacyTitle: "About your content"
   },
   ja: {
@@ -106,7 +103,6 @@ const betaAboutText = {
       { title: "もう一度遊びたくなる理由", body: "見慣れたチャットなのでルールを覚える必要がなく、同じ始まりでも人物の性格によって反応が大きく変わります。予想と違う返事が来る瞬間に面白さがあります。" },
       { title: "監督はあなたです", body: "AIは即興と掛け合いを担当し、あなたは場面、対立、次の曲がり角を決めます。いくつかの始まりと具体的な変化を試すと、面白い物語を一歩ずつ引き出せます。" }
     ],
-    coverAlt: "早めに会議室へ向かうグループチャット物語の宣伝画像",
     privacyTitle: "あなたのコンテンツについて"
   }
 } as const;
@@ -115,7 +111,8 @@ export function SiteAboutDialog({
   open,
   copy,
   language = "zh-CN",
-  betaHackathon = false,
+  playerGuide = false,
+  showUiSoundControl = false,
   uiSoundEnabled = true,
   onToggleUiSound,
   onClose
@@ -149,7 +146,7 @@ export function SiteAboutDialog({
       <div className="about-dialog-backdrop about-dialog-subview-backdrop" data-uisfx="close" aria-hidden="true" onClick={onClose} />
       <section
         ref={dialogRef}
-        className={betaHackathon ? "about-dialog about-dialog-site about-dialog-site-beta" : "about-dialog about-dialog-site"}
+        className={playerGuide ? "about-dialog about-dialog-site about-dialog-site-beta" : "about-dialog about-dialog-site"}
         role="dialog"
         aria-modal="true"
         aria-labelledby="site-about-dialog-title"
@@ -161,10 +158,10 @@ export function SiteAboutDialog({
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h2 id="site-about-dialog-title">{betaHackathon ? betaText.header : copy.aboutSite}</h2>
-            {!betaHackathon ? <p>{copy.aboutSubtitle}</p> : null}
+            <h2 id="site-about-dialog-title">{playerGuide ? betaText.header : copy.aboutSite}</h2>
+            {!playerGuide ? <p>{copy.aboutSubtitle}</p> : null}
           </div>
-          {betaHackathon && onToggleUiSound ? (
+          {playerGuide && showUiSoundControl && onToggleUiSound ? (
             <button
               className="about-dialog-icon-button beta-about-sound-toggle"
               type="button"
@@ -179,7 +176,7 @@ export function SiteAboutDialog({
           ) : <span />}
         </header>
 
-        {betaHackathon ? (
+        {playerGuide ? (
           <div className="site-about-content site-about-content-beta">
             <section className="beta-about-player-hero" aria-labelledby="beta-about-pitch-title">
               <BetaAboutIdentity language={language} />
@@ -188,25 +185,11 @@ export function SiteAboutDialog({
             </section>
 
             <div className="beta-about-player-guide">
-              {betaText.sections.map((section, index) => (
-                <div key={section.title}>
-                  <section className="beta-about-player-section">
-                    <h3>{section.title}</h3>
-                    <p>{section.body}</p>
-                  </section>
-                  {index === 2 ? (
-                    <figure className="beta-about-player-cover">
-                      <img
-                        src={publicAsset("/hackathon/ququ-dingtalk-cover-02f.webp")}
-                        alt={betaText.coverAlt}
-                        width="1536"
-                        height="1024"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </figure>
-                  ) : null}
-                </div>
+              {betaText.sections.map((section) => (
+                <section className="beta-about-player-section" key={section.title}>
+                  <h3>{section.title}</h3>
+                  <p>{section.body}</p>
+                </section>
               ))}
             </div>
 

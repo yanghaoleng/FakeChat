@@ -239,7 +239,53 @@ button[disabled],
   font-size: 13px;
   font-weight: 780;
   letter-spacing: -0.01em;
+  margin: 0;
   white-space: nowrap;
+}
+
+.beta-menu-brand-button {
+  display: block;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.beta-menu-brand-button:focus-visible {
+  outline: 2px solid rgba(118, 171, 255, 0.84);
+  outline-offset: 3px;
+}
+
+.beta-menu-brand-magnet {
+  position: relative;
+  display: block;
+}
+
+.beta-menu-brand-stack {
+  position: relative;
+  display: grid;
+  place-items: center start;
+  isolation: isolate;
+}
+
+.beta-menu-brand-copy {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+  will-change: transform, clip-path, opacity;
+}
+
+.beta-menu-brand-layer {
+  pointer-events: none;
 }
 
 .beta-menu-brand-icon {
@@ -582,6 +628,10 @@ button[disabled],
     gap: 8px;
     padding: 0;
     font-size: clamp(11px, 3.4vw, 14px);
+  }
+
+  .beta-menu-brand-copy {
+    gap: 8px;
   }
 
   .beta-menu-brand-icon {

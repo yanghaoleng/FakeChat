@@ -137,22 +137,6 @@
   margin-top: 12px;
 }
 
-.beta-about-player-cover {
-  overflow: hidden;
-  margin: 0 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
-  background: rgba(9, 19, 34, 0.82);
-  box-shadow: 0 16px 38px rgba(1, 8, 19, 0.2);
-}
-
-.beta-about-player-cover img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 3 / 2;
-  object-fit: cover;
-}
-
 .beta-about-player-privacy {
   border-bottom: 0;
   padding-bottom: 2px;
@@ -191,7 +175,4 @@
     font-size: 19px;
   }
 
-  .beta-about-player-cover {
-    border-radius: 13px;
-  }
 }

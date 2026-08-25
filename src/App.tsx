@@ -86,7 +86,7 @@ import {
   type LanguagePreference
 } from "./shared/i18n";
 import { resolvePublicAssetPath } from "./shared/publicPath";
-import { applyBrandFavicon, brandIconUrlForStoryPackage } from "./shared/randomBrandIcon";
+import { applyBrandFavicon, brandIconUrlForStoryPackage, nextBrandIconUrl } from "./shared/randomBrandIcon";
 import { getCharacter, type ChatMessage, type DramaProject } from "./shared/schema";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
@@ -764,10 +764,11 @@ function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMes
 
 export default function App({ storyPackage }: AppProps) {
   const betaHackathonBuild = storyPackage === "jojo" && import.meta.env.BASE_URL.startsWith("/beta/");
+  const jojoPlayerGuide = storyPackage === "jojo";
   const rootRef = useRef<HTMLDivElement>(null);
   const betaUiSfxControllerRef = useRef<BetaUiSfxController | null>(null);
   const archiveExportingRef = useRef(false);
-  const [brandIconSrc] = useState(() => brandIconUrlForStoryPackage(storyPackage));
+  const [brandIconSrc, setBrandIconSrc] = useState(() => brandIconUrlForStoryPackage(storyPackage));
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
   const initialCustomModelSettingsRef = useRef<CustomModelSettings | null>(null);
   if (!initialPresetArchiveRef.current) {
@@ -2363,6 +2364,11 @@ export default function App({ storyPackage }: AppProps) {
     betaUiSfxControllerRef.current?.setEnabled(nextEnabled, true);
   }
 
+  function cycleBrandIcon() {
+    if (storyPackage !== "jojo") return;
+    setBrandIconSrc((currentIconUrl) => nextBrandIconUrl(currentIconUrl));
+  }
+
   function changeLanguagePreference(preference: LanguagePreference) {
     setLanguagePreference(preference);
     const nextLanguage = resolveLanguage(preference);
@@ -3582,6 +3588,7 @@ export default function App({ storyPackage }: AppProps) {
           onChangeFishApiKey={changeFishApiKey}
           onTestFishApiKey={() => void testFishApiKey()}
           onToggleUiSound={toggleBetaUiSound}
+          onCycleBrandIcon={cycleBrandIcon}
           onOpenAbout={openAboutDialog}
           onOpenSiteAbout={openSiteAboutDialog}
           onExportArchive={() => void exportArchive()}
@@ -3699,7 +3706,8 @@ export default function App({ storyPackage }: AppProps) {
           open
           copy={copy}
           language={language}
-          betaHackathon={betaHackathonBuild}
+          playerGuide={jojoPlayerGuide}
+          showUiSoundControl={betaHackathonBuild}
           uiSoundEnabled={uiSoundEnabled}
           onToggleUiSound={toggleBetaUiSound}
           onClose={closeSiteAboutDialog}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   brandIconUrlForStoryPackage,
   faviconUrlForBrandIcon,
+  nextBrandIconUrl,
   randomBrandIconPath,
   randomBrandIconPaths,
   viralBrandIconPath
@@ -30,5 +31,12 @@ describe("random brand icon", () => {
     expect(brandIconUrlForStoryPackage("viral", () => 0.8)).toBe(viralBrandIconPath);
     expect(brandIconUrlForStoryPackage("jojo", () => 0)).toBe(randomBrandIconPaths[0]);
     expect(brandIconUrlForStoryPackage("jojo", () => 0.999)).toBe(randomBrandIconPaths[5]);
+  });
+
+  it("cycles to a different JOJO icon while preserving the active base path", () => {
+    expect(nextBrandIconUrl("/ding/brand-icons/ququ-01-jiaojiao-shush.webp"))
+      .toBe("/brand-icons/ququ-02-lingdang-shush.webp");
+    expect(nextBrandIconUrl("/beta/brand-icons/ququ-06-lingdang-moon.webp?refresh=abc"))
+      .toBe("/brand-icons/ququ-01-jiaojiao-shush.webp");
   });
 });
