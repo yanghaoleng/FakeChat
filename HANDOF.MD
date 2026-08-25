@@ -7,6 +7,8 @@
 - [x] macOS 邮件中的通知来自 GitHub `Browser E2E`，不是 Vercel 部署失败；正式站、钉钉入口和健康接口均正常。
 - [x] 根因是动画首段由 `setTimeout(0)` 延后挂载，而 E2E 使用不重试的瞬时 `count()` 断言；CI 较快时会先读到 0。断言已改为自动等待式检查，并固定 `reducedMotion: no-preference`，消除时序与环境误报。
 - [x] 28 个测试文件共 178 项、Beta 构建、CI 模式定向用例及 10 项完整 Playwright 回归通过；正式/Beta 构建产物的二维码预载路径均按各自 base path 生成。
+- [x] 功能提交 `5236b9d` 已推送；正式部署 `dpl_Ycu2Q2R3oD7gPqvfQmgBM7JPR3gB` 已覆盖 `https://ququ.mikeywa.icu/` 与 `/ding/`，GitHub Actions `32843561879` 恢复成功。
+- [x] 公网 `390×844` 验收确认打开支持作者前两张二维码已完成预载，微信/支付宝切换时图片均已解码；正式页面和健康接口正常，无控制台错误或失败请求。
 
 ## 2026-08-25 Glitch 改为按需单次播放
 
