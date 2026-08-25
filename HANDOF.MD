@@ -318,3 +318,9 @@
 - 本地验证：`npm run typecheck`、`npm test`（26 个文件、170 项）、`npm run build:beta`、`npm run build:ququ` 与 Playwright 9 项完整回归全部通过。
 - 正式部署 `dpl_3EoLMofpK3mCmyxNwx1Lp7RsCqSS` 已覆盖微信版 `https://ququ.mikeywa.icu/` 与钉钉版 `https://ququ.mikeywa.icu/ding/`；独立 Beta 部署 `dpl_HKDzgWUd8HSSrK4enYfz4eFgQNPS` 已发布至 `https://ququ-fakechat-beta.vercel.app/beta/`。
 - 公网以 320/390px 验收三版：网站标题与 Icon 均可见，Icon/Favicon 路径一致，一级菜单纵向对齐且均为 `44px`，520px 高度下长菜单可滚动；页面无横向溢出、控制台错误、失败资源，页面和两套 `/api/health` 均为 HTTP 200，部署错误日志为空。
+
+## 2026-08-25 豆包生成时间估算
+
+- 生成百分比继续以原 DeepSeek 预计耗时为基准；选择豆包时，首轮、续写和历史消息增量组成的完整预计耗时统一乘以 `0.64`。
+- DeepSeek V4 Flash 与旧模型兼容路径保持原估算，不改变真实请求、超时、消息播放或完成阶段动画。
+- 新增纯函数回归，覆盖微信/钉钉首轮、带历史消息续写、豆包 `64%` 与非豆包不缩短。待构建、发布和公网验收。

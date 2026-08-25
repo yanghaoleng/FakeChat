@@ -39,6 +39,7 @@ import {
 import type { VideoExportResult } from "./shared/browserVideo";
 import type { TtsClipMap } from "./shared/edgeTts";
 import { fishReadableText, fishVoiceHintFor, synthesizeFishAudio, synthesizeFishMessageClip } from "./shared/fishAudioTts";
+import { estimatedGenerationMs } from "./shared/generationEstimate";
 import {
   makeStoryArchive,
   parseStoryArchive,
@@ -266,12 +267,6 @@ function randomPercent(min: number, max: number) {
 
 function promptRiseAnimationMs(text: string) {
   return Math.min(3600, Math.max(1100, 700 + Array.from(text).length * 17));
-}
-
-function estimatedGenerationMs(project: DramaProject, packageId: StoryPackage) {
-  const historyCostMs = Math.min(12000, project.messages.length * 140);
-  if (!project.messages.length) return packageId === "jojo" ? 46000 : 52000;
-  return (packageId === "jojo" ? 34000 : 40000) + historyCostMs;
 }
 
 function estimateGenerationProgress(startedAt: number, estimateMs: number) {
@@ -2501,7 +2496,7 @@ export default function App({ storyPackage }: AppProps) {
 
         setStatus("loading");
         setVideoExportProgress(null);
-        startGenerationProgress(estimatedGenerationMs(projectSnapshot, storyPackage));
+        startGenerationProgress(estimatedGenerationMs(projectSnapshot.messages.length, storyPackage, aiProviderId));
         triggerAmbientFeedback("generating");
 
         try {
