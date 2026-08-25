@@ -71,6 +71,7 @@ function AnimatedSupportPraise({ language, praise, praiseIndex, reduceMotion }: 
 
 type AboutDialogProps = {
   open: boolean;
+  stacked?: boolean;
   githubRepositoryUrl: string;
   wechatQrCodeUrl?: string;
   alipayQrCodeUrl?: string;
@@ -85,6 +86,7 @@ type AboutDialogProps = {
 
 export function AboutDialog({
   open,
+  stacked = false,
   githubRepositoryUrl,
   wechatQrCodeUrl,
   alipayQrCodeUrl,
@@ -161,8 +163,8 @@ export function AboutDialog({
   }
 
   return (
-    <div className="about-dialog-layer">
-      <div className="about-dialog-backdrop" aria-hidden="true" onClick={onClose} />
+    <div className={stacked ? "about-dialog-layer about-dialog-support-layer" : "about-dialog-layer"}>
+      <div className={stacked ? "about-dialog-backdrop about-dialog-subview-backdrop" : "about-dialog-backdrop"} aria-hidden="true" onClick={onClose} />
       <section
         ref={dialogRef}
         className="about-dialog about-dialog-support"

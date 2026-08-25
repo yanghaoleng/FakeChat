@@ -166,6 +166,32 @@ test.describe("关键用户流程", () => {
     await expect(page.locator(".support-author-praise")).toContainText(secondPraise!);
   });
 
+  test("关于页底部可叠加打开支持作者弹窗", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const helpMenu = await openAppMenu(page, "帮助");
+    await helpMenu.getByRole("menuitem", { name: "关于本站" }).click();
+
+    const siteAboutDialog = page.locator(".about-dialog-site");
+    const supportButton = siteAboutDialog.getByRole("button", { name: "支持作者" });
+    await expect(siteAboutDialog).toBeVisible();
+    await expect(supportButton).toBeVisible();
+    await supportButton.click();
+
+    const supportDialog = page.getByRole("dialog", { name: "支持作者" });
+    await expect(supportDialog).toBeVisible();
+    await expect(siteAboutDialog).toBeVisible();
+    await expect(siteAboutDialog).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator(".about-dialog")).toHaveCount(2);
+
+    await page.keyboard.press("Escape");
+    await expect(supportDialog).toHaveCount(0);
+    await expect(siteAboutDialog).toBeVisible();
+    await expect(siteAboutDialog).not.toHaveAttribute("aria-hidden", "true");
+    await expect(supportButton).toBeFocused();
+  });
+
   test("移动端支持作者窗口放大字号后仍可完整滚动", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");

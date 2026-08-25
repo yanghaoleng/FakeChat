@@ -4131,6 +4131,40 @@ button[disabled],
   color: var(--app-text-subtle);
 }
 
+.site-about-support-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(255, 112, 144, 0.3);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 91, 129, 0.16), rgba(173, 92, 255, 0.12));
+  color: #ffdce5;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 760;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.site-about-support-button:hover,
+.site-about-support-button:focus-visible {
+  border-color: rgba(255, 138, 166, 0.58);
+  background: linear-gradient(135deg, rgba(255, 91, 129, 0.24), rgba(173, 92, 255, 0.18));
+  color: #fff4f7;
+}
+
+.site-about-support-button:focus-visible {
+  outline: 2px solid rgba(255, 151, 176, 0.72);
+  outline-offset: 2px;
+}
+
+.site-about-support-button:active {
+  transform: scale(0.985);
+}
+
 .about-dialog-site-beta {
   width: min(720px, calc(100vw - 32px));
   max-height: min(820px, calc(100dvh - 32px));
@@ -4647,6 +4681,10 @@ button[disabled],
 
 .about-dialog-subview-layer {
   z-index: 95;
+}
+
+.about-dialog-support-layer {
+  z-index: 100;
 }
 
 .about-dialog-subview-backdrop {

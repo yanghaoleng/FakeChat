@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  Heart,
   HeartHandshake,
   MessageCircleMore,
   ShieldCheck,
@@ -19,6 +20,8 @@ type SiteAboutDialogProps = {
   showUiSoundControl?: boolean;
   uiSoundEnabled?: boolean;
   onToggleUiSound?: () => void;
+  supportAuthorOpen?: boolean;
+  onOpenSupportAuthor: () => void;
   onClose: () => void;
 };
 
@@ -115,6 +118,8 @@ export function SiteAboutDialog({
   showUiSoundControl = false,
   uiSoundEnabled = true,
   onToggleUiSound,
+  supportAuthorOpen = false,
+  onOpenSupportAuthor,
   onClose
 }: SiteAboutDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -142,13 +147,17 @@ export function SiteAboutDialog({
   const betaText = betaAboutText[language];
 
   return (
-    <div className="about-dialog-layer about-dialog-subview-layer">
+    <div className={supportAuthorOpen
+      ? "about-dialog-layer about-dialog-subview-layer about-dialog-layer-has-child"
+      : "about-dialog-layer about-dialog-subview-layer"}>
       <div className="about-dialog-backdrop about-dialog-subview-backdrop" data-uisfx="close" aria-hidden="true" onClick={onClose} />
       <section
         ref={dialogRef}
         className={playerGuide ? "about-dialog about-dialog-site about-dialog-site-beta" : "about-dialog about-dialog-site"}
         role="dialog"
-        aria-modal="true"
+        aria-modal={supportAuthorOpen ? undefined : true}
+        aria-hidden={supportAuthorOpen || undefined}
+        inert={supportAuthorOpen}
         aria-labelledby="site-about-dialog-title"
         aria-describedby="site-about-dialog-description"
         onKeyDown={handleKeyDown}
@@ -198,6 +207,15 @@ export function SiteAboutDialog({
               <p>{copy.aboutPrivacy}</p>
               <p>{copy.aboutDisclaimer}</p>
             </section>
+            <button
+              className="site-about-support-button site-about-support-button-beta"
+              type="button"
+              data-site-about-support
+              onClick={onOpenSupportAuthor}
+            >
+              <Heart size={18} aria-hidden="true" />
+              <span>{copy.supportAuthor}</span>
+            </button>
           </div>
         ) : (
           <div className="site-about-content">
@@ -218,6 +236,15 @@ export function SiteAboutDialog({
               <p>{copy.aboutPrivacy}</p>
             </div>
             <p className="site-about-disclaimer">{copy.aboutDisclaimer}</p>
+            <button
+              className="site-about-support-button"
+              type="button"
+              data-site-about-support
+              onClick={onOpenSupportAuthor}
+            >
+              <Heart size={18} aria-hidden="true" />
+              <span>{copy.supportAuthor}</span>
+            </button>
           </div>
         )}
       </section>

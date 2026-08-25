@@ -2343,8 +2343,17 @@ export default function App({ storyPackage }: AppProps) {
   function closeAboutDialog() {
     setAboutDialogOpen(false);
     window.requestAnimationFrame(() => {
+      if (siteAboutDialogOpen) {
+        document.querySelector<HTMLElement>("[data-site-about-support]")?.focus();
+        return;
+      }
       settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-about]")?.focus();
     });
+  }
+
+  function openSupportAuthorFromSiteAboutDialog() {
+    setSupportPraiseIndex((current) => nextSupportPraiseIndex(current));
+    setAboutDialogOpen(true);
   }
 
   function openSiteAboutDialog() {
@@ -3689,6 +3698,7 @@ export default function App({ storyPackage }: AppProps) {
       {aboutDialogOpen ? (
         <AboutDialog
           open
+          stacked={siteAboutDialogOpen}
           githubRepositoryUrl={githubRepositoryUrl}
           wechatQrCodeUrl={wechatQrCodeUrl}
           alipayQrCodeUrl={alipayQrCodeUrl}
@@ -3710,6 +3720,8 @@ export default function App({ storyPackage }: AppProps) {
           showUiSoundControl={betaHackathonBuild}
           uiSoundEnabled={uiSoundEnabled}
           onToggleUiSound={toggleBetaUiSound}
+          supportAuthorOpen={aboutDialogOpen}
+          onOpenSupportAuthor={openSupportAuthorFromSiteAboutDialog}
           onClose={closeSiteAboutDialog}
         />
       ) : null}
