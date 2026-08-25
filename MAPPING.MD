@@ -6,6 +6,10 @@
 | 产品名 / 网站标题 | 顶栏 | `copy.brandName` | `.beta-menu-brand-text`；使用 `h1`，移动端不隐藏 |
 | 品牌头像 / 网站小 logo | 正式顶栏、Beta 网站标题、favicon | `viralBrandIconPath`、`randomBrandIconPaths`、`brandIconUrlForStoryPackage`、`applyBrandFavicon`，WebP 素材位于 `/brand-icons/` | 微信版固定绿色白气泡；钉钉正式版与 Beta 每次刷新随机选一个 JOJO 头像；页面头像与 favicon 同图 |
 | 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
+| 黑客松关于页 / 产品介绍页 | 测试版钉钉“帮助 → 关于本站” | `SiteAboutDialog`、`betaHackathonBuild` | `.about-dialog-site-beta`、`.site-about-content-beta`；正式版走原通用内容 |
+| 角色切换 / 换个主演 / 故障姓名 | 黑客松关于页首屏 | `BetaAboutIdentity`、`GlitchBadgeEngine`、`IDLE_GLITCH`、`ACTIVE_GLITCH` | `.beta-about-identity-button`、`.beta-about-glitch-stack`；点击轮换叫叫、铃铛、猪小弟 |
+| 界面音效 / 点击音效 / 静音 | 测试版钉钉全局与“显示”菜单 | `installBetaUiSfx`、`uiSoundEnabled`、`toggleBetaUiSound` | `uisfx` cinematic；`localStorage: ququ:beta-ui-sfx`；`data-uisfx` 可覆盖默认语义 |
+| 早点走进会议室 / 02f 宣传图 | 黑客松关于页宣传图 | `publicAsset("/hackathon/ququ-dingtalk-cover-02f.webp")` | `1536×1024`、`3:2`、质量 82 WebP，约 `126KB` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
 | 独立产物 | 构建脚本 | `STORY_PACKAGE=jojo|viral` | `dist/jojo`、`dist/viral` |
 | `/ququ` 部署产物 | 构建脚本 | `npm run build:ququ`、`VITE_BASE_PATH=/ququ/` | `dist/ququ` |
@@ -85,3 +89,4 @@
 | 静态部署公司中转 | 构建注入 | `VITE_INCLUDE_COMPANY_TOKEN=1`、`VITE_COMPANY_DEEPSEEK_API_KEY` | `vite.config.ts` 仅从环境变量读取 token |
 | 后端公司中转 token | 后端模型 | `COMPANY_DEEPSEEK_API_KEY`、`DEEPSEEK_API_KEY` | `server/settings.ts`，不再硬编码真实 key |
 | 微信版 README 截图 | GitHub 文档 | README 图片引用 | `docs/screenshots/fakechat-wechat.webp` |
+| 黑客松封面 / 投稿封面 / 作品封面 | 钉钉版投稿素材 | 首轮 3 个方向及蓝黄版 `02a–02f` 六个安全职场梗变体 | `design/hackathon-covers/hackathon-cover-*`；PNG 原图与压缩 WebP 成对保存 |

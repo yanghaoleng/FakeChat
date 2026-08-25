@@ -36,6 +36,8 @@ type BetaMenuBarProps = {
   fishApiKey: string;
   fishApiTestState: FishApiTestState;
   fishApiTestMessage: string;
+  showUiSoundControl: boolean;
+  uiSoundEnabled: boolean;
   switchLink: { href: string; label: string };
   onChoosePreviewMode: (mode: SettingsPreviewMode) => void;
   onSelectAmbientSkin: (skin: SettingsAmbientSkinId) => void;
@@ -46,6 +48,7 @@ type BetaMenuBarProps = {
   onToggleFishAutoRead: () => void;
   onChangeFishApiKey: (apiKey: string) => void;
   onTestFishApiKey: () => void;
+  onToggleUiSound: () => void;
   onOpenAbout: () => void;
   onOpenSiteAbout: () => void;
   onExportArchive: () => void;
@@ -57,16 +60,18 @@ type MenuItemProps = {
   disabled?: boolean;
   label: string;
   shortcut?: string;
+  sfxSilent?: boolean;
   onClick?: () => void;
 };
 
-function MenuItem({ checked, disabled, label, shortcut, onClick }: MenuItemProps) {
+function MenuItem({ checked, disabled, label, shortcut, sfxSilent, onClick }: MenuItemProps) {
   return (
     <button
       className="beta-menu-item"
       type="button"
       role={checked === undefined ? "menuitem" : "menuitemradio"}
       aria-checked={checked === undefined ? undefined : checked}
+      data-uisfx-silent={sfxSilent ? "true" : undefined}
       disabled={disabled}
       onClick={onClick}
     >
@@ -96,6 +101,8 @@ export function BetaMenuBar({
   fishApiKey,
   fishApiTestState,
   fishApiTestMessage,
+  showUiSoundControl,
+  uiSoundEnabled,
   switchLink,
   onChoosePreviewMode,
   onSelectAmbientSkin,
@@ -106,6 +113,7 @@ export function BetaMenuBar({
   onToggleFishAutoRead,
   onChangeFishApiKey,
   onTestFishApiKey,
+  onToggleUiSound,
   onOpenAbout,
   onOpenSiteAbout,
   onExportArchive,
@@ -119,10 +127,10 @@ export function BetaMenuBar({
   const [closingMenu, setClosingMenu] = useState<MenuId | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const text = {
-    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", background: "背景", aiModel: "AI 模型", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
-    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", background: "背景", aiModel: "AI 模型", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
-    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", background: "Background", aiModel: "AI model", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
-    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", background: "背景", aiModel: "AIモデル", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
+    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", uiSound: "界面音效", background: "背景", aiModel: "AI 模型", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
+    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", uiSound: "介面音效", background: "背景", aiModel: "AI 模型", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
+    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", uiSound: "Interface sound", background: "Background", aiModel: "AI model", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
+    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", uiSound: "操作音", background: "背景", aiModel: "AIモデル", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
   }[language];
 
   const roleChoices: RoleChoice[] = storyPackage === "jojo"
@@ -246,6 +254,9 @@ export function BetaMenuBar({
           <MenuItem checked={previewMode === "video"} label={text.video} onClick={() => choose(() => onChoosePreviewMode("video"))} />
           {storyPackage === "viral" ? (
             <MenuItem checked={allowMultiSession} disabled={multiSessionToggleDisabled} label={text.multiSession} onClick={() => choose(onToggleMultiSession)} />
+          ) : null}
+          {showUiSoundControl ? (
+            <MenuItem checked={uiSoundEnabled} label={text.uiSound} sfxSilent onClick={() => choose(onToggleUiSound)} />
           ) : null}
           <div className="beta-menu-separator" role="separator" />
           <div className="beta-menu-section-label">{text.background}</div>

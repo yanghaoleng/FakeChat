@@ -54,6 +54,7 @@
     "remotion": "4.0.489",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.22.4",
+    "uisfx": "^0.4.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

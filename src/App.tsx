@@ -92,6 +92,7 @@ import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng
 import { attachStorySegment, restoreStoryBeforeCard, restoreStoryThroughCard } from "./shared/storySegments";
 import { normalizeSuggestedPrompt } from "./shared/suggestedPrompt";
 import { buildTimeline, getDurationInFrames, messageRevealDelayMs } from "./shared/timing";
+import type { BetaUiSfxController } from "./shared/betaUiSfx";
 
 const VideoPreviewPane = lazy(() => import("./features/video/VideoPreviewPane"));
 const appMenuEnabled = true;
@@ -761,7 +762,9 @@ function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMes
 }
 
 export default function App({ storyPackage }: AppProps) {
+  const betaHackathonBuild = storyPackage === "jojo" && import.meta.env.BASE_URL.startsWith("/beta/");
   const rootRef = useRef<HTMLDivElement>(null);
+  const betaUiSfxControllerRef = useRef<BetaUiSfxController | null>(null);
   const archiveExportingRef = useRef(false);
   const [brandIconSrc] = useState(() => brandIconUrlForStoryPackage(storyPackage));
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
@@ -810,6 +813,7 @@ export default function App({ storyPackage }: AppProps) {
   const [settingsMenuClosing, setSettingsMenuClosing] = useState(false);
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
   const [siteAboutDialogOpen, setSiteAboutDialogOpen] = useState(false);
+  const [uiSoundEnabled, setUiSoundEnabled] = useState(true);
   const [labDialogOpen, setLabDialogOpen] = useState(false);
   const [labDialogClosing, setLabDialogClosing] = useState(false);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
@@ -1382,6 +1386,23 @@ export default function App({ storyPackage }: AppProps) {
   useLayoutEffect(() => {
     applyBrandFavicon(brandIconSrc);
   }, [brandIconSrc]);
+
+  useEffect(() => {
+    if (!betaHackathonBuild) return;
+    let active = true;
+    let controller: BetaUiSfxController | null = null;
+    void import("./shared/betaUiSfx").then(({ installBetaUiSfx }) => {
+      if (!active) return;
+      controller = installBetaUiSfx(setUiSoundEnabled);
+      betaUiSfxControllerRef.current = controller;
+      setUiSoundEnabled(controller.isEnabled());
+    });
+    return () => {
+      active = false;
+      controller?.dispose();
+      if (betaUiSfxControllerRef.current === controller) betaUiSfxControllerRef.current = null;
+    };
+  }, [betaHackathonBuild]);
 
   useEffect(() => {
     previewModeRef.current = previewMode;
@@ -2331,6 +2352,12 @@ export default function App({ storyPackage }: AppProps) {
     window.requestAnimationFrame(() => {
       settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-site-about]")?.focus();
     });
+  }
+
+  function toggleBetaUiSound() {
+    const nextEnabled = !uiSoundEnabled;
+    setUiSoundEnabled(nextEnabled);
+    betaUiSfxControllerRef.current?.setEnabled(nextEnabled, true);
   }
 
   function changeLanguagePreference(preference: LanguagePreference) {
@@ -3539,6 +3566,8 @@ export default function App({ storyPackage }: AppProps) {
           fishApiKey={fishApiKey}
           fishApiTestState={fishApiTestState}
           fishApiTestMessage={fishApiTestMessage}
+          showUiSoundControl={betaHackathonBuild}
+          uiSoundEnabled={uiSoundEnabled}
           switchLink={switchLink}
           onChoosePreviewMode={choosePreviewMode}
           onSelectAmbientSkin={selectAmbientSkin}
@@ -3549,6 +3578,7 @@ export default function App({ storyPackage }: AppProps) {
           onToggleFishAutoRead={toggleFishAutoRead}
           onChangeFishApiKey={changeFishApiKey}
           onTestFishApiKey={() => void testFishApiKey()}
+          onToggleUiSound={toggleBetaUiSound}
           onOpenAbout={openAboutDialog}
           onOpenSiteAbout={openSiteAboutDialog}
           onExportArchive={() => void exportArchive()}
@@ -3661,7 +3691,15 @@ export default function App({ storyPackage }: AppProps) {
         />
       ) : null}
       {siteAboutDialogOpen ? (
-        <SiteAboutDialog open copy={copy} onClose={closeSiteAboutDialog} />
+        <SiteAboutDialog
+          open
+          copy={copy}
+          language={language}
+          betaHackathon={betaHackathonBuild}
+          uiSoundEnabled={uiSoundEnabled}
+          onToggleUiSound={toggleBetaUiSound}
+          onClose={closeSiteAboutDialog}
+        />
       ) : null}
 
       <main className={`workspace static-workspace ${storyCardCount ? "workspace-has-story-cards" : ""}`}>
