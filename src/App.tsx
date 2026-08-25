@@ -23,6 +23,7 @@ import { RollingPercent } from "./components/RollingPercent";
 import { ActionButton, SurfaceCard, SurfaceCardContent, SurfaceCardHeader } from "./components/UiPrimitives";
 import { WechatStoryPreview } from "./features/chat-preview/WechatStoryPreview";
 import { AboutDialog } from "./features/settings/AboutDialog";
+import { nextSupportPraiseIndex } from "./features/settings/supportAuthorCopy";
 import { BetaMenuBar, betaModelMenuOpenEvent, type FishApiTestState } from "./features/settings/BetaMenuBar";
 import { LabDialog } from "./features/settings/LabDialog";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
@@ -812,6 +813,7 @@ export default function App({ storyPackage }: AppProps) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [settingsMenuClosing, setSettingsMenuClosing] = useState(false);
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
+  const [supportPraiseIndex, setSupportPraiseIndex] = useState(-1);
   const [siteAboutDialogOpen, setSiteAboutDialogOpen] = useState(false);
   const [uiSoundEnabled, setUiSoundEnabled] = useState(true);
   const [labDialogOpen, setLabDialogOpen] = useState(false);
@@ -2333,6 +2335,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function openAboutDialog() {
+    setSupportPraiseIndex((current) => nextSupportPraiseIndex(current));
     setAboutDialogOpen(true);
   }
 
@@ -3685,6 +3688,7 @@ export default function App({ storyPackage }: AppProps) {
           feedbackWechatId={feedbackWechatId}
           hasFeedbackWechatId={hasFeedbackWechatId}
           language={language}
+          praiseIndex={supportPraiseIndex}
           onClose={closeAboutDialog}
           onCopyGithubRepositoryUrl={copyGithubRepositoryUrl}
           onCopyFeedbackWechatId={copyFeedbackWechatId}

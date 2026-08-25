@@ -1,8 +1,73 @@
+import { Calligraph } from "calligraph";
 import { ArrowLeft, Copy, MessageCircle, QrCode, WalletCards } from "lucide-react";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { AppLanguage } from "../../shared/i18n";
+import { segmentSupportPraise, supportAuthorCopy } from "./supportAuthorCopy";
 
 type PaymentMethod = "wechat" | "alipay";
+const supportPraiseStaggerMs = 42;
+
+type AnimatedSupportPraiseProps = {
+  language: AppLanguage;
+  praise: string;
+  praiseIndex: number;
+  reduceMotion: boolean;
+};
+
+function AnimatedSupportPraise({ language, praise, praiseIndex, reduceMotion }: AnimatedSupportPraiseProps) {
+  const segments = segmentSupportPraise(praise, language);
+  const animatedSegmentCount = segments.filter((segment) => !/^\s+$/u.test(segment)).length;
+  const [visibleSegmentCount, setVisibleSegmentCount] = useState(reduceMotion ? animatedSegmentCount : 0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setVisibleSegmentCount(animatedSegmentCount);
+      return undefined;
+    }
+
+    setVisibleSegmentCount(0);
+    const timers = Array.from({ length: animatedSegmentCount }, (_, index) => window.setTimeout(
+      () => setVisibleSegmentCount(index + 1),
+      index * supportPraiseStaggerMs
+    ));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [animatedSegmentCount, language, praise, reduceMotion]);
+
+  if (reduceMotion) return <span className="support-author-praise" aria-label={praise}>{praise}</span>;
+
+  let animatedSegmentIndex = -1;
+  return (
+    <span className="support-author-praise" aria-label={praise}>
+      {segments.map((segment, index) => {
+        if (/^\s+$/u.test(segment)) {
+          return <span className="support-author-praise-space" aria-hidden="true" key={`${index}-space`}>{segment}</span>;
+        }
+        animatedSegmentIndex += 1;
+        return (
+          <span className="support-author-praise-token" aria-hidden="true" key={`${index}-${segment}`}>
+            <span className="support-author-praise-placeholder">{segment}</span>
+            {animatedSegmentIndex < visibleSegmentCount ? (
+              <Calligraph
+                key={`${language}-${praiseIndex}-${index}-${segment}`}
+                className="support-author-praise-motion"
+                variant="text"
+                animation="bouncy"
+                drift={{ x: 10, y: 6 }}
+                trend={1}
+                initial
+                autoSize={false}
+                aria-hidden="true"
+                style={{ display: "inline-flex", position: "absolute", inset: "0 auto auto 0", whiteSpace: "nowrap" }}
+              >
+                {segment}
+              </Calligraph>
+            ) : null}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 type AboutDialogProps = {
   open: boolean;
@@ -12,6 +77,7 @@ type AboutDialogProps = {
   feedbackWechatId: string;
   hasFeedbackWechatId: boolean;
   language: AppLanguage;
+  praiseIndex: number;
   onClose: () => void;
   onCopyGithubRepositoryUrl: () => void;
   onCopyFeedbackWechatId: () => void;
@@ -25,18 +91,30 @@ export function AboutDialog({
   feedbackWechatId,
   hasFeedbackWechatId,
   language,
+  praiseIndex,
   onClose,
   onCopyGithubRepositoryUrl,
   onCopyFeedbackWechatId
 }: AboutDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
-  const text = {
-    "zh-CN": { wechat: "微信", alipay: "支付宝", back: "返回设置", title: "支持作者", subtitle: "开源链接和联系方式", message: <>这个工具会一直免费。<br />如果它给你带来了乐趣，可以请我喝杯咖啡，支持后续维护，我会开心一整天！ 🥰<br />也可以给我提要求，我会努力实现！</>, choosePayment: "选择收款方式", qr: "收款码", preparing: "收款码准备中", openSource: "开源链接", copyOpenSource: "复制开源链接", wechatId: "作者微信号", copyWechat: "复制作者微信号", pendingWechat: "作者微信号待补充", homepage: "作者主页" },
-    "zh-TW": { wechat: "微信", alipay: "支付寶", back: "返回設定", title: "支持作者", subtitle: "開源連結與聯絡方式", message: <>這個工具會一直免費。<br />如果它為你帶來樂趣，可以請我喝杯咖啡，支持後續維護！ 🥰<br />也歡迎提出想法，我會努力實現！</>, choosePayment: "選擇付款方式", qr: "收款碼", preparing: "收款碼準備中", openSource: "開源連結", copyOpenSource: "複製開源連結", wechatId: "作者微信號", copyWechat: "複製作者微信號", pendingWechat: "作者微信號待補充", homepage: "作者首頁" },
-    en: { wechat: "WeChat", alipay: "Alipay", back: "Back to settings", title: "Support the creator", subtitle: "Open source and contact details", message: <>This tool will stay free.<br />If it made you smile, you can buy me a coffee and support future maintenance! 🥰<br />Feature ideas are welcome too.</>, choosePayment: "Choose payment method", qr: "payment QR code", preparing: "QR code coming soon", openSource: "Open-source link", copyOpenSource: "Copy open-source link", wechatId: "Creator WeChat ID", copyWechat: "Copy creator WeChat ID", pendingWechat: "WeChat ID not set", homepage: "Creator website" },
-    ja: { wechat: "WeChat", alipay: "Alipay", back: "設定に戻る", title: "作者を応援", subtitle: "オープンソース・連絡先", message: <>このツールはこれからも無料です。<br />楽しんでいただけたら、コーヒー一杯で今後の運営を応援できます！ 🥰<br />機能のリクエストも歓迎です。</>, choosePayment: "支払い方法を選択", qr: "支払いQRコード", preparing: "QRコードを準備中", openSource: "オープンソース", copyOpenSource: "リンクをコピー", wechatId: "作者のWeChat ID", copyWechat: "WeChat IDをコピー", pendingWechat: "WeChat ID未設定", homepage: "作者サイト" }
-  }[language];
+  const [reduceMotion, setReduceMotion] = useState(() => (
+    typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ));
+  const text = supportAuthorCopy[language];
+  const normalizedPraiseIndex = ((praiseIndex % text.praises.length) + text.praises.length) % text.praises.length;
+  const praise = text.praises[normalizedPraiseIndex];
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotionPreference = () => setReduceMotion(mediaQuery.matches);
+    syncMotionPreference();
+    mediaQuery.addEventListener("change", syncMotionPreference);
+    return () => mediaQuery.removeEventListener("change", syncMotionPreference);
+  }, []);
 
   if (!open) return null;
 
@@ -105,7 +183,14 @@ export function AboutDialog({
 
         <div className="support-author-panel">
           <p className="support-author-message">
-            {text.message}
+            <span>{text.intro}</span>
+            <AnimatedSupportPraise
+              language={language}
+              praise={praise}
+              praiseIndex={normalizedPraiseIndex}
+              reduceMotion={reduceMotion}
+            />
+            <span>{text.request}</span>
           </p>
 
           <div className="support-author-payment">

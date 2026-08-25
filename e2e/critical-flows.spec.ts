@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { supportAuthorCopy } from "../src/features/settings/supportAuthorCopy";
 import { sampleProject } from "../src/shared/sampleProject";
 
 const errorOverlaySelector = [
@@ -117,7 +118,20 @@ test.describe("关键用户流程", () => {
     await expect(supportDialog).toBeVisible();
     await expect(supportDialog.getByRole("button", { name: "返回设置", exact: true })).toBeVisible();
     await expect(supportDialog.getByRole("link", { name: "开源链接" })).toBeVisible();
-    await expect(supportDialog).toContainText("如果它给你带来了乐趣");
+    const praise = supportDialog.locator(".support-author-praise");
+    const firstPraise = await praise.getAttribute("aria-label");
+    expect(supportAuthorCopy["zh-CN"].praises).toContain(firstPraise);
+    expect(await praise.locator(".support-author-praise-motion").count()).toBeGreaterThan(0);
+    await expect(praise.locator(".support-author-praise-motion").first()).toBeVisible();
+    await expect(praise.locator(".support-author-praise-motion > span")).not.toHaveCount(0);
+    const fontSizes = await supportDialog.evaluate((dialog) => ({
+      title: getComputedStyle(dialog.querySelector("h2")!).fontSize,
+      message: getComputedStyle(dialog.querySelector(".support-author-message")!).fontSize,
+      paymentTab: getComputedStyle(dialog.querySelector(".support-author-payment-tab")!).fontSize,
+      linkLabel: getComputedStyle(dialog.querySelector(".support-author-copy > span")!).fontSize,
+      linkValue: getComputedStyle(dialog.querySelector(".support-author-copy strong")!).fontSize
+    }));
+    expect(fontSizes).toEqual({ title: "17px", message: "14px", paymentTab: "14px", linkLabel: "11px", linkValue: "14px" });
     const wechatPaymentTab = supportDialog.getByRole("tab", { name: "微信" });
     const alipayPaymentTab = supportDialog.getByRole("tab", { name: "支付宝" });
     await expect(wechatPaymentTab).toHaveAttribute("aria-selected", "true");
@@ -135,6 +149,42 @@ test.describe("关键用户流程", () => {
 
     await page.keyboard.press("Escape");
     await expect(supportDialog).toHaveCount(0);
+
+    const reopenedHelpMenu = await openAppMenu(page, "帮助");
+    await reopenedHelpMenu.getByRole("menuitem", { name: "支持作者" }).click();
+    const secondPraise = await page.locator(".support-author-praise").getAttribute("aria-label");
+    expect(supportAuthorCopy["zh-CN"].praises).toContain(secondPraise);
+    expect(secondPraise).not.toBe(firstPraise);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(page.locator(".support-author-praise-motion")).toHaveCount(0);
+    await expect(page.locator(".support-author-praise")).toContainText(secondPraise!);
+  });
+
+  test("移动端支持作者窗口放大字号后仍可完整滚动", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const helpMenu = await openAppMenu(page, "帮助");
+    await helpMenu.getByRole("menuitem", { name: "支持作者" }).click();
+
+    const supportDialog = page.getByRole("dialog", { name: "支持作者" });
+    const supportPanel = supportDialog.locator(".support-author-panel");
+    await expect(supportDialog).toBeVisible();
+    await expect(supportDialog.locator(".support-author-praise")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => ({
+      document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      body: document.body.scrollWidth - document.documentElement.clientWidth
+    }))).toEqual({ document: 0, body: 0 });
+
+    const scrollMetrics = await supportPanel.evaluate((panel) => ({
+      clientHeight: panel.clientHeight,
+      scrollHeight: panel.scrollHeight
+    }));
+    expect(scrollMetrics.clientHeight).toBeGreaterThan(0);
+    expect(scrollMetrics.scrollHeight).toBeGreaterThanOrEqual(scrollMetrics.clientHeight);
+    await supportPanel.evaluate((panel) => panel.scrollTo({ top: panel.scrollHeight, behavior: "auto" }));
+    await expect(supportDialog.getByRole("link", { name: "mikeywa.icu" })).toBeVisible();
   });
 
   test("存档封面导出为 800px 宽", async ({ page }) => {
