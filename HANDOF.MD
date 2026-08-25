@@ -7,6 +7,9 @@
 - [x] 复用项目已有 `calligraph@1.4.1`，随机句按语义词组使用 `bouncy` 弹性入场；标点和 Emoji 跟随前词，减少动态效果时静态显示。
 - [x] 支持作者窗口标题、副标题、正文、支付标签和联系信息字号整体上调；桌面与 `390×844` 手机端无横向溢出，二维码和作者主页可完整滚动触达。
 - [x] 新增随机池/标点分组单测，并扩展支持作者桌面与移动端 Playwright 验收。
+- [x] 功能提交 `1938d58` 已推送至 `codex/production-sync`；使用隔离的干净工作树分别发布正式项目 `dpl_2gkBr1nJN5yrUzQyuLowNNAAkkS1` 与 Beta 项目 `dpl_HbMTLDxKtmLK4psAZ85XJzSYahLy`，状态均为 Ready。
+- [x] 公网验收通过：正式首页、正式 `/ding/`、Beta `/beta/`、两套 `/api/health` 及实际 JS/CSS 资源均返回 `200`；三版 `390×844` 实机尺寸下随机文案可切换、Calligraph 动效生效、字号符合设计值、无横向溢出或页面错误，作者主页可触达。
+- [x] 本地 `.vercel/project.json` 仍绑定正式项目 `ququ-fakechat`；并行任务的未提交文件保持原状，未纳入本次发布提交。
 
 ## 当前任务
 
