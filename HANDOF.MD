@@ -344,3 +344,7 @@
 - 接入 `uisfx@0.4.0` cinematic pack：测试版按钮、链接、菜单、故事卡和关闭背景按语义发声，音量 `0.38`，不启用 hover 音；“显示 → 界面音效”和关于页右上角可开关，偏好保存为 `ququ:beta-ui-sfx`。
 - `02f｜早点走进会议室` 由 1.5MB PNG 重新压为 `1536×1024`、质量 82 的 WebP，运行时文件约 126KB，路径为 `public/hackathon/ququ-dingtalk-cover-02f.webp`。
 - 本地验证通过：27 个测试文件、173 项；`npm run build:beta` 与 `npm run build:ququ`；390×844 页面宽度与 body scrollWidth 同为 390，宣传图自然尺寸 `1536×1024`；故障峰值实测 10 层同时可见且无 filter 色偏；正式钉钉未出现黑客松内容、音效菜单，也未加载 `betaUiSfx` chunk。
+- 首次发布 `dpl_2v6A7K13TALyBPxeUs7m1Yc1mwcE` 被根 `vercel.json` 的正式构建命令覆盖，虽然 Ready 但 `/beta/` 为 404；未将其视为成功。临时切换到 `vercel.beta.json` 等价配置后重新发布，正式工程未部署。
+- 有效 Beta 部署为 `dpl_3vefEVMkLwAVMffFkgRQBAdYeoWV`，别名 `https://ququ-fakechat-beta.vercel.app/beta/`；页面、宣传图与 `/api/health` 均为 200，宣传图返回 `image/webp`、129,246 字节。
+- 公网 390×844 浏览器验收：关于页主张可见、叫叫可切到铃铛、10 层故障切片和徽章位移生效、点击产生音频节点、静音开关可持久化；页面无横向溢出、控制台错误或失败请求，部署近一小时无 error 日志。
+- 发布后已恢复本地正式 Vercel 工程绑定 `ququ-fakechat` 与根正式 `vercel.json`，工作区未残留临时发布配置。
