@@ -235,6 +235,13 @@ export class GlitchBadgeEngine {
     if (this.word !== null) this.startScramble();
   }
 
+  trigger(options: GlitchOptions) {
+    this.stop();
+    this.options = options;
+    if (this.reducedMotion) return;
+    this.runCycle();
+  }
+
   start() {
     if (this.running || this.reducedMotion) return;
     this.running = true;

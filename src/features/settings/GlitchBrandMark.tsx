@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { AppLanguage } from "../../shared/i18n";
-import { ACTIVE_GLITCH, GlitchBadgeEngine, IDLE_GLITCH } from "./glitchBadgeEngine";
+import { ACTIVE_GLITCH, GlitchBadgeEngine } from "./glitchBadgeEngine";
 
 const GLITCH_LAYERS = 10;
 
@@ -37,39 +37,22 @@ export function GlitchBrandMark({ brandIconSrc, brandName, language, onCycle }: 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const engine = new GlitchBadgeEngine(base, layers, null, reducedMotion);
     engineRef.current = engine;
-    let onScreen = false;
-    let hidden = document.hidden;
-
-    const sync = () => {
-      if (onScreen && !hidden) engine.start();
-      else engine.stop();
-    };
-    const observer = new IntersectionObserver((entries) => {
-      onScreen = entries.some((entry) => entry.isIntersecting);
-      sync();
-    }, { rootMargin: "80px" });
-    observer.observe(host);
     const handleVisibility = () => {
-      hidden = document.hidden;
-      sync();
+      if (document.hidden) engine.stop();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
-    const activate = () => engine.setOptions(ACTIVE_GLITCH);
-    const idle = () => engine.setOptions(IDLE_GLITCH);
+    const activate = () => engine.trigger(ACTIVE_GLITCH);
     const finePointer = window.matchMedia("(pointer: fine)").matches;
     if (finePointer && !reducedMotion) {
       host.addEventListener("pointerenter", activate);
-      host.addEventListener("pointerleave", idle);
     }
 
     return () => {
       clearSwitchTimers();
-      observer.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
       if (finePointer && !reducedMotion) {
         host.removeEventListener("pointerenter", activate);
-        host.removeEventListener("pointerleave", idle);
       }
       engine.destroy();
       engineRef.current = null;
@@ -78,11 +61,8 @@ export function GlitchBrandMark({ brandIconSrc, brandName, language, onCycle }: 
 
   function switchBrandIcon() {
     clearSwitchTimers();
-    engineRef.current?.setOptions(ACTIVE_GLITCH);
+    engineRef.current?.trigger(ACTIVE_GLITCH);
     switchTimerRef.current.push(window.setTimeout(onCycle, 82));
-    switchTimerRef.current.push(window.setTimeout(() => {
-      engineRef.current?.setOptions(IDLE_GLITCH);
-    }, 390));
   }
 
   const brandUnit = () => (

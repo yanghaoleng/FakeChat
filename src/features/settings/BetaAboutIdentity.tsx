@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppLanguage } from "../../shared/i18n";
 import { publicAsset } from "../../shared/publicPath";
-import { ACTIVE_GLITCH, GlitchBadgeEngine, IDLE_GLITCH } from "./glitchBadgeEngine";
+import { ACTIVE_GLITCH, GlitchBadgeEngine } from "./glitchBadgeEngine";
 
 const GLITCH_LAYERS = 10;
 
@@ -43,21 +43,8 @@ export function BetaAboutIdentity({ language }: BetaAboutIdentityProps) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const engine = new GlitchBadgeEngine(base, layers, null, reducedMotion);
     engineRef.current = engine;
-    let onScreen = false;
-    let hidden = document.hidden;
-
-    const sync = () => {
-      if (onScreen && !hidden) engine.start();
-      else engine.stop();
-    };
-    const observer = new IntersectionObserver((entries) => {
-      onScreen = entries.some((entry) => entry.isIntersecting);
-      sync();
-    }, { rootMargin: "120px" });
-    observer.observe(host);
     const handleVisibility = () => {
-      hidden = document.hidden;
-      sync();
+      if (document.hidden) engine.stop();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -85,22 +72,18 @@ export function BetaAboutIdentity({ language }: BetaAboutIdentityProps) {
       magnet.style.transition = "transform 620ms cubic-bezier(0.22, 1.25, 0.36, 1)";
       magnet.style.transform = "translate3d(0,0,0)";
     };
-    const activate = () => engine.setOptions(ACTIVE_GLITCH);
-    const idle = () => engine.setOptions(IDLE_GLITCH);
+    const activate = () => engine.trigger(ACTIVE_GLITCH);
     if (finePointer && !reducedMotion) {
       host.addEventListener("pointerenter", activate);
-      host.addEventListener("pointerleave", idle);
       host.addEventListener("pointermove", handlePointerMove);
       host.addEventListener("pointerleave", releaseMagnet);
     }
 
     return () => {
       clearSwitchTimers();
-      observer.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
       if (finePointer && !reducedMotion) {
         host.removeEventListener("pointerenter", activate);
-        host.removeEventListener("pointerleave", idle);
         host.removeEventListener("pointermove", handlePointerMove);
         host.removeEventListener("pointerleave", releaseMagnet);
       }
@@ -113,13 +96,10 @@ export function BetaAboutIdentity({ language }: BetaAboutIdentityProps) {
   function switchIdentity() {
     clearSwitchTimers();
     const nextIndex = (identityIndex + 1) % identities.length;
-    engineRef.current?.setOptions(ACTIVE_GLITCH);
+    engineRef.current?.trigger(ACTIVE_GLITCH);
     switchTimerRef.current.push(window.setTimeout(() => {
       setIdentityIndex(nextIndex);
     }, 82));
-    switchTimerRef.current.push(window.setTimeout(() => {
-      engineRef.current?.setOptions(IDLE_GLITCH);
-    }, 390));
   }
 
   return (
