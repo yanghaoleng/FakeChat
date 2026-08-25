@@ -5,6 +5,7 @@ import App from "./App";
 import type { StoryPackage } from "./shared/linearStory";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import "./styles/app.css";
+import "./styles/betaAbout.css";
 
 declare const __APP_STORY_PACKAGE__: StoryPackage;
 

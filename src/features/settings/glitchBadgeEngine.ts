@@ -197,7 +197,7 @@ export class GlitchBadgeEngine {
   private unit: HTMLElement | null;
   private badge: HTMLElement | null;
   private badgeRadius = 10;
-  private word: string;
+  private word: string | null;
   private options: GlitchOptions = IDLE_GLITCH;
   private animations: Animation[] = [];
   private drift: Animation | null = null;
@@ -208,7 +208,7 @@ export class GlitchBadgeEngine {
   private running = false;
   private reducedMotion: boolean;
 
-  constructor(base: HTMLElement, layers: HTMLElement[], word: string, reducedMotion = false) {
+  constructor(base: HTMLElement, layers: HTMLElement[], word: string | null, reducedMotion = false) {
     this.base = base;
     this.layers = layers;
     this.word = word;
@@ -219,12 +219,12 @@ export class GlitchBadgeEngine {
       const radius = Number.parseFloat(getComputedStyle(this.badge).borderTopLeftRadius);
       if (!Number.isNaN(radius)) this.badgeRadius = radius;
     }
-    this.setText(word);
+    if (word !== null) this.setText(word);
   }
 
-  setWord(word: string) {
+  setWord(word: string | null) {
     this.word = word;
-    this.setText(word);
+    if (word !== null) this.setText(word);
   }
 
   setOptions(options: GlitchOptions) {
@@ -232,14 +232,14 @@ export class GlitchBadgeEngine {
     if (!this.running) return;
     this.cancelAnimations();
     this.runCycle();
-    this.startScramble();
+    if (this.word !== null) this.startScramble();
   }
 
   start() {
     if (this.running || this.reducedMotion) return;
     this.running = true;
     this.runCycle();
-    this.startScramble();
+    if (this.word !== null) this.startScramble();
     this.startDrift();
   }
 
@@ -314,16 +314,19 @@ export class GlitchBadgeEngine {
   }
 
   private startScramble() {
+    if (this.word === null) return;
     this.stopScramble();
     this.cycleStart = performance.now();
     const tick = () => {
+      const word = this.word;
+      if (word === null) return;
       const options = this.options;
       const phase = ((performance.now() - this.cycleStart) % options.duration) / options.duration;
       if (envelope(options, phase) === 0 || ++this.scrambleTick % 2 !== 0) {
-        this.setText(this.word);
+        this.setText(word);
         return;
       }
-      this.setText(scrambledWord(this.word, options.scrambleRate));
+      this.setText(scrambledWord(word, options.scrambleRate));
     };
     tick();
     this.scrambleTimer = window.setInterval(tick, this.options.scrambleInterval);
@@ -332,7 +335,7 @@ export class GlitchBadgeEngine {
   private stopScramble() {
     if (this.scrambleTimer !== null) window.clearInterval(this.scrambleTimer);
     this.scrambleTimer = null;
-    this.setText(this.word);
+    if (this.word !== null) this.setText(this.word);
   }
 
   private setText(value: string) {

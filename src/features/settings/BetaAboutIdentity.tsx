@@ -6,24 +6,9 @@ import { ACTIVE_GLITCH, GlitchBadgeEngine, IDLE_GLITCH } from "./glitchBadgeEngi
 const GLITCH_LAYERS = 10;
 
 const identities = [
-  {
-    name: "叫叫",
-    glitchName: "叫叫 / JIAOJIAO",
-    icon: "/brand-icons/ququ-01-jiaojiao-shush.webp",
-    line: "嘘——脑洞已经混进群聊了。"
-  },
-  {
-    name: "铃铛",
-    glitchName: "铃铛 / LINGDANG",
-    icon: "/brand-icons/ququ-05-lingdang-giggle.webp",
-    line: "你先别急，我看这段还能再反转。"
-  },
-  {
-    name: "猪小弟",
-    glitchName: "猪小弟 / ZHUXIAODI",
-    icon: "/brand-icons/ququ-04-zhuxiaodi-kiss.webp",
-    line: "收到，但我决定先把它拍成职场短剧。"
-  }
+  { name: "叫叫", icon: "/brand-icons/ququ-01-jiaojiao-shush.webp" },
+  { name: "铃铛", icon: "/brand-icons/ququ-05-lingdang-giggle.webp" },
+  { name: "猪小弟", icon: "/brand-icons/ququ-04-zhuxiaodi-kiss.webp" }
 ] as const;
 
 type BetaAboutIdentityProps = {
@@ -35,13 +20,12 @@ export function BetaAboutIdentity({ language }: BetaAboutIdentityProps) {
   const engineRef = useRef<GlitchBadgeEngine | null>(null);
   const switchTimerRef = useRef<number[]>([]);
   const [identityIndex, setIdentityIndex] = useState(0);
-  const [switching, setSwitching] = useState(false);
   const identity = identities[identityIndex];
-  const labels = {
-    "zh-CN": { instruction: "点一下，换个主演", aria: `当前主演是${identity.name}，点击切换` },
-    "zh-TW": { instruction: "點一下，換個主演", aria: `目前主演是${identity.name}，點擊切換` },
-    en: { instruction: "Tap to switch the lead", aria: `Current lead: ${identity.name}. Activate to switch.` },
-    ja: { instruction: "タップで主役を交代", aria: `現在の主役は${identity.name}。押すと切り替わります。` }
+  const ariaLabel = {
+    "zh-CN": `当前图标是${identity.name}，点击切换角色图标`,
+    "zh-TW": `目前圖示是${identity.name}，點擊切換角色圖示`,
+    en: `Current icon: ${identity.name}. Activate to switch character.`,
+    ja: `現在のアイコンは${identity.name}です。押すとキャラクターが切り替わります。`
   }[language];
 
   function clearSwitchTimers() {
@@ -57,7 +41,7 @@ export function BetaAboutIdentity({ language }: BetaAboutIdentityProps) {
     if (!base) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const engine = new GlitchBadgeEngine(base, layers, identities[0].glitchName, reducedMotion);
+    const engine = new GlitchBadgeEngine(base, layers, null, reducedMotion);
     engineRef.current = engine;
     let onScreen = false;
     let hidden = document.hidden;
@@ -129,56 +113,42 @@ export function BetaAboutIdentity({ language }: BetaAboutIdentityProps) {
   function switchIdentity() {
     clearSwitchTimers();
     const nextIndex = (identityIndex + 1) % identities.length;
-    const nextIdentity = identities[nextIndex];
-    setSwitching(true);
     engineRef.current?.setOptions(ACTIVE_GLITCH);
     switchTimerRef.current.push(window.setTimeout(() => {
       setIdentityIndex(nextIndex);
-      engineRef.current?.setWord(nextIdentity.glitchName);
     }, 82));
     switchTimerRef.current.push(window.setTimeout(() => {
-      setSwitching(false);
       engineRef.current?.setOptions(IDLE_GLITCH);
     }, 390));
   }
 
   return (
-    <div ref={hostRef} className="beta-about-identity" data-switching={switching ? "true" : "false"}>
+    <div ref={hostRef} className="beta-about-icon-identity">
       <button
-        className="beta-about-identity-button"
+        className="beta-about-icon-button"
         type="button"
-        aria-label={labels.aria}
+        aria-label={ariaLabel}
         data-uisfx="reaction"
         onClick={switchIdentity}
       >
-        <span className="beta-about-avatar-shell" aria-hidden="true">
-          <img src={publicAsset(identity.icon)} alt="" width="96" height="96" decoding="async" />
-          <span className="beta-about-avatar-pulse" />
-        </span>
-        <span data-glitch-magnet className="beta-about-glitch-magnet">
-          <span className="beta-about-glitch-stack">
-            <span className="beta-about-glitch-anchor" aria-hidden="true">猪小弟 / ZHUXIAODI</span>
-            <span data-glitch-base className="beta-about-glitch-copy beta-about-glitch-base">
-              <span data-glitch-badge className="beta-about-glitch-surface" />
-              <span data-glitch-text className="beta-about-glitch-text">{identity.glitchName}</span>
+        <span data-glitch-magnet className="beta-about-icon-magnet" aria-hidden="true">
+          <span className="beta-about-icon-stack">
+            <span data-glitch-base className="beta-about-icon-copy beta-about-icon-base">
+              <img src={publicAsset(identity.icon)} alt="" width="112" height="112" decoding="async" />
             </span>
             {Array.from({ length: GLITCH_LAYERS }, (_, index) => (
               <span
                 key={index}
                 data-glitch-layer
-                className="beta-about-glitch-copy beta-about-glitch-layer"
+                className="beta-about-icon-copy beta-about-icon-layer"
                 style={{ opacity: 0 }}
-                aria-hidden="true"
               >
-                <span className="beta-about-glitch-surface" style={{ animationDelay: `${-(index * 2.4).toFixed(1)}s` }} />
-                <span data-glitch-text className="beta-about-glitch-text">{identity.glitchName}</span>
+                <img src={publicAsset(identity.icon)} alt="" width="112" height="112" decoding="async" />
               </span>
             ))}
           </span>
         </span>
-        <span className="beta-about-identity-hint">{labels.instruction}</span>
       </button>
-      <p className="beta-about-character-line" key={identity.name}>{identity.line}</p>
     </div>
   );
 }

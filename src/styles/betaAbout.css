@@ -1,0 +1,197 @@
+.about-dialog-site-beta {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(820px, calc(100dvh - 32px));
+}
+
+.site-about-content-beta {
+  gap: 0;
+  padding: 0 28px 32px;
+}
+
+.beta-about-player-hero {
+  display: grid;
+  justify-items: center;
+  padding: 34px 12px 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.beta-about-icon-identity {
+  display: grid;
+  place-items: center;
+}
+
+.beta-about-icon-button {
+  display: grid;
+  place-items: center;
+  min-width: 132px;
+  min-height: 132px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  padding: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.beta-about-icon-button:focus-visible {
+  outline: 2px solid rgba(118, 171, 255, 0.84);
+  outline-offset: 3px;
+}
+
+.beta-about-icon-magnet {
+  position: relative;
+  display: block;
+  will-change: transform;
+}
+
+.beta-about-icon-stack {
+  position: relative;
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+  isolation: isolate;
+}
+
+.beta-about-icon-copy {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  display: block;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  will-change: transform, clip-path, opacity;
+}
+
+.beta-about-icon-copy img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow:
+    0 18px 38px rgba(3, 11, 26, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.beta-about-icon-layer {
+  pointer-events: none;
+}
+
+.beta-about-player-hero h3,
+.beta-about-player-hero p,
+.beta-about-player-section h3,
+.beta-about-player-section p {
+  margin: 0;
+}
+
+.beta-about-player-hero h3 {
+  max-width: 520px;
+  margin-top: 20px;
+  color: #f4f7ff;
+  font-size: clamp(25px, 4.2vw, 32px);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.032em;
+  text-wrap: balance;
+}
+
+.beta-about-player-hero p,
+.beta-about-player-section p {
+  color: rgba(218, 229, 247, 0.76);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.beta-about-player-hero p {
+  max-width: 520px;
+  margin-top: 14px;
+}
+
+.beta-about-player-guide {
+  display: grid;
+}
+
+.beta-about-player-section {
+  padding: 26px 2px 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.beta-about-player-section h3 {
+  color: rgba(245, 248, 255, 0.96);
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.42;
+  letter-spacing: -0.018em;
+}
+
+.beta-about-player-section p {
+  margin-top: 10px;
+}
+
+.beta-about-player-section p + p {
+  margin-top: 12px;
+}
+
+.beta-about-player-cover {
+  overflow: hidden;
+  margin: 0 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(9, 19, 34, 0.82);
+  box-shadow: 0 16px 38px rgba(1, 8, 19, 0.2);
+}
+
+.beta-about-player-cover img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+}
+
+.beta-about-player-privacy {
+  border-bottom: 0;
+  padding-bottom: 2px;
+}
+
+@media (max-width: 620px) {
+  .about-dialog-site-beta {
+    width: min(100%, calc(100vw - 20px));
+    max-height: calc(100dvh - 20px);
+  }
+
+  .site-about-content-beta {
+    padding: 0 20px 28px;
+  }
+
+  .beta-about-player-hero {
+    padding: 28px 0 26px;
+  }
+
+  .beta-about-player-hero h3 {
+    margin-top: 16px;
+    font-size: 25px;
+  }
+
+  .beta-about-player-hero p,
+  .beta-about-player-section p {
+    font-size: 15px;
+    line-height: 1.76;
+  }
+
+  .beta-about-player-section {
+    padding: 23px 0 25px;
+  }
+
+  .beta-about-player-section h3 {
+    font-size: 19px;
+  }
+
+  .beta-about-player-cover {
+    border-radius: 13px;
+  }
+}

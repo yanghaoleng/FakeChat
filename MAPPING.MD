@@ -6,9 +6,9 @@
 | 产品名 / 网站标题 | 顶栏 | `copy.brandName` | `.beta-menu-brand-text`；使用 `h1`，移动端不隐藏 |
 | 品牌头像 / 网站小 logo | 正式顶栏、Beta 网站标题、favicon | `viralBrandIconPath`、`randomBrandIconPaths`、`brandIconUrlForStoryPackage`、`applyBrandFavicon`，WebP 素材位于 `/brand-icons/` | 微信版固定绿色白气泡；钉钉正式版与 Beta 每次刷新随机选一个 JOJO 头像；页面头像与 favicon 同图 |
 | 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
-| 黑客松关于页 / 产品介绍页 | 测试版钉钉“帮助 → 关于本站” | `SiteAboutDialog`、`betaHackathonBuild` | `.about-dialog-site-beta`、`.site-about-content-beta`；正式版走原通用内容 |
+| 玩家指南 / 黑客松关于页 / 产品介绍页 | 测试版“帮助 → 关于本站” | `SiteAboutDialog`、`betaHackathonBuild` | `.about-dialog-site-beta`、`.site-about-content-beta`、`.beta-about-player-section`；仅标题和正文两级，正式版走原通用内容 |
 | 支持作者窗口 / 打赏窗口 / 随机感谢语 | “帮助 → 支持作者” | `AboutDialog`、`supportAuthorCopy`、`supportPraiseIndex`、`nextSupportPraiseIndex`、Calligraph `variant="text"` | `.about-dialog-support`、`.support-author-message`、`.support-author-praise`；12 条随机且不连续重复，按词组入场 |
-| 角色切换 / 换个主演 / 故障姓名 | 黑客松关于页首屏 | `BetaAboutIdentity`、`GlitchBadgeEngine`、`IDLE_GLITCH`、`ACTIVE_GLITCH` | `.beta-about-identity-button`、`.beta-about-glitch-stack`；点击轮换叫叫、铃铛、猪小弟 |
+| 角色图标 / 故障头像 / 点击换角色 | 玩家指南首屏 | `BetaAboutIdentity`、`GlitchBadgeEngine`、`IDLE_GLITCH`、`ACTIVE_GLITCH` | `.beta-about-icon-button`、`.beta-about-icon-stack`；只有图标，无姓名标签和提示小字，点击轮换叫叫、铃铛、猪小弟 |
 | 界面音效 / 点击音效 / 静音 | 测试版钉钉全局与“显示”菜单 | `installBetaUiSfx`、`uiSoundEnabled`、`toggleBetaUiSound` | `uisfx` cinematic；`localStorage: ququ:beta-ui-sfx`；`data-uisfx` 可覆盖默认语义 |
 | 早点走进会议室 / 02f 宣传图 | 黑客松关于页宣传图 | `publicAsset("/hackathon/ququ-dingtalk-cover-02f.webp")` | `1536×1024`、`3:2`、质量 82 WebP，约 `126KB` |
 | 构建版本 | 应用入口 | `__APP_STORY_PACKAGE__`、`App({ storyPackage })` | `.app-shell-jojo` 仅 JOJO 版存在 |
