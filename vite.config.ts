@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
         transformIndexHtml(html) {
           return html
             .replaceAll("%STORY_FAVICON%", faviconPath)
+            .replaceAll("%STORY_BASE%", base)
             .replaceAll("%STORY_CANONICAL%", canonicalUrl)
             .replaceAll("%STORY_TITLE%", pageTitle)
             .replaceAll("%STORY_DESCRIPTION%", pageDescription);

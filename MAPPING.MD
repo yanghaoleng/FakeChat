@@ -8,6 +8,7 @@
 | 关于菜单项 | 标题下拉菜单 | `aboutDialogView`、`VITE_GITHUB_REPO_URL`、`VITE_FEEDBACK_WECHAT_ID`、`VITE_ALIPAY_QR_CODE_URL` | `.title-menu-item`、`.about-dialog` |
 | 玩家指南 / 黑客松关于页 / 产品介绍页 | 钉钉正式版与 Beta“帮助 → 关于本站” | `SiteAboutDialog`、`jojoPlayerGuide`、`showUiSoundControl` | `.about-dialog-site-beta`、`.site-about-content-beta`、`.beta-about-player-section`；仅标题和正文两级，不含宣传配图；微信正式版走原通用内容 |
 | 支持作者窗口 / 打赏窗口 / 随机感谢语 | “帮助 → 支持作者” | `AboutDialog`、`supportAuthorCopy`、`supportPraiseIndex`、`nextSupportPraiseIndex`、Calligraph `variant="text"` | `.about-dialog-support`、`.support-author-message`、`.support-author-praise`；12 条随机且不连续重复，按词组入场 |
+| 打赏二维码 / 收款码 | 支持作者窗口内的微信、支付宝二维码 | `wechatQrCodeUrl`、`alipayQrCodeUrl`、`%STORY_BASE%` | `public/donate/*.webp`、`.about-support-qr img`；HTML 头部预载并按正式/Beta base path 生成地址 |
 | 角色图标 / 故障头像 / 点击换角色 | 玩家指南首屏 | `BetaAboutIdentity`、`GlitchBadgeEngine.trigger`、`ACTIVE_GLITCH` | `.beta-about-icon-button`、`.beta-about-icon-stack`；默认静止，hover/点击单次播放；只有图标，无姓名标签和提示小字，点击轮换叫叫、铃铛、猪小弟 |
 | 界面音效 / 点击音效 / 静音 | 测试版钉钉全局与“显示”菜单 | `installBetaUiSfx`、`uiSoundEnabled`、`toggleBetaUiSound` | `uisfx` cinematic；`localStorage: ququ:beta-ui-sfx`；`data-uisfx` 可覆盖默认语义 |
 | 早点走进会议室 / 02f 宣传图 | 黑客松投稿素材，不再嵌入关于页 | `public/hackathon/ququ-dingtalk-cover-02f.webp` | `1536×1024`、`3:2`、质量 82 WebP，约 `126KB` |

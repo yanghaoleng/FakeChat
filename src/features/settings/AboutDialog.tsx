@@ -234,7 +234,15 @@ export function AboutDialog({
                 role="tabpanel"
                 aria-labelledby={`support-author-${paymentMethod}-tab`}
               >
-                <img src={paymentQrCodeUrl} alt={language.startsWith("zh") ? `${paymentMethodLabel}${text.qr}` : `${paymentMethodLabel} ${text.qr}`} />
+                <img
+                  src={paymentQrCodeUrl}
+                  alt={language.startsWith("zh") ? `${paymentMethodLabel}${text.qr}` : `${paymentMethodLabel} ${text.qr}`}
+                  width={paymentMethod === "wechat" ? 420 : 500}
+                  height={paymentMethod === "wechat" ? 420 : 500}
+                  decoding="async"
+                  loading="eager"
+                  fetchPriority="high"
+                />
               </div>
             ) : (
               <div

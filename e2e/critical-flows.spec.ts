@@ -121,7 +121,7 @@ test.describe("关键用户流程", () => {
     const praise = supportDialog.locator(".support-author-praise");
     const firstPraise = await praise.getAttribute("aria-label");
     expect(supportAuthorCopy["zh-CN"].praises).toContain(firstPraise);
-    expect(await praise.locator(".support-author-praise-motion").count()).toBeGreaterThan(0);
+    await expect(praise.locator(".support-author-praise-motion")).not.toHaveCount(0);
     await expect(praise.locator(".support-author-praise-motion").first()).toBeVisible();
     await expect(praise.locator(".support-author-praise-motion > span")).not.toHaveCount(0);
     const fontSizes = await supportDialog.evaluate((dialog) => ({
@@ -134,11 +134,17 @@ test.describe("关键用户流程", () => {
     expect(fontSizes).toEqual({ title: "17px", message: "14px", paymentTab: "14px", linkLabel: "11px", linkValue: "14px" });
     const wechatPaymentTab = supportDialog.getByRole("tab", { name: "微信" });
     const alipayPaymentTab = supportDialog.getByRole("tab", { name: "支付宝" });
+    await expect(page.locator('link[rel="preload"][as="image"][href$="/donate/wechat-qr.webp"]')).toHaveAttribute("fetchpriority", "high");
+    await expect(page.locator('link[rel="preload"][as="image"][href$="/donate/alipay-qr.webp"]')).toHaveAttribute("fetchpriority", "low");
     await expect(wechatPaymentTab).toHaveAttribute("aria-selected", "true");
-    await expect(supportDialog.getByRole("img", { name: "微信收款码" })).toHaveAttribute("src", /\/donate\/wechat-qr\.webp$/);
+    const wechatQr = supportDialog.getByRole("img", { name: "微信收款码" });
+    await expect(wechatQr).toHaveAttribute("src", /\/donate\/wechat-qr\.webp$/);
+    await expect.poll(() => wechatQr.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     await alipayPaymentTab.click();
     await expect(alipayPaymentTab).toHaveAttribute("aria-selected", "true");
-    await expect(supportDialog.getByRole("img", { name: "支付宝收款码" })).toHaveAttribute("src", /\/donate\/alipay-qr\.webp$/);
+    const alipayQr = supportDialog.getByRole("img", { name: "支付宝收款码" });
+    await expect(alipayQr).toHaveAttribute("src", /\/donate\/alipay-qr\.webp$/);
+    await expect.poll(() => alipayQr.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     const copyGithubButton = supportDialog.getByRole("button", { name: "复制开源链接" });
     await expect(copyGithubButton).toBeVisible();
     await expect(page.locator(".about-dialog")).toHaveCount(1);
