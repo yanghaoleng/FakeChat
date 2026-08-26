@@ -6,8 +6,10 @@
 - [x] 复用 Fish Audio 的紧凑表单与就地测试反馈，提供国内外 OpenAI 兼容接口模板、Base URL、模型名、API Key 和“测试并使用”；测试成功后保存为当前生成模型。
 - [x] 自定义模型配置经过 Beta surface gate，后端优先代发续写，失败时保留浏览器直连兼容；新增单元测试和 `390×844` Beta Playwright 流程，覆盖模板填充、测试请求、保存恢复与横向溢出。
 - [x] 本地通过 TypeScript、30 个测试文件共 183 项、Beta 与正式双版本构建；Beta `390×844` 自定义模型流程通过，正式完整 Playwright 回归 11 项通过、Beta 专用用例按环境跳过 1 项。
-- [ ] 完成 Beta 公网页面与接口验收。
-- [ ] 同步最新分支后提交推送，并只部署独立 Beta 工程；正式工程保持当前部署。
+- [x] 功能提交 `7a73b6e` 已同步最新分支并推送；GitHub Verify `32921940679` 与 Browser E2E `32921940740` 均成功。
+- [x] 正确 Beta 部署 `dpl_9dS2JiV1CsTrQ4Lfxj7pwMFrqt2d` 已覆盖 `https://ququ-fakechat-beta.vercel.app/beta/`；页面、实际 JS/CSS 与健康接口均为 200，自定义模型测试接口 GET 为预期 405，证明函数路由已生效，Vercel 近 30 分钟无 error 日志。
+- [x] 公网 `390×844` 流程通过：接口模板填充、测试请求、成功保存、刷新保持和横向宽度均正常。正式工程仍为任务开始前的 `dpl_4di5S8oCMuBw3Gd7dUZMiKjPZpzT`，公开正式模型菜单确认没有自定义入口。
+- [x] 首次部署 `dpl_2TGpjgx6ZaC5WpVGYWuAqsanFiQw` 虽 Ready，但 Vercel 远端仍采用根 `vercel.json` 的正式 `verify` 构建，未视为有效 Beta。随后只在隔离发布工作树内将根配置替换为 `vercel.beta.json` 等价内容并重发，主工作树和正式项目绑定未改动。
 
 ## 2026-08-25 打赏二维码预载与 Browser E2E 误报诊断
 
