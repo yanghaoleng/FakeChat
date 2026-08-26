@@ -32,6 +32,7 @@ export type TtsClip = {
   blob: Blob;
   url: string;
   durationMs: number;
+  source?: "edge" | "fish";
 };
 
 export type TtsClipMap = Record<string, TtsClip>;
@@ -94,7 +95,7 @@ function toArrayBuffer(view: Uint8Array): ArrayBuffer {
   return copy.buffer;
 }
 
-async function getAudioDurationMs(blob: Blob): Promise<number> {
+export async function getAudioDurationMs(blob: Blob): Promise<number> {
   const audio = new Audio(URL.createObjectURL(blob));
   try {
     await new Promise<void>((resolve, reject) => {
@@ -209,6 +210,7 @@ export async function synthesizeMessageClip(project: DramaProject, message: Chat
     messageId: message.id,
     blob,
     url: URL.createObjectURL(blob),
-    durationMs
+    durationMs,
+    source: "edge"
   };
 }

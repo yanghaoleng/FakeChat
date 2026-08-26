@@ -1,0 +1,522 @@
+import { Check, LoaderCircle, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { selectableAiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
+import { customModelProviders, type CustomModelSettings, type CustomModelTestState } from "../../shared/customModel";
+import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type LanguagePreference } from "../../shared/i18n";
+import type { StoryPackage } from "../../shared/linearStory";
+import type { JojoPresetRole, PresetRoleSelection, ViralPresetRole } from "../../shared/presetStories";
+import type { SettingsAmbientSkinId, SettingsPreviewMode } from "./SettingsDialog";
+import { GlitchBrandMark } from "./GlitchBrandMark";
+
+type MenuId = "file" | "view" | "role" | "model" | "help";
+
+export const betaModelMenuOpenEvent = "ququ:open-beta-model-menu";
+
+export type FishApiTestState = "idle" | "testing" | "success" | "error";
+
+type RoleChoice = {
+  id: string;
+  label: string;
+};
+
+type BetaMenuBarProps = {
+  brandIconSrc: string;
+  copy: AppCopy;
+  language: AppLanguage;
+  languagePreference: LanguagePreference;
+  storyPackage: StoryPackage;
+  activePresetRole: PresetRoleSelection;
+  jojoRoleChoices: Array<{ roleId: JojoPresetRole; label: string }>;
+  viralRoleChoices: Array<{ id: ViralPresetRole; label: string }>;
+  previewMode: SettingsPreviewMode;
+  ambientSkins: Array<{ id: SettingsAmbientSkinId; label: string }>;
+  ambientSkin: SettingsAmbientSkinId;
+  aiProviderId: AiProviderId;
+  showCustomModelControl: boolean;
+  customModelPanelOpen: boolean;
+  customModelSettings: CustomModelSettings;
+  customModelTestState: CustomModelTestState;
+  customModelTestMessage: string;
+  allowMultiSession: boolean;
+  multiSessionToggleDisabled: boolean;
+  fishAutoReadEnabled: boolean;
+  fishApiKey: string;
+  fishApiTestState: FishApiTestState;
+  fishApiTestMessage: string;
+  showUiSoundControl: boolean;
+  uiSoundEnabled: boolean;
+  switchLink: { href: string; label: string };
+  onChoosePreviewMode: (mode: SettingsPreviewMode) => void;
+  onSelectAmbientSkin: (skin: SettingsAmbientSkinId) => void;
+  onSwitchPresetRole: (selection: Partial<PresetRoleSelection>) => void;
+  onChangeLanguage: (preference: LanguagePreference) => void;
+  onSelectAiModel: (model: AiModelChoiceId) => void;
+  onSelectCustomModelProvider: (providerId: string) => void;
+  onChangeCustomModelSettings: (settings: Partial<CustomModelSettings>) => void;
+  onTestCustomModel: () => void;
+  onToggleMultiSession: () => void;
+  onToggleFishAutoRead: () => void;
+  onChangeFishApiKey: (apiKey: string) => void;
+  onTestFishApiKey: () => void;
+  onToggleUiSound: () => void;
+  onCycleBrandIcon: () => void;
+  onOpenAbout: () => void;
+  onOpenSiteAbout: () => void;
+  onExportArchive: () => void;
+  onImportArchive: () => void;
+};
+
+type MenuItemProps = {
+  checked?: boolean;
+  disabled?: boolean;
+  label: string;
+  shortcut?: string;
+  sfxSilent?: boolean;
+  onClick?: () => void;
+};
+
+function MenuItem({ checked, disabled, label, shortcut, sfxSilent, onClick }: MenuItemProps) {
+  return (
+    <button
+      className="beta-menu-item"
+      type="button"
+      role={checked === undefined ? "menuitem" : "menuitemradio"}
+      aria-checked={checked === undefined ? undefined : checked}
+      data-uisfx-silent={sfxSilent ? "true" : undefined}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <span className="beta-menu-check" aria-hidden="true">{checked ? <Check size={14} strokeWidth={2.4} /> : null}</span>
+      <span className="beta-menu-label">{label}</span>
+      {shortcut ? <kbd>{shortcut}</kbd> : null}
+    </button>
+  );
+}
+
+export function BetaMenuBar({
+  brandIconSrc,
+  copy,
+  language,
+  languagePreference,
+  storyPackage,
+  activePresetRole,
+  jojoRoleChoices,
+  viralRoleChoices,
+  previewMode,
+  ambientSkins,
+  ambientSkin,
+  aiProviderId,
+  showCustomModelControl,
+  customModelPanelOpen,
+  customModelSettings,
+  customModelTestState,
+  customModelTestMessage,
+  allowMultiSession,
+  multiSessionToggleDisabled,
+  fishAutoReadEnabled,
+  fishApiKey,
+  fishApiTestState,
+  fishApiTestMessage,
+  showUiSoundControl,
+  uiSoundEnabled,
+  switchLink,
+  onChoosePreviewMode,
+  onSelectAmbientSkin,
+  onSwitchPresetRole,
+  onChangeLanguage,
+  onSelectAiModel,
+  onSelectCustomModelProvider,
+  onChangeCustomModelSettings,
+  onTestCustomModel,
+  onToggleMultiSession,
+  onToggleFishAutoRead,
+  onChangeFishApiKey,
+  onTestFishApiKey,
+  onToggleUiSound,
+  onCycleBrandIcon,
+  onOpenAbout,
+  onOpenSiteAbout,
+  onExportArchive,
+  onImportArchive
+}: BetaMenuBarProps) {
+  const rootRef = useRef<HTMLElement>(null);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
+  const [closingMenu, setClosingMenu] = useState<MenuId | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const text = {
+    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", uiSound: "界面音效", background: "背景", aiModel: "AI 模型", customModel: "自定义大语言模型", customModelApi: "自定义大语言模型 API", providerTemplate: "接口模板", domestic: "国内主流", global: "国外主流", baseUrl: "Base URL", modelName: "模型名", apiKey: "API Key", apiKeyPlaceholder: "粘贴 API Key", testUse: "测试并使用", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
+    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", uiSound: "介面音效", background: "背景", aiModel: "AI 模型", customModel: "自訂大型語言模型", customModelApi: "自訂大型語言模型 API", providerTemplate: "介面範本", domestic: "中國服務", global: "全球服務", baseUrl: "Base URL", modelName: "模型名稱", apiKey: "API Key", apiKeyPlaceholder: "貼上 API Key", testUse: "測試並使用", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
+    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", uiSound: "Interface sound", background: "Background", aiModel: "AI model", customModel: "Custom language model", customModelApi: "Custom language model API", providerTemplate: "API template", domestic: "China providers", global: "Global providers", baseUrl: "Base URL", modelName: "Model name", apiKey: "API Key", apiKeyPlaceholder: "Paste API Key", testUse: "Test & use", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
+    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", uiSound: "操作音", background: "背景", aiModel: "AIモデル", customModel: "カスタム言語モデル", customModelApi: "カスタム言語モデル API", providerTemplate: "APIテンプレート", domestic: "中国向け", global: "グローバル", baseUrl: "Base URL", modelName: "モデル名", apiKey: "API Key", apiKeyPlaceholder: "API Keyを貼り付け", testUse: "テストして使用", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
+  }[language];
+
+  const roleChoices: RoleChoice[] = storyPackage === "jojo"
+    ? jojoRoleChoices.map((choice) => ({ id: choice.roleId, label: choice.label }))
+    : viralRoleChoices.map((choice) => ({ id: choice.id, label: choice.label }));
+  const activeRoleId = storyPackage === "jojo" ? activePresetRole.jojoRole : activePresetRole.viralRole;
+  const customModelSelected = showCustomModelControl && customModelPanelOpen;
+  const canTestCustomModel = Boolean(
+    customModelSettings.apiKey.trim()
+    && customModelSettings.baseUrl.trim()
+    && customModelSettings.model.trim()
+  );
+
+  function clearCloseTimer() {
+    if (closeTimerRef.current === null) return;
+    window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }
+
+  function closeCurrentMenu() {
+    if (!openMenu) return;
+    clearCloseTimer();
+    const menu = openMenu;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setOpenMenu(null);
+    setClosingMenu(menu);
+    closeTimerRef.current = window.setTimeout(() => {
+      setClosingMenu((current) => current === menu ? null : current);
+      closeTimerRef.current = null;
+    }, reduceMotion ? 0 : 140);
+  }
+
+  function openNextMenu(menu: MenuId) {
+    clearCloseTimer();
+    setClosingMenu(null);
+    setOpenMenu(menu);
+  }
+
+  useEffect(() => {
+    if (!openMenu && !closingMenu && !mobileMenuOpen) return;
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      closeCurrentMenu();
+      setMobileMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      closeCurrentMenu();
+      setMobileMenuOpen(false);
+      mobileToggleRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", closeOnPointerDown, true);
+    document.addEventListener("keydown", closeOnEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnPointerDown, true);
+      document.removeEventListener("keydown", closeOnEscape, true);
+    };
+  }, [closingMenu, mobileMenuOpen, openMenu]);
+
+  useEffect(() => () => clearCloseTimer(), []);
+
+  useEffect(() => {
+    const mobileViewport = window.matchMedia("(max-width: 760px)");
+    const resetMobileMenu = () => {
+      if (mobileViewport.matches) return;
+      clearCloseTimer();
+      setMobileMenuOpen(false);
+      setOpenMenu(null);
+      setClosingMenu(null);
+    };
+    mobileViewport.addEventListener("change", resetMobileMenu);
+    return () => mobileViewport.removeEventListener("change", resetMobileMenu);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const focusFrame = window.requestAnimationFrame(() => {
+      mobileNavRef.current?.querySelector<HTMLButtonElement>(".beta-menu-trigger")?.focus();
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleOpenModelMenu = () => {
+      if (window.matchMedia("(max-width: 760px)").matches) setMobileMenuOpen(true);
+      openNextMenu("model");
+    };
+    window.addEventListener(betaModelMenuOpenEvent, handleOpenModelMenu);
+    return () => window.removeEventListener(betaModelMenuOpenEvent, handleOpenModelMenu);
+  }, []);
+
+  function choose(action: () => void) {
+    action();
+    closeCurrentMenu();
+    if (window.matchMedia("(max-width: 760px)").matches) setMobileMenuOpen(false);
+  }
+
+  function renderMenu(id: MenuId) {
+    if (id === "file") {
+      return (
+        <>
+          <MenuItem label={text.save} shortcut="⌘S" onClick={() => choose(onExportArchive)} />
+          <MenuItem label={text.load} shortcut="⌘I" onClick={() => choose(onImportArchive)} />
+          <div className="beta-menu-separator" role="separator" />
+          <a
+            className="beta-menu-link"
+            href={switchLink.href}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              closeCurrentMenu();
+              setMobileMenuOpen(false);
+            }}
+          >
+            <span className="beta-menu-check" />
+            <span className="beta-menu-label">{switchLink.label}</span>
+          </a>
+        </>
+      );
+    }
+
+    if (id === "view") {
+      return (
+        <>
+          <div className="beta-menu-section-label">{text.view}</div>
+          <MenuItem checked={previewMode === "wechat"} label={text.interface} onClick={() => choose(() => onChoosePreviewMode("wechat"))} />
+          <MenuItem checked={previewMode === "video"} label={text.video} onClick={() => choose(() => onChoosePreviewMode("video"))} />
+          {storyPackage === "viral" ? (
+            <MenuItem checked={allowMultiSession} disabled={multiSessionToggleDisabled} label={text.multiSession} onClick={() => choose(onToggleMultiSession)} />
+          ) : null}
+          {showUiSoundControl ? (
+            <MenuItem checked={uiSoundEnabled} label={text.uiSound} sfxSilent onClick={() => choose(onToggleUiSound)} />
+          ) : null}
+          <div className="beta-menu-separator" role="separator" />
+          <div className="beta-menu-section-label">{text.background}</div>
+          {ambientSkins.map((skin) => (
+            <MenuItem key={skin.id} checked={ambientSkin === skin.id} label={skin.label} onClick={() => choose(() => onSelectAmbientSkin(skin.id))} />
+          ))}
+          <div className="beta-menu-separator" role="separator" />
+          <div className="beta-menu-section-label">{text.language}</div>
+          <MenuItem checked={languagePreference === "auto"} label={`${copy.followBrowser} (${languageLabels[language]})`} onClick={() => choose(() => onChangeLanguage("auto"))} />
+          {appLanguages.map((item) => (
+            <MenuItem key={item} checked={languagePreference === item} label={languageLabels[item]} onClick={() => choose(() => onChangeLanguage(item))} />
+          ))}
+        </>
+      );
+    }
+
+    if (id === "role") {
+      return roleChoices.map((choice) => (
+        <MenuItem
+          key={choice.id}
+          checked={activeRoleId === choice.id}
+          label={choice.label}
+          onClick={() => choose(() => storyPackage === "jojo"
+            ? onSwitchPresetRole({ jojoRole: choice.id as JojoPresetRole })
+            : onSwitchPresetRole({ viralRole: choice.id as ViralPresetRole }))}
+        />
+      ));
+    }
+
+    if (id === "model") {
+      return (
+        <>
+          <div className="beta-menu-section-label">{text.aiModel}</div>
+          {selectableAiProviders.map((provider) => (
+            <MenuItem key={provider.id} checked={!customModelSelected && aiProviderId === provider.id} label={provider.label} onClick={() => choose(() => onSelectAiModel(provider.id))} />
+          ))}
+          {showCustomModelControl ? (
+            <MenuItem checked={customModelSelected} label={text.customModel} onClick={() => onSelectAiModel("custom")} />
+          ) : null}
+          {customModelSelected ? (
+            <form
+              className="beta-menu-inline-form beta-menu-custom-model-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (customModelTestState !== "testing" && canTestCustomModel) onTestCustomModel();
+              }}
+            >
+              <div className="beta-menu-inline-label">{text.customModelApi}</div>
+              <div className="beta-menu-custom-model-fields">
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-provider">
+                  <span>{text.providerTemplate}</span>
+                  <select
+                    id="beta-custom-model-provider"
+                    value={customModelSettings.providerId}
+                    onChange={(event) => onSelectCustomModelProvider(event.currentTarget.value)}
+                  >
+                    <optgroup label={text.domestic}>
+                      {customModelProviders.filter((provider) => provider.region === "domestic").map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={text.global}>
+                      {customModelProviders.filter((provider) => provider.region === "global").map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.label}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </label>
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-base-url">
+                  <span>{text.baseUrl}</span>
+                  <input
+                    id="beta-custom-model-base-url"
+                    type="url"
+                    autoComplete="url"
+                    spellCheck={false}
+                    value={customModelSettings.baseUrl}
+                    placeholder="https://api.example.com/v1"
+                    onChange={(event) => onChangeCustomModelSettings({ baseUrl: event.currentTarget.value })}
+                  />
+                </label>
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-name">
+                  <span>{text.modelName}</span>
+                  <input
+                    id="beta-custom-model-name"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={customModelSettings.model}
+                    placeholder="model-name"
+                    onChange={(event) => onChangeCustomModelSettings({ model: event.currentTarget.value })}
+                  />
+                </label>
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-api-key">
+                  <span>{text.apiKey}</span>
+                  <span className="beta-menu-inline-control">
+                    <input
+                      id="beta-custom-model-api-key"
+                      type="password"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={customModelSettings.apiKey}
+                      placeholder={text.apiKeyPlaceholder}
+                      onChange={(event) => onChangeCustomModelSettings({ apiKey: event.currentTarget.value })}
+                    />
+                    <button type="submit" disabled={customModelTestState === "testing" || !canTestCustomModel}>
+                      {customModelTestState === "testing" ? <LoaderCircle className="beta-menu-test-spinner" size={13} /> : null}
+                      {customModelTestState === "testing" ? text.testing : text.testUse}
+                    </button>
+                  </span>
+                </label>
+              </div>
+              {customModelTestMessage ? (
+                <span className="beta-menu-test-message" data-state={customModelTestState} role="status">{customModelTestMessage}</span>
+              ) : null}
+            </form>
+          ) : null}
+          <div className="beta-menu-separator" role="separator" />
+          <MenuItem checked={fishAutoReadEnabled} label={text.fish} onClick={() => choose(onToggleFishAutoRead)} />
+          <form
+            className="beta-menu-inline-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (fishApiTestState !== "testing" && fishApiKey.trim()) onTestFishApiKey();
+            }}
+          >
+            <label className="beta-menu-inline-label" htmlFor="beta-fish-api-key">
+              {text.customFish}
+            </label>
+            <div className="beta-menu-inline-control">
+              <input
+                id="beta-fish-api-key"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={fishApiKey}
+                placeholder={text.fishPlaceholder}
+                onChange={(event) => onChangeFishApiKey(event.currentTarget.value)}
+              />
+              <button type="submit" disabled={fishApiTestState === "testing" || !fishApiKey.trim()}>
+                {fishApiTestState === "testing" ? <LoaderCircle className="beta-menu-test-spinner" size={13} /> : null}
+                {fishApiTestState === "testing" ? text.testing : text.test}
+              </button>
+            </div>
+            {fishApiTestMessage ? (
+              <span className="beta-menu-test-message" data-state={fishApiTestState} role="status">{fishApiTestMessage}</span>
+            ) : null}
+          </form>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <MenuItem label={text.support} onClick={() => choose(onOpenAbout)} />
+        <MenuItem label={text.about} onClick={() => choose(onOpenSiteAbout)} />
+      </>
+    );
+  }
+
+  const menus: Array<{ id: MenuId; label: string }> = [
+    { id: "file", label: text.file },
+    { id: "view", label: text.view },
+    { id: "role", label: text.role },
+    { id: "model", label: text.model },
+    { id: "help", label: text.help }
+  ];
+
+  return (
+    <header ref={rootRef} className="topbar beta-macos-menubar motion-in" aria-label={copy.settings}>
+      {storyPackage === "jojo" ? (
+        <GlitchBrandMark
+          brandIconSrc={brandIconSrc}
+          brandName={copy.brandName}
+          language={language}
+          onCycle={onCycleBrandIcon}
+        />
+      ) : (
+        <div className="beta-menu-brand">
+          <img className="beta-menu-brand-icon" src={brandIconSrc} alt="" aria-hidden="true" />
+          <h1 className="beta-menu-brand-text">{copy.brandName}</h1>
+        </div>
+      )}
+      <button
+        ref={mobileToggleRef}
+        className="beta-menu-mobile-toggle"
+        type="button"
+        aria-label={mobileMenuOpen ? text.closeMenu : text.openMenu}
+        aria-controls="ququ-mobile-menu"
+        aria-expanded={mobileMenuOpen}
+        title={mobileMenuOpen ? text.closeMenu : text.openMenu}
+        onClick={() => {
+          if (mobileMenuOpen) closeCurrentMenu();
+          setMobileMenuOpen((current) => !current);
+        }}
+      >
+        {mobileMenuOpen ? <X size={21} strokeWidth={1.8} aria-hidden="true" /> : <Menu size={22} strokeWidth={1.8} aria-hidden="true" />}
+      </button>
+      <nav
+        ref={mobileNavRef}
+        id="ququ-mobile-menu"
+        className="beta-menu-nav"
+        aria-label={copy.settings}
+        data-mobile-open={mobileMenuOpen ? "true" : "false"}
+      >
+        {menus.map((menu) => {
+          const isOpen = openMenu === menu.id;
+          const isClosing = closingMenu === menu.id;
+          return (
+            <div
+              className="beta-menu-root"
+              key={menu.id}
+              onPointerEnter={() => {
+                if (!window.matchMedia("(max-width: 760px)").matches && openMenu && openMenu !== menu.id) openNextMenu(menu.id);
+              }}
+            >
+              <button
+                className={isOpen ? "beta-menu-trigger beta-menu-trigger-open" : "beta-menu-trigger"}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
+                aria-controls={isOpen || isClosing ? `ququ-menu-${menu.id}` : undefined}
+                onClick={() => isOpen ? closeCurrentMenu() : openNextMenu(menu.id)}
+              >
+                {menu.label}
+              </button>
+              {isOpen || isClosing ? (
+                <div id={`ququ-menu-${menu.id}`} className={isClosing ? "beta-menu-popover beta-menu-popover-closing" : "beta-menu-popover"} role="menu" aria-label={menu.label}>
+                  {renderMenu(menu.id)}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </nav>
+    </header>
+  );
+}

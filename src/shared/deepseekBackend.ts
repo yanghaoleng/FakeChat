@@ -3,6 +3,11 @@ import type { DeepSeekSegmentResult } from "./storyGeneration/contract";
 import type { PromptCard } from "./linearStory";
 import { constrainGeneratedProjectSessions } from "./multiSession";
 import { normalizeSuggestedPrompt } from "./suggestedPrompt";
+import type { DeepSeekCompletionConfig } from "./storyGeneration/contract";
+import type { AppLanguage } from "./i18n";
+import { defaultAiProviderId, type AiProviderId } from "./aiProviders";
+
+const backendStoryTimeoutMs = 65000;
 
 function parsePromptCard(value: unknown): PromptCard {
   if (!value || typeof value !== "object") throw new Error("后端返回的 Prompt 卡片无效");
@@ -36,12 +41,12 @@ function parseSuggestedPrompt(value: Partial<DeepSeekSegmentResult> & Record<str
 
 async function readError(response: Response) {
   const text = await response.text().catch(() => "");
-  if (!text) return `后端 DeepSeek 请求失败：${response.status}`;
+  if (!text) return `后端 AI 模型请求失败：${response.status}`;
   try {
     const json = JSON.parse(text) as { error?: string };
-    return json.error || `后端 DeepSeek 请求失败：${response.status}`;
+    return json.error || `后端 AI 模型请求失败：${response.status}`;
   } catch {
-    return `后端 DeepSeek 请求失败：${response.status} ${text.slice(0, 120)}`;
+    return `后端 AI 模型请求失败：${response.status} ${text.slice(0, 120)}`;
   }
 }
 
@@ -51,6 +56,9 @@ export async function generateBackendStorySegment({
   promptCards,
   allowMultiSession = false,
   activeSessionId,
+  language = "zh-CN",
+  modelProviderId = defaultAiProviderId,
+  customModel,
   signal
 }: {
   project: DramaProject;
@@ -58,6 +66,9 @@ export async function generateBackendStorySegment({
   promptCards: PromptCard[];
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  language?: AppLanguage;
+  modelProviderId?: AiProviderId;
+  customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
   const promptContextCards = promptCards.map((card) => ({
@@ -75,9 +86,21 @@ export async function generateBackendStorySegment({
       prompt,
       promptCards: promptContextCards,
       allowMultiSession,
-      activeSessionId
+      activeSessionId,
+      language,
+      modelProviderId,
+      ...(customModel ? {
+        customModel: {
+          apiKey: customModel.apiKey,
+          baseUrl: customModel.baseUrl,
+          model: customModel.model,
+          label: customModel.label
+        }
+      } : {})
     }),
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(50000)]) : AbortSignal.timeout(50000)
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(backendStoryTimeoutMs)])
+      : AbortSignal.timeout(backendStoryTimeoutMs)
   });
 
   if (!response.ok) {

@@ -17,6 +17,7 @@ export default defineConfig({
     baseURL: externalBaseUrl ?? localBaseUrl,
     locale: "zh-CN",
     timezoneId: "Asia/Shanghai",
+    reducedMotion: "no-preference",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure"

@@ -9,6 +9,7 @@ import { sampleProject } from "../src/shared/sampleProject";
 import { parseProject } from "../src/shared/schema";
 import { ASSET_DIR, AUDIO_DIR, AVATAR_DIR, RENDER_DIR, ROOT_DIR, SFX_DIR, ensureRuntimeDirs } from "./paths";
 import { continueStoryWithDeepSeek, generateScript } from "./deepseek";
+import { testCustomModelConnection } from "./customModelTest";
 import { searchMemes } from "./memes";
 import { renderProject } from "./render";
 import { ensureSfxLibrary } from "./sfx";
@@ -43,6 +44,15 @@ app.post("/api/settings/deepseek", async (request, reply) => {
 });
 
 app.delete("/api/settings/deepseek/api-key", async () => clearDeepSeekApiKey());
+
+app.post("/api/settings/deepseek/test", async (request, reply) => {
+  try {
+    return await testCustomModelConnection(request.body);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Custom model connection test failed";
+    return reply.code(502).send({ error: message });
+  }
+});
 
 app.get("/api/project/sample", async () => ({
   project: {

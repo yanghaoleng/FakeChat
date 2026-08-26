@@ -4,7 +4,6 @@ import {
   ChevronDown,
   Copy,
   Download,
-  FileAudio,
   Film,
   Lightbulb,
   MessageSquarePlus,
@@ -20,13 +19,28 @@ import {
 import { lazy, Suspense, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { StatusAnnouncer, type StatusAnnouncerHandle, type StatusTextUpdate } from "./components/StatusAnnouncer";
+import { RollingPercent } from "./components/RollingPercent";
 import { ActionButton, SurfaceCard, SurfaceCardContent, SurfaceCardHeader } from "./components/UiPrimitives";
 import { WechatStoryPreview } from "./features/chat-preview/WechatStoryPreview";
 import { AboutDialog } from "./features/settings/AboutDialog";
+import { nextSupportPraiseIndex } from "./features/settings/supportAuthorCopy";
+import { BetaMenuBar, betaModelMenuOpenEvent, type FishApiTestState } from "./features/settings/BetaMenuBar";
+import { LabDialog } from "./features/settings/LabDialog";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
+import { SiteAboutDialog } from "./features/settings/SiteAboutDialog";
 import { useEventCallback } from "./hooks/useEventCallback";
+import { normalizedVoiceGain } from "./shared/audioLoudness";
+import {
+  aiProviderForId,
+  readAiProviderId,
+  writeAiProviderId,
+  type AiModelChoiceId,
+  type AiProviderId
+} from "./shared/aiProviders";
 import type { VideoExportResult } from "./shared/browserVideo";
-import { synthesizeMessageClip, type TtsClipMap } from "./shared/edgeTts";
+import type { TtsClipMap } from "./shared/edgeTts";
+import { fishReadableText, fishVoiceHintFor, synthesizeFishAudio, synthesizeFishMessageClip } from "./shared/fishAudioTts";
+import { estimatedGenerationMs } from "./shared/generationEstimate";
 import {
   makeStoryArchive,
   parseStoryArchive,
@@ -36,6 +50,7 @@ import {
 } from "./shared/linearStory";
 import {
   createPresetInitialArchive,
+  initialProjectForPrompt,
   isPresetPromptCard,
   nextPresetStoryIndex,
   normalizePresetRoleSelection,
@@ -52,15 +67,37 @@ import {
   projectForChatSession,
   unreadCountForChatSession
 } from "./shared/chatSessions";
+import {
+  customModelConfigForSurface,
+  customModelToCompletionConfig,
+  normalizeCustomModelSettings,
+  providerForId,
+  readCustomModelSettingsCookie,
+  writeCustomModelSettingsCookie,
+  type CustomModelSettings,
+  type CustomModelTestState
+} from "./shared/customModel";
 import { isJojoProject } from "./shared/jojoProject";
+import {
+  appCopy,
+  languagePreferenceStorageKey,
+  readLanguagePreference,
+  resolveLanguage,
+  type AppLanguage,
+  type LanguagePreference
+} from "./shared/i18n";
 import { resolvePublicAssetPath } from "./shared/publicPath";
-import { isVoiceMessage, type ChatMessage, type DramaProject } from "./shared/schema";
+import { applyBrandFavicon, brandIconUrlForStoryPackage, nextBrandIconUrl } from "./shared/randomBrandIcon";
+import { getCharacter, type ChatMessage, type DramaProject } from "./shared/schema";
+import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
 import { attachStorySegment, restoreStoryBeforeCard, restoreStoryThroughCard } from "./shared/storySegments";
 import { normalizeSuggestedPrompt } from "./shared/suggestedPrompt";
 import { buildTimeline, getDurationInFrames, messageRevealDelayMs } from "./shared/timing";
+import type { BetaUiSfxController } from "./shared/betaUiSfx";
 
 const VideoPreviewPane = lazy(() => import("./features/video/VideoPreviewPane"));
+const appMenuEnabled = true;
 
 type ApiState = "idle" | "loading" | "error" | "done";
 type PreviewMode = "wechat" | "video";
@@ -69,6 +106,10 @@ type PreviewTransition = {
   direction: PreviewDirection;
   exiting: PreviewMode;
   id: number;
+};
+type VideoExportUiProgress = {
+  label: string;
+  progress: number;
 };
 type AmbientSkinId = "brown" | "grid" | "nightmeadow";
 type AmbientFeedbackType = "idle" | "skin" | "queue" | "generating" | "story" | "preset" | "focus";
@@ -97,7 +138,7 @@ type AppProps = {
   storyPackage: StoryPackage;
 };
 
-const deepSeekServiceToast = "DeepSeek 服务暂时连不上，已停止生成";
+const aiServiceToast = "AI 模型服务暂时连不上，已停止生成";
 const defaultJojoAppUrl = "https://ququ.mikeywa.icu/ding/";
 const defaultViralAppUrl = "https://ququ.mikeywa.icu/";
 const defaultGithubRepositoryUrl = "https://github.com/yanghaoleng/FakeChat";
@@ -106,6 +147,7 @@ const generationProgressCap = 99;
 const generationProgressLoadingCap = 96;
 const ambientThemeFadeMs = 1180;
 const ambientThemeApplyDelayMs = 520;
+const fishAutoReadStorageKey = "ququ-fish-auto-read-enabled-v1";
 
 const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = [
   { id: "brown", label: "棕砂", hint: "扫光" },
@@ -161,21 +203,27 @@ const viralRoleOptions: Array<{ id: ViralPresetRole; label: string }> = [
   { id: "female", label: "女" }
 ];
 
-const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
-
-function packageTitle(_packageId: StoryPackage) {
-  return "蛐蛐模拟器";
+function viralRoleLabel(role: ViralPresetRole, language: AppLanguage) {
+  const labels: Record<AppLanguage, Record<ViralPresetRole, string>> = {
+    "zh-CN": { any: "不限", male: "男", female: "女" },
+    "zh-TW": { any: "不限", male: "男", female: "女" },
+    en: { any: "Any", male: "Male", female: "Female" },
+    ja: { any: "指定なし", male: "男性", female: "女性" }
+  };
+  return labels[language][role];
 }
 
-function packageSwitchLink(packageId: StoryPackage) {
+const jojoRoleOptions: JojoPresetRole[] = ["jiaojiao", "npc"];
+
+function packageSwitchLink(packageId: StoryPackage, copy: typeof appCopy["zh-CN"]) {
   return packageId === "jojo"
     ? {
         href: import.meta.env.VITE_VIRAL_APP_URL || defaultViralAppUrl,
-        label: "去微信版"
+        label: copy.switchWechat
       }
     : {
         href: import.meta.env.VITE_JOJO_APP_URL || defaultJojoAppUrl,
-        label: "去钉钉版"
+        label: copy.switchDingTalk
       };
 }
 
@@ -194,6 +242,24 @@ function readInitialAmbientSkin(packageId: StoryPackage) {
   return isAmbientSkinId(storedSkin) ? storedSkin : defaultAmbientSkinByPackage[packageId];
 }
 
+function readInitialFishAutoReadEnabled() {
+  if (typeof window === "undefined") return false;
+  const storedValue = window.localStorage.getItem(fishAutoReadStorageKey);
+  return storedValue == null ? false : storedValue === "1";
+}
+
+function readInitialFishApiKey() {
+  return "";
+}
+
+function customModelDraftFromSaved(settings: CustomModelSettings): CustomModelSettings {
+  return normalizeCustomModelSettings({
+    ...settings,
+    apiKey: "",
+    enabled: false
+  });
+}
+
 function ambientSkinLabel(skinId: AmbientSkinId) {
   return ambientSkins.find((skin) => skin.id === skinId)?.label ?? "背景";
 }
@@ -204,11 +270,6 @@ function randomPercent(min: number, max: number) {
 
 function promptRiseAnimationMs(text: string) {
   return Math.min(3600, Math.max(1100, 700 + Array.from(text).length * 17));
-}
-
-function estimatedGenerationMs(project: DramaProject, packageId: StoryPackage) {
-  if (!project.messages.length) return packageId === "jojo" ? 32000 : 36000;
-  return packageId === "jojo" ? 22000 : 26000;
 }
 
 function estimateGenerationProgress(startedAt: number, estimateMs: number) {
@@ -359,7 +420,7 @@ function PendingPromptCardView({
       <div className="prompt-card-progress" aria-label={isGenerating ? `生成进度 ${progress}%` : `第 ${queuePosition} 张故事卡`}>
         {isGenerating ? (
           <div className="prompt-card-generating-progress">
-            <strong className="prompt-card-progress-number">{`${progress}%`}</strong>
+            <RollingPercent value={progress} className="prompt-card-progress-number" />
           </div>
         ) : (
           <div className="prompt-card-index">{queuePosition}</div>
@@ -703,11 +764,19 @@ function updateMessage(project: DramaProject, id: string, patch: Partial<ChatMes
 }
 
 export default function App({ storyPackage }: AppProps) {
+  const betaHackathonBuild = storyPackage === "jojo" && import.meta.env.BASE_URL.startsWith("/beta/");
+  const jojoPlayerGuide = storyPackage === "jojo";
   const rootRef = useRef<HTMLDivElement>(null);
+  const betaUiSfxControllerRef = useRef<BetaUiSfxController | null>(null);
   const archiveExportingRef = useRef(false);
+  const [brandIconSrc, setBrandIconSrc] = useState(() => brandIconUrlForStoryPackage(storyPackage));
   const initialPresetArchiveRef = useRef<PresetInitialArchive | null>(null);
+  const initialCustomModelSettingsRef = useRef<CustomModelSettings | null>(null);
   if (!initialPresetArchiveRef.current) {
     initialPresetArchiveRef.current = createPresetInitialArchive(storyPackage);
+  }
+  if (!initialCustomModelSettingsRef.current) {
+    initialCustomModelSettingsRef.current = readCustomModelSettingsCookie();
   }
   const [activePresetIndex, setActivePresetIndex] = useState(initialPresetArchiveRef.current.presetIndex);
   const [activePresetRole, setActivePresetRole] = useState<PresetRoleSelection>(() => initialPresetArchiveRef.current!.roleSelection);
@@ -720,10 +789,23 @@ export default function App({ storyPackage }: AppProps) {
   const setStatusText = (next: StatusTextUpdate) => statusAnnouncerRef.current?.announce(next);
   const [clips, setClipState] = useState<TtsClipMap>({});
   const [videoResult, setVideoResult] = useState<VideoExportResult | null>(null);
-  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoExportProgress, setVideoExportProgress] = useState<VideoExportUiProgress | null>(null);
   const [visibleMessageCount, setVisibleMessageCount] = useState(0);
   const [allowMultiSession, setAllowMultiSession] = useState(false);
   const allowMultiSessionRef = useRef(false);
+  const [aiProviderId, setAiProviderId] = useState<AiProviderId>(readAiProviderId);
+  const [activeCustomModelSettings, setActiveCustomModelSettings] = useState<CustomModelSettings>(() => initialCustomModelSettingsRef.current!);
+  const [customModelSettings, setCustomModelSettings] = useState<CustomModelSettings>(() => customModelDraftFromSaved(initialCustomModelSettingsRef.current!));
+  const [customModelPanelOpen, setCustomModelPanelOpen] = useState(() => Boolean(initialCustomModelSettingsRef.current!.enabled));
+  const [customModelTestState, setCustomModelTestState] = useState<CustomModelTestState>("idle");
+  const [customModelTestMessage, setCustomModelTestMessage] = useState("");
+  const [fishAutoReadEnabled, setFishAutoReadEnabled] = useState(readInitialFishAutoReadEnabled);
+  const [fishApiKey, setFishApiKey] = useState(readInitialFishApiKey);
+  const [fishApiTestState, setFishApiTestState] = useState<FishApiTestState>("idle");
+  const [fishApiTestMessage, setFishApiTestMessage] = useState("");
+  const fishAutoReadEnabledRef = useRef(fishAutoReadEnabled);
+  const fishApiKeyRef = useRef(fishApiKey);
+  const [pendingSpeechMessageId, setPendingSpeechMessageId] = useState<string | null>(null);
   const [activeChatSessionId, setActiveChatSessionId] = useState(() => getChatSessions(initialPresetArchiveRef.current!.project)[0].id);
   const activeChatSessionIdRef = useRef(activeChatSessionId);
   const [readChatMessageIds, setReadChatMessageIds] = useState<Set<string>>(() => new Set());
@@ -733,6 +815,11 @@ export default function App({ storyPackage }: AppProps) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [settingsMenuClosing, setSettingsMenuClosing] = useState(false);
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false);
+  const [supportPraiseIndex, setSupportPraiseIndex] = useState(-1);
+  const [siteAboutDialogOpen, setSiteAboutDialogOpen] = useState(false);
+  const [uiSoundEnabled, setUiSoundEnabled] = useState(true);
+  const [labDialogOpen, setLabDialogOpen] = useState(false);
+  const [labDialogClosing, setLabDialogClosing] = useState(false);
   const [ambientSkin, setAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [visibleAmbientSkin, setVisibleAmbientSkin] = useState<AmbientSkinId>(() => readInitialAmbientSkin(storyPackage));
   const [ambientFeedback, setAmbientFeedback] = useState<AmbientFeedback | null>(null);
@@ -749,7 +836,11 @@ export default function App({ storyPackage }: AppProps) {
   const [openPromptCardMenuId, setOpenPromptCardMenuId] = useState<string | null>(null);
   const [scrollTargetMessageId, setScrollTargetMessageId] = useState<string | null>(null);
   const [leftPanelScrolling, setLeftPanelScrolling] = useState(false);
+  const [languagePreference, setLanguagePreference] = useState<LanguagePreference>(readLanguagePreference);
+  const language = resolveLanguage(languagePreference);
+  const copy = appCopy[language];
   const clipsRef = useRef(clips);
+  const previewModeRef = useRef(previewMode);
   const scrollTargetMessageIdRef = useRef<string | null>(null);
   const projectRef = useRef(project);
   const promptCardsRef = useRef(promptCards);
@@ -771,7 +862,16 @@ export default function App({ storyPackage }: AppProps) {
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsDialogRef = useRef<HTMLElement>(null);
   const settingsMenuCloseTimerRef = useRef<number | undefined>(undefined);
+  const labDialogCloseTimerRef = useRef<number | undefined>(undefined);
   const revealTimerRef = useRef<number | undefined>(undefined);
+  const fishRevealRunRef = useRef(0);
+  const fishRevealAbortRef = useRef<AbortController | null>(null);
+  const fishAudioRef = useRef<HTMLAudioElement | null>(null);
+  const fishAudioObjectUrlRef = useRef<string | null>(null);
+  const fishAudioContextRef = useRef<AudioContext | null>(null);
+  const fishAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const fishAudioGainRef = useRef<GainNode | null>(null);
+  const fishAudioUnlockedRef = useRef(false);
   const previewTransitionTimerRef = useRef<number | undefined>(undefined);
   const ambientFeedbackTimerRef = useRef<number | undefined>(undefined);
   const ambientTransitionTimerRef = useRef<number | undefined>(undefined);
@@ -800,10 +900,18 @@ export default function App({ storyPackage }: AppProps) {
   );
   const durationInFrames = useMemo(() => getDurationInFrames(activeChatProject), [activeChatProject]);
   const previewInitialFrame = useMemo(() => buildTimeline(activeChatProject)[0]?.startFrame ?? 0, [activeChatProject]);
+  const videoExportPercent = videoExportProgress ? Math.round(videoExportProgress.progress * 100) : 0;
+  const videoProgressTheme = jojoMode ? "dingtalk" : "wechat";
   const previewProject = useMemo(
     () => ({ ...project, messages: project.messages.slice(0, visibleMessageCount) }),
     [project, visibleMessageCount]
   );
+  const pendingSpeechMessage = useMemo(() => {
+    if (!pendingSpeechMessageId) return null;
+    const message = project.messages.find((candidate) => candidate.id === pendingSpeechMessageId);
+    if (!message) return null;
+    return chatSessionIdForMessage(project, message) === resolvedActiveChatSessionId ? message : null;
+  }, [pendingSpeechMessageId, project, resolvedActiveChatSessionId]);
   const unreadCounts = useMemo(() => Object.fromEntries(chatSessions.map((session) => [
     session.id,
     session.id === resolvedActiveChatSessionId
@@ -818,6 +926,106 @@ export default function App({ storyPackage }: AppProps) {
       clipsRef.current = next;
       return next;
     });
+  }
+
+  function revokeFishAudioObjectUrl() {
+    if (!fishAudioObjectUrlRef.current) return;
+    URL.revokeObjectURL(fishAudioObjectUrlRef.current);
+    fishAudioObjectUrlRef.current = null;
+  }
+
+  function stopFishAudio() {
+    if (fishAudioSourceRef.current) {
+      try {
+        fishAudioSourceRef.current.stop();
+      } catch {
+        // The source may have already ended.
+      }
+      fishAudioSourceRef.current.disconnect();
+      fishAudioSourceRef.current = null;
+    }
+    if (fishAudioGainRef.current) {
+      fishAudioGainRef.current.disconnect();
+      fishAudioGainRef.current = null;
+    }
+    const audio = fishAudioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    revokeFishAudioObjectUrl();
+  }
+
+  async function ensureFishAudioContext() {
+    const AudioContextConstructor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextConstructor) throw new Error("当前浏览器不支持 Web Audio");
+    let audioContext = fishAudioContextRef.current;
+    if (!audioContext || audioContext.state === "closed") {
+      audioContext = new AudioContextConstructor();
+      fishAudioContextRef.current = audioContext;
+      fishAudioUnlockedRef.current = false;
+    }
+    if (audioContext.state === "suspended") await audioContext.resume();
+    return audioContext;
+  }
+
+  async function unlockFishAudioPlayback() {
+    try {
+      const audioContext = await ensureFishAudioContext();
+      if (fishAudioUnlockedRef.current && audioContext.state === "running") return;
+      const source = audioContext.createBufferSource();
+      const gain = audioContext.createGain();
+      source.buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+      gain.gain.value = 0;
+      source.connect(gain).connect(audioContext.destination);
+      source.start();
+      source.stop(audioContext.currentTime + 0.01);
+      fishAudioUnlockedRef.current = true;
+      source.addEventListener("ended", () => {
+        source.disconnect();
+        gain.disconnect();
+      }, { once: true });
+    } catch {
+      fishAudioUnlockedRef.current = false;
+    }
+  }
+
+  async function playNormalizedFishSpeech(blob: Blob, runId: number) {
+    const audioContext = await ensureFishAudioContext();
+    const audioBuffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+    if (fishRevealRunRef.current !== runId) return;
+
+    const source = audioContext.createBufferSource();
+    const gain = audioContext.createGain();
+    source.buffer = audioBuffer;
+    gain.gain.value = normalizedVoiceGain(audioBuffer);
+    source.connect(gain).connect(audioContext.destination);
+    fishAudioSourceRef.current = source;
+    fishAudioGainRef.current = gain;
+
+    await new Promise<void>((resolve) => {
+      const finish = () => {
+        source.removeEventListener("ended", finish);
+        if (fishAudioSourceRef.current === source) {
+          source.disconnect();
+          gain.disconnect();
+          fishAudioSourceRef.current = null;
+          fishAudioGainRef.current = null;
+        }
+        resolve();
+      };
+      source.addEventListener("ended", finish, { once: true });
+      source.start();
+    });
+  }
+
+  function cancelFishAutoReadReveal(clearPending = true) {
+    fishRevealRunRef.current += 1;
+    fishRevealAbortRef.current?.abort();
+    fishRevealAbortRef.current = null;
+    stopFishAudio();
+    if (clearPending) setPendingSpeechMessageId(null);
   }
 
   function captureCurrentStoryLayoutSnapshot() {
@@ -881,7 +1089,155 @@ export default function App({ storyPackage }: AppProps) {
       const firstSession = getChatSessions(projectRef.current)[0];
       if (firstSession) selectChatSession(firstSession.id);
     }
-    setStatusText(nextValue ? "多会话（测试版）已开启" : "多会话（测试版）已关闭");
+    setStatusText(nextValue ? "多会话已开启" : "多会话已关闭");
+  }
+
+  function toggleFishAutoRead() {
+    void unlockFishAudioPlayback();
+    const nextValue = !fishAutoReadEnabledRef.current;
+    fishAutoReadEnabledRef.current = nextValue;
+    setFishAutoReadEnabled(nextValue);
+    if (nextValue) {
+      setVideoResult(null);
+      changePreviewMode("wechat");
+      startMessageReveal(0, projectRef.current.messages.length, true);
+      setStatus("done");
+      setStatusText("Fish 朗读已开启");
+      return;
+    }
+    cancelFishAutoReadReveal();
+    startMessageReveal(visibleMessageCount, projectRef.current.messages.length, false);
+    setStatus("done");
+    setStatusText("Fish 朗读已关闭");
+  }
+
+  function setCustomModel(nextSettings: Partial<CustomModelSettings>) {
+    setCustomModelSettings((current) => normalizeCustomModelSettings({ ...current, ...nextSettings }));
+    setCustomModelTestState("idle");
+    setCustomModelTestMessage("");
+  }
+
+  function saveActiveCustomModel(nextSettings: CustomModelSettings) {
+    const normalized = normalizeCustomModelSettings(nextSettings);
+    setActiveCustomModelSettings(normalized);
+    writeCustomModelSettingsCookie(normalized);
+  }
+
+  function selectAiProvider(providerId: AiProviderId) {
+    const provider = aiProviderForId(providerId);
+    setAiProviderId(provider.id);
+    writeAiProviderId(provider.id);
+    setCustomModelPanelOpen(false);
+    if (activeCustomModelSettings.enabled) {
+      saveActiveCustomModel({ ...activeCustomModelSettings, enabled: false });
+    }
+    setStatus("done");
+    setStatusText(`已选择 ${provider.label}`);
+  }
+
+  function selectAiModel(modelId: AiModelChoiceId) {
+    if (modelId !== "custom") {
+      selectAiProvider(modelId);
+      return;
+    }
+
+    setCustomModelPanelOpen(true);
+    setCustomModelTestState("idle");
+    setCustomModelTestMessage("");
+    setCustomModelSettings(customModelDraftFromSaved(activeCustomModelSettings));
+    setStatus("done");
+    setStatusText(activeCustomModelSettings.enabled ? "正在使用自定义模型" : "请填写自定义模型并测试保存");
+  }
+
+  function selectCustomModelProvider(providerId: string) {
+    const provider = providerForId(providerId);
+    setCustomModel({
+      providerId: provider.id,
+      baseUrl: provider.baseUrl,
+      model: provider.model
+    });
+    setStatus("done");
+    setStatusText(`已选择 ${provider.label}`);
+  }
+
+  async function testCustomModel() {
+    const config = customModelToCompletionConfig({ ...customModelSettings, enabled: true });
+    if (!config) {
+      setCustomModelTestState("error");
+      setCustomModelTestMessage("请先填写 API key、Base URL 和模型名");
+      setStatus("error");
+      setStatusText("自定义模型配置不完整");
+      return;
+    }
+
+    setCustomModelTestState("testing");
+    setCustomModelTestMessage("正在检测...");
+    try {
+      const response = await fetch("/api/settings/deepseek/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          model: config.model
+        }),
+        signal: AbortSignal.timeout(24000)
+      });
+      const json = await response.json().catch(() => ({})) as { message?: string; error?: string };
+      if (!response.ok) throw new Error(json.error || `检测失败：${response.status}`);
+      const nextSettings = normalizeCustomModelSettings({ ...customModelSettings, enabled: true });
+      saveActiveCustomModel(nextSettings);
+      setCustomModelSettings(customModelDraftFromSaved(nextSettings));
+      setCustomModelPanelOpen(true);
+      setCustomModelTestState("success");
+      setCustomModelTestMessage(json.message ? `${json.message}，已保存` : "已保存");
+      setStatus("done");
+      setStatusText(`${config.label || "自定义模型"} 已测试并保存`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "检测失败";
+      setCustomModelTestState("error");
+      setCustomModelTestMessage(message);
+      setStatus("error");
+      setStatusText(message);
+    }
+  }
+
+  function changeFishApiKey(nextApiKey: string) {
+    setFishApiKey(nextApiKey);
+    fishApiKeyRef.current = nextApiKey;
+    setFishApiTestState("idle");
+    setFishApiTestMessage("");
+  }
+
+  async function testFishApiKey() {
+    const apiKey = fishApiKeyRef.current.trim();
+    if (!apiKey) {
+      setFishApiTestState("error");
+      setFishApiTestMessage("请先粘贴 API Key");
+      return;
+    }
+    const character = projectRef.current.characters.find((item) => item.id !== "xitong") ?? projectRef.current.characters[0];
+    setFishApiTestState("testing");
+    setFishApiTestMessage("正在连接 Fish Audio...");
+    try {
+      const audio = await synthesizeFishAudio(
+        "蛐蛐模拟器语音测试",
+        apiKey,
+        fishVoiceHintFor(character),
+        AbortSignal.timeout(28000)
+      );
+      if (!audio.size) throw new Error("Fish Audio 没有返回音频");
+      setFishApiTestState("success");
+      setFishApiTestMessage("连接成功，本次打开期间可用");
+      setStatus("done");
+      setStatusText("Fish Audio API 测试成功");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Fish Audio 连接失败";
+      setFishApiTestState("error");
+      setFishApiTestMessage(message);
+      setStatus("error");
+      setStatusText(message);
+    }
   }
 
   function handleLeftPanelScroll() {
@@ -1018,6 +1374,93 @@ export default function App({ storyPackage }: AppProps) {
   }, [project]);
 
   useEffect(() => {
+    window.localStorage.setItem(languagePreferenceStorageKey, languagePreference);
+    document.documentElement.lang = language;
+    document.title = copy.siteTitle;
+    const updateMeta = (selector: string, value: string) => {
+      document.querySelector<HTMLMetaElement>(selector)?.setAttribute("content", value);
+    };
+    updateMeta('meta[name="description"]', copy.siteDescription);
+    updateMeta('meta[property="og:title"]', copy.siteTitle);
+    updateMeta('meta[property="og:description"]', copy.siteDescription);
+    updateMeta('meta[name="twitter:title"]', copy.siteTitle);
+    updateMeta('meta[name="twitter:description"]', copy.siteDescription);
+  }, [copy, language, languagePreference]);
+
+  useLayoutEffect(() => {
+    applyBrandFavicon(brandIconSrc);
+  }, [brandIconSrc]);
+
+  useEffect(() => {
+    if (!betaHackathonBuild) return;
+    let active = true;
+    let controller: BetaUiSfxController | null = null;
+    void import("./shared/betaUiSfx").then(({ installBetaUiSfx }) => {
+      if (!active) return;
+      controller = installBetaUiSfx(setUiSoundEnabled);
+      betaUiSfxControllerRef.current = controller;
+      setUiSoundEnabled(controller.isEnabled());
+    });
+    return () => {
+      active = false;
+      controller?.dispose();
+      if (betaUiSfxControllerRef.current === controller) betaUiSfxControllerRef.current = null;
+    };
+  }, [betaHackathonBuild]);
+
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
+
+  useEffect(() => {
+    warmStaticVisualAssets({ storyPackage, project });
+  }, [project, storyPackage]);
+
+  useEffect(() => {
+    fishAutoReadEnabledRef.current = fishAutoReadEnabled;
+    window.localStorage.setItem(fishAutoReadStorageKey, fishAutoReadEnabled ? "1" : "0");
+  }, [fishAutoReadEnabled]);
+
+  useEffect(() => {
+    fishApiKeyRef.current = fishApiKey;
+  }, [fishApiKey]);
+
+  useEffect(() => {
+    if (!appMenuEnabled || !toastMessage) return;
+    const scheduleDismiss = () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => {
+        setToastMessage(null);
+        toastTimerRef.current = undefined;
+      }, 2000);
+    };
+    window.addEventListener("pointermove", scheduleDismiss, { passive: true });
+    window.addEventListener("pointerdown", scheduleDismiss, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", scheduleDismiss);
+      window.removeEventListener("pointerdown", scheduleDismiss);
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = undefined;
+      }
+    };
+  }, [toastMessage]);
+
+  useEffect(() => {
+    const unlock = () => {
+      void unlockFishAudioPlayback();
+    };
+    window.addEventListener("pointerdown", unlock, { once: true, passive: true });
+    window.addEventListener("touchstart", unlock, { once: true, passive: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeChatSessionId !== resolvedActiveChatSessionId) {
       activeChatSessionIdRef.current = resolvedActiveChatSessionId;
       setActiveChatSessionId(resolvedActiveChatSessionId);
@@ -1059,6 +1502,8 @@ export default function App({ storyPackage }: AppProps) {
     if (generationProgressTimerRef.current) window.clearInterval(generationProgressTimerRef.current);
     if (storyLayoutUnlockTimerRef.current) window.clearTimeout(storyLayoutUnlockTimerRef.current);
     if (settingsMenuCloseTimerRef.current) window.clearTimeout(settingsMenuCloseTimerRef.current);
+    if (labDialogCloseTimerRef.current) window.clearTimeout(labDialogCloseTimerRef.current);
+    cancelFishAutoReadReveal();
     mobileStoryCoachTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     mobileStoryCoachTimersRef.current = [];
     clearPendingPromptRemovalTimers();
@@ -1104,7 +1549,7 @@ export default function App({ storyPackage }: AppProps) {
       if (draftPromptRef.current.trim()) return;
       const nextPrompt = initialPresetArchiveRef.current?.nextPrompt || "";
       if (nextPrompt) showSuggestedPrompt(nextPrompt);
-      setStatusText((current) => current === "正在检查 DeepSeek 配置..." ? "预设提示词已载入" : current);
+      setStatusText((current) => current === "正在检查 AI 模型配置..." ? "预设提示词已载入" : current);
     }, 260);
     return () => window.clearTimeout(timer);
   }, [storyPackage]);
@@ -1224,7 +1669,7 @@ export default function App({ storyPackage }: AppProps) {
       return () => window.clearTimeout(lateScroll);
     }
     return undefined;
-  }, [previewMode, previewProject.messages.length, visibleMessageCount, project.messages.length, resolvedActiveChatSessionId, scrollTargetMessageId]);
+  }, [pendingSpeechMessageId, previewMode, previewProject.messages.length, visibleMessageCount, project.messages.length, resolvedActiveChatSessionId, scrollTargetMessageId]);
 
   useEffect(() => {
     if (!rootRef.current || previewMode !== "wechat" || !scrollTargetMessageId) return undefined;
@@ -1327,11 +1772,48 @@ export default function App({ storyPackage }: AppProps) {
 
   function showToast(message: string) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = undefined;
     setToastMessage(message);
-    toastTimerRef.current = window.setTimeout(() => {
-      setToastMessage(null);
-      toastTimerRef.current = undefined;
-    }, 4200);
+    if (!appMenuEnabled) {
+      toastTimerRef.current = window.setTimeout(() => {
+        setToastMessage(null);
+        toastTimerRef.current = undefined;
+      }, 4200);
+    }
+  }
+
+  async function copyText(value: string, successMessage: string, errorLabel: string) {
+    try {
+      let copied = false;
+      if (typeof document.execCommand === "function") {
+        const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        try {
+          textarea.select();
+          copied = document.execCommand("copy");
+        } finally {
+          textarea.remove();
+          previousActiveElement?.focus({ preventScroll: true });
+        }
+      }
+      if (!copied && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        copied = true;
+      }
+      if (!copied) throw new Error("copy command failed");
+      showToast(successMessage);
+    } catch (error) {
+      console.error(`[about] copy ${errorLabel} failed`, error);
+      showToast("复制失败，请手动复制");
+    }
+  }
+
+  async function copyGithubRepositoryUrl() {
+    await copyText(githubRepositoryUrl, "开源链接已复制", "github url");
   }
 
   async function copyFeedbackWechatId() {
@@ -1339,28 +1821,7 @@ export default function App({ storyPackage }: AppProps) {
       showToast("请先补充微信号");
       return;
     }
-    try {
-      let copied = false;
-      if (typeof document.execCommand === "function") {
-        const textarea = document.createElement("textarea");
-        textarea.value = feedbackWechatId;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        copied = document.execCommand("copy");
-        textarea.remove();
-      }
-      if (!copied && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(feedbackWechatId);
-        copied = true;
-      }
-      if (!copied) throw new Error("copy command failed");
-      showToast("复制微信号成功");
-    } catch (error) {
-      console.error("[about] copy wechat id failed", error);
-      showToast("复制失败，请手动复制");
-    }
+    await copyText(feedbackWechatId, "作者微信号已复制", "wechat id");
   }
 
   function isCurrentGeneration(runId: number, signal: AbortSignal) {
@@ -1427,7 +1888,7 @@ export default function App({ storyPackage }: AppProps) {
     activePromptCardIdRef.current = null;
     const remainingCards = markPendingPromptCardRemoving(activeCard.id);
     updateGenerationProgress(0);
-    setVideoProgress(0);
+    setVideoExportProgress(null);
     if (remainingCards.some(canGeneratePendingPromptCard)) {
       setStatus("loading");
       setStatusText("已取回当前卡片，继续处理排队中的故事");
@@ -1437,8 +1898,117 @@ export default function App({ storyPackage }: AppProps) {
     }
   }
 
-  function startMessageReveal(fromCount: number, toCount: number) {
+  function waitForRevealDelay(delay: number) {
+    return new Promise<void>((resolve) => {
+      revealTimerRef.current = window.setTimeout(() => {
+        revealTimerRef.current = undefined;
+        resolve();
+      }, delay);
+    });
+  }
+
+  function playFishSpeech(blob: Blob, runId: number) {
+    return new Promise<void>((resolve) => {
+      if (fishRevealRunRef.current !== runId) {
+        resolve();
+        return;
+      }
+      stopFishAudio();
+      void playNormalizedFishSpeech(blob, runId).then(resolve).catch(() => {
+        if (fishRevealRunRef.current !== runId) {
+          resolve();
+          return;
+        }
+        stopFishAudio();
+        playFishSpeechFallback(blob, runId).then(resolve);
+      });
+    });
+  }
+
+  function playFishSpeechFallback(blob: Blob, runId: number) {
+    return new Promise<void>((resolve) => {
+      if (fishRevealRunRef.current !== runId) {
+        resolve();
+        return;
+      }
+      const audio = new Audio();
+      const objectUrl = URL.createObjectURL(blob);
+      fishAudioRef.current = audio;
+      fishAudioObjectUrlRef.current = objectUrl;
+      audio.src = objectUrl;
+      audio.preload = "auto";
+
+      const finish = () => {
+        audio.removeEventListener("ended", finish);
+        audio.removeEventListener("error", finish);
+        if (fishAudioRef.current === audio) {
+          stopFishAudio();
+          fishAudioRef.current = null;
+        }
+        resolve();
+      };
+
+      audio.addEventListener("ended", finish, { once: true });
+      audio.addEventListener("error", finish, { once: true });
+      void audio.play().catch(() => {
+        showToast("浏览器拦截了自动朗读，已继续显示气泡");
+        finish();
+      });
+    });
+  }
+
+  async function startFishAutoReadReveal(fromCount: number, toCount: number) {
     if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+    cancelFishAutoReadReveal();
+    const runId = fishRevealRunRef.current;
+    setVisibleMessageCount(fromCount);
+    updateScrollTargetMessageId(null);
+
+    for (let nextCount = fromCount; nextCount < toCount; nextCount += 1) {
+      if (fishRevealRunRef.current !== runId || !fishAutoReadEnabledRef.current) return;
+      const message = projectRef.current.messages[nextCount];
+      if (!message) break;
+      const text = fishReadableText(message);
+
+      if (!text) {
+        await waitForRevealDelay(messageRevealDelayMs(message));
+        if (fishRevealRunRef.current !== runId) return;
+        setVisibleMessageCount(Math.min(nextCount + 1, toCount));
+        continue;
+      }
+
+      updateScrollTargetMessageId(null);
+      setPendingSpeechMessageId(message.id);
+      try {
+        const controller = new AbortController();
+        fishRevealAbortRef.current = controller;
+        const blob = await synthesizeFishAudio(text, fishApiKeyRef.current, fishVoiceHintFor(getCharacter(projectRef.current, message)), controller.signal);
+        if (fishRevealRunRef.current !== runId) return;
+        fishRevealAbortRef.current = null;
+        setPendingSpeechMessageId(null);
+        setVisibleMessageCount(Math.min(nextCount + 1, toCount));
+        updateScrollTargetMessageId(message.id);
+        await playFishSpeech(blob, runId);
+      } catch (error) {
+        if (fishRevealRunRef.current !== runId) return;
+        fishRevealAbortRef.current = null;
+        setPendingSpeechMessageId(null);
+        console.warn("[fish-audio]", error);
+        showToast("Fish 朗读暂时失败，已继续显示文字");
+        setVisibleMessageCount(Math.min(nextCount + 1, toCount));
+        await waitForRevealDelay(Math.min(1200, messageRevealDelayMs(message)));
+      }
+    }
+
+    if (fishRevealRunRef.current === runId) {
+      revealTimerRef.current = undefined;
+      setPendingSpeechMessageId(null);
+    }
+  }
+
+  function startTimedMessageReveal(fromCount: number, toCount: number) {
+    if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+    cancelFishAutoReadReveal();
     setVisibleMessageCount(fromCount);
     let nextCount = fromCount;
     if (nextCount >= toCount) {
@@ -1461,6 +2031,14 @@ export default function App({ storyPackage }: AppProps) {
     };
 
     revealNextMessage();
+  }
+
+  function startMessageReveal(fromCount: number, toCount: number, forceFishMode = fishAutoReadEnabledRef.current) {
+    if (forceFishMode) {
+      void startFishAutoReadReveal(fromCount, toCount);
+      return;
+    }
+    startTimedMessageReveal(fromCount, toCount);
   }
 
   function finishPromptSuggestionAnimation() {
@@ -1608,7 +2186,7 @@ export default function App({ storyPackage }: AppProps) {
     promptRestoreUndoRef.current = null;
     replaceClips({});
     setVideoResult(null);
-    setVideoProgress(0);
+    setVideoExportProgress(null);
     updateGenerationProgress(0);
     setVisibleMessageCount(0);
     setStatus("done");
@@ -1677,14 +2255,19 @@ export default function App({ storyPackage }: AppProps) {
     setStatus(options.queueWillContinue ? "loading" : "done");
     setStatusText(options.queueWillContinue ? `${nextStatusText}，继续生成下一张...` : nextStatusText);
     if (!options.queueWillContinue && shouldUseStoryModal()) setStoryPanelOpenWithContinuity(false);
-    startMessageReveal(previousCount, result.project.messages.length);
+    startMessageReveal(previousCount, result.project.messages.length, previewModeRef.current === "video" ? false : fishAutoReadEnabledRef.current);
     triggerAmbientFeedback("story");
   }
 
   function openSettingsMenu() {
     if (settingsMenuCloseTimerRef.current) window.clearTimeout(settingsMenuCloseTimerRef.current);
+    if (labDialogCloseTimerRef.current) window.clearTimeout(labDialogCloseTimerRef.current);
     settingsMenuCloseTimerRef.current = undefined;
+    labDialogCloseTimerRef.current = undefined;
     setAboutDialogOpen(false);
+    setSiteAboutDialogOpen(false);
+    setLabDialogOpen(false);
+    setLabDialogClosing(false);
     setOpenPromptCardMenuId(null);
     setSettingsMenuClosing(false);
     setSettingsMenuOpen(true);
@@ -1693,6 +2276,9 @@ export default function App({ storyPackage }: AppProps) {
   function closeSettingsMenu() {
     if (!settingsMenuOpen || settingsMenuClosing) return;
     setAboutDialogOpen(false);
+    setSiteAboutDialogOpen(false);
+    setLabDialogOpen(false);
+    setLabDialogClosing(false);
     setSettingsMenuClosing(true);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     settingsMenuCloseTimerRef.current = window.setTimeout(() => {
@@ -1722,7 +2308,7 @@ export default function App({ storyPackage }: AppProps) {
 
     const dialog = settingsDialogRef.current;
     if (!dialog) return;
-    const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], select:not(:disabled), input:not(:disabled)"));
     if (!controls.length) return;
     const currentIndex = controls.indexOf(document.activeElement as HTMLElement);
 
@@ -1734,6 +2320,8 @@ export default function App({ storyPackage }: AppProps) {
       controls[nextIndex]?.focus();
       return;
     }
+
+    if (event.target instanceof HTMLSelectElement) return;
 
     const direction = event.key === "ArrowUp" || event.key === "ArrowLeft"
       ? -1
@@ -1749,14 +2337,74 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function openAboutDialog() {
+    setSupportPraiseIndex((current) => nextSupportPraiseIndex(current));
     setAboutDialogOpen(true);
   }
 
   function closeAboutDialog() {
     setAboutDialogOpen(false);
     window.requestAnimationFrame(() => {
+      if (siteAboutDialogOpen) {
+        document.querySelector<HTMLElement>("[data-site-about-support]")?.focus();
+        return;
+      }
       settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-about]")?.focus();
     });
+  }
+
+  function openSupportAuthorFromSiteAboutDialog() {
+    setSupportPraiseIndex((current) => nextSupportPraiseIndex(current));
+    setAboutDialogOpen(true);
+  }
+
+  function openSiteAboutDialog() {
+    setSiteAboutDialogOpen(true);
+  }
+
+  function closeSiteAboutDialog() {
+    setSiteAboutDialogOpen(false);
+    window.requestAnimationFrame(() => {
+      settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-site-about]")?.focus();
+    });
+  }
+
+  function toggleBetaUiSound() {
+    const nextEnabled = !uiSoundEnabled;
+    setUiSoundEnabled(nextEnabled);
+    betaUiSfxControllerRef.current?.setEnabled(nextEnabled, true);
+  }
+
+  function cycleBrandIcon() {
+    if (storyPackage !== "jojo") return;
+    setBrandIconSrc((currentIconUrl) => nextBrandIconUrl(currentIconUrl));
+  }
+
+  function changeLanguagePreference(preference: LanguagePreference) {
+    setLanguagePreference(preference);
+    const nextLanguage = resolveLanguage(preference);
+    setStatus("done");
+    setStatusText(appCopy[nextLanguage].language);
+  }
+
+  function openLabDialog() {
+    if (labDialogCloseTimerRef.current) window.clearTimeout(labDialogCloseTimerRef.current);
+    labDialogCloseTimerRef.current = undefined;
+    setLabDialogClosing(false);
+    setLabDialogOpen(true);
+  }
+
+  function closeLabDialog() {
+    if (!labDialogOpen || labDialogClosing) return;
+    setLabDialogClosing(true);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    labDialogCloseTimerRef.current = window.setTimeout(() => {
+      setLabDialogOpen(false);
+      setLabDialogClosing(false);
+      labDialogCloseTimerRef.current = undefined;
+      window.requestAnimationFrame(() => {
+        settingsDialogRef.current?.querySelector<HTMLElement>("[data-settings-lab]")?.focus();
+      });
+    }, reduceMotion ? 0 : 180);
   }
 
   function setStoryPanelOpenWithContinuity(next: boolean | ((current: boolean) => boolean)) {
@@ -1795,7 +2443,9 @@ export default function App({ storyPackage }: AppProps) {
     signal: AbortSignal;
   }) {
     let backendError: unknown;
-    setStatusText("正在请求后端 DeepSeek 续写...");
+    const customModel = customModelConfigForSurface(activeCustomModelSettings, betaHackathonBuild);
+    const managedProvider = aiProviderForId(aiProviderId);
+    setStatusText(customModel ? `正在请求 ${customModel.label || "自定义模型"} 续写...` : `正在请求 ${managedProvider.shortLabel} 续写...`);
     try {
       const { generateBackendStorySegment } = await import("./shared/deepseekBackend");
       const result = await generateBackendStorySegment({
@@ -1804,19 +2454,22 @@ export default function App({ storyPackage }: AppProps) {
         promptCards: promptCardsSnapshot,
         allowMultiSession: allowMultiSessionSnapshot,
         activeSessionId: activeSessionIdSnapshot,
+        language,
+        modelProviderId: aiProviderId,
+        customModel,
         signal
       });
       if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
-      return { result, statusText: `DeepSeek 后端已追加 ${result.messages.length} 条消息` };
+      return { result, statusText: `${customModel?.label || managedProvider.shortLabel} 已追加 ${result.messages.length} 条消息` };
     } catch (error) {
       if (!isCurrentGeneration(runId, signal)) throw error;
       backendError = error;
       console.warn("[deepseek] backend unavailable", error);
     }
 
-    const { generateDeepSeekStorySegment, hasBrowserDeepSeekKey } = await import("./shared/deepseekBrowser");
-    if (hasBrowserDeepSeekKey()) {
-      setStatusText("后端不可用，正在尝试浏览器公开配置...");
+    const { generateDeepSeekStorySegment, hasBrowserAiProviderKey } = await import("./shared/deepseekBrowser");
+    if (customModel || hasBrowserAiProviderKey(aiProviderId)) {
+      setStatusText(customModel ? "后端不可用，正在尝试浏览器直连自定义模型..." : `后端不可用，正在尝试浏览器直连 ${managedProvider.shortLabel}...`);
       try {
         const result = await generateDeepSeekStorySegment({
           project: projectSnapshot,
@@ -1824,20 +2477,23 @@ export default function App({ storyPackage }: AppProps) {
           promptCards: promptCardsSnapshot,
           allowMultiSession: allowMultiSessionSnapshot,
           activeSessionId: activeSessionIdSnapshot,
+          language,
+          modelProviderId: aiProviderId,
+          customModel,
           signal
         });
         if (!isCurrentGeneration(runId, signal)) throw new Error("generation cancelled");
-        return { result, statusText: `DeepSeek 前端已追加 ${result.messages.length} 条消息` };
+        return { result, statusText: `${customModel?.label || managedProvider.shortLabel} 已追加 ${result.messages.length} 条消息` };
       } catch (browserError) {
         if (!isCurrentGeneration(runId, signal)) throw browserError;
         console.warn("[deepseek] browser direct unavailable", browserError);
-        setStatusText("DeepSeek 未连通，已停止生成");
+        setStatusText(`${managedProvider.shortLabel} 未连通，已停止生成`);
         throw browserError;
       }
     }
 
-    setStatusText("DeepSeek 未连通，已停止生成");
-    throw backendError instanceof Error ? backendError : new Error("DeepSeek 未连通");
+    setStatusText(`${managedProvider.shortLabel} 未连通，已停止生成`);
+    throw backendError instanceof Error ? backendError : new Error(`${managedProvider.shortLabel} 未连通`);
   }
 
   async function drainPromptQueue() {
@@ -1862,8 +2518,17 @@ export default function App({ storyPackage }: AppProps) {
           return changed ? nextCards : cards;
         });
 
-        const projectSnapshot = projectRef.current;
         const promptCardsSnapshot = promptCardsRef.current;
+        const currentProjectSnapshot = projectRef.current;
+        const initialPresetArchive = initialPresetArchiveRef.current;
+        const projectSnapshot = initialPresetArchive
+          ? initialProjectForPrompt(
+              initialPresetArchive,
+              currentProjectSnapshot,
+              promptCardsSnapshot,
+              activeCard.prompt
+            )
+          : currentProjectSnapshot;
         const snapshotSessions = getChatSessions(projectSnapshot);
         const activeSessionIdSnapshot = snapshotSessions.some((session) => session.id === activeChatSessionIdRef.current)
           ? activeChatSessionIdRef.current
@@ -1876,8 +2541,8 @@ export default function App({ storyPackage }: AppProps) {
         const signal = controller.signal;
 
         setStatus("loading");
-        setVideoProgress(0);
-        startGenerationProgress(estimatedGenerationMs(projectSnapshot, storyPackage));
+        setVideoExportProgress(null);
+        startGenerationProgress(estimatedGenerationMs(projectSnapshot.messages.length, storyPackage, aiProviderId));
         triggerAmbientFeedback("generating");
 
         try {
@@ -1917,9 +2582,9 @@ export default function App({ storyPackage }: AppProps) {
           updatePendingPromptCards((cards) => cards.filter((card) => card.id !== activeCard.id));
         } catch (error) {
           if (!isCurrentGeneration(runId, signal)) continue;
-          console.error("[deepseek] queue failed", error);
-          showToast(deepSeekServiceToast);
-          const message = error instanceof Error ? error.message : "DeepSeek 续写失败";
+          console.error("[ai-model] queue failed", error);
+          showToast(aiServiceToast);
+          const message = error instanceof Error ? error.message : "AI 模型续写失败";
           restorePromptForEditing(activeCard.prompt);
           setStatus("error");
           setStatusText(message);
@@ -2056,7 +2721,7 @@ export default function App({ storyPackage }: AppProps) {
     setOpenPromptCardMenuId(null);
     updateScrollTargetMessageId(null);
     updateGenerationProgress(0);
-    setVideoProgress(0);
+    setVideoExportProgress(null);
     setVideoResult(null);
     setVisibleMessageCount(nextMessages.length);
     replaceClips((current) => Object.fromEntries(
@@ -2091,7 +2756,7 @@ export default function App({ storyPackage }: AppProps) {
     setSuggestionDialogOpen(false);
     draftPromptRef.current = "";
     setDraftPrompt("");
-    setVideoProgress(0);
+    setVideoExportProgress(null);
     updateGenerationProgress(0);
     applyStorySegment(cachedFirstSegment, `已载入预设开场 ${cachedFirstSegment.messages.length} 条消息`, {
       baseProject: projectRef.current,
@@ -2101,6 +2766,7 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function continueStory() {
+    void unlockFishAudioPlayback();
     const prompt = draftPrompt.trim();
     if (!prompt) return;
     if (applyCachedInitialPresetSegment(prompt)) return;
@@ -2116,7 +2782,7 @@ export default function App({ storyPackage }: AppProps) {
     const nextQueue = updatePendingPromptCards((cards) => [...cards, card]);
     const cardsAhead = nextQueue.filter((item) => item.id !== card.id && canGeneratePendingPromptCard(item)).length;
     setStatus("loading");
-    setVideoProgress(0);
+    setVideoExportProgress(null);
     setDraftPrompt("");
     if (!scrollTargetMessageIdRef.current) {
       setFocusedPromptCardId(null);
@@ -2183,7 +2849,7 @@ export default function App({ storyPackage }: AppProps) {
     setOpenPromptCardMenuId(null);
     updateScrollTargetMessageId(null);
     updateGenerationProgress(0);
-    setVideoProgress(0);
+    setVideoExportProgress(null);
     setVideoResult(null);
     setVisibleMessageCount(nextMessages.length);
     replaceClips((current) => Object.fromEntries(
@@ -2251,6 +2917,7 @@ export default function App({ storyPackage }: AppProps) {
     };
     if (previewTransitionTimerRef.current) window.clearTimeout(previewTransitionTimerRef.current);
     setPreviewTransition(transition);
+    previewModeRef.current = nextMode;
     setPreviewMode(nextMode);
     previewTransitionTimerRef.current = window.setTimeout(() => {
       setPreviewTransition((current) => current?.id === transition.id ? null : current);
@@ -2258,7 +2925,12 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   function choosePreviewMode(nextMode: PreviewMode) {
+    void unlockFishAudioPlayback();
     changePreviewMode(nextMode);
+    if (nextMode === "video") {
+      cancelFishAutoReadReveal();
+      startTimedMessageReveal(visibleMessageCount, projectRef.current.messages.length);
+    }
     if (nextMode === "video" && !activeChatProject.messages.length) {
       setStatus("idle");
       setStatusText("先生成对话，再播放视频版");
@@ -2425,57 +3097,85 @@ export default function App({ storyPackage }: AppProps) {
     }
   }
 
-  async function generateVoice() {
-    if (!activeChatProject.messages.length) {
-      setStatus("error");
-      setStatusText("先生成对话，再生成配音");
-      return;
-    }
-    setStatus("loading");
-    setStatusText("正在连接 Edge TTS 生成固定男女声...");
-    try {
-      const nextClips: TtsClipMap = { ...clips };
-      let nextProject = project;
-      const voiceMessages = activeChatProject.messages.filter(isVoiceMessage);
-      for (let index = 0; index < voiceMessages.length; index += 1) {
-        const message = voiceMessages[index];
-        if (!nextClips[message.id]) {
-          console.info(`[edge-tts] -> ${message.id}`, message.text || message.ttsText);
-          const clip = await synthesizeMessageClip(nextProject, message);
-          if (clip) {
-            nextClips[message.id] = clip;
-            nextProject = updateMessage(nextProject, message.id, { audioUrl: clip.url, durationMs: clip.durationMs });
-          }
+  async function prepareFishVoiceClipsForVideo(exportProject: DramaProject, onProgress?: (current: number, total: number) => void) {
+    const voiceMessages = exportProject.messages.filter((message) => fishReadableText(message).trim());
+    if (!voiceMessages.length) return { project: exportProject, clips: clipsRef.current };
+
+    const nextClips: TtsClipMap = { ...clipsRef.current };
+    let nextExportProject = exportProject;
+    let nextProject = projectRef.current;
+    let clipsChanged = false;
+    let projectChanged = false;
+
+    for (let index = 0; index < voiceMessages.length; index += 1) {
+      const message = voiceMessages[index];
+      const existingClip = nextClips[message.id];
+      if (existingClip?.source !== "fish") {
+        onProgress?.(index, voiceMessages.length);
+        const clip = await synthesizeFishMessageClip(nextExportProject, message, fishApiKeyRef.current);
+        if (clip) {
+          nextClips[message.id] = clip;
+          nextExportProject = updateMessage(nextExportProject, message.id, { audioUrl: clip.url, durationMs: clip.durationMs });
+          nextProject = updateMessage(nextProject, message.id, { audioUrl: clip.url, durationMs: clip.durationMs });
+          clipsChanged = true;
+          projectChanged = true;
         }
-        setStatusText(`Edge TTS ${index + 1}/${voiceMessages.length}`);
+      } else if (message.durationMs !== existingClip.durationMs || message.audioUrl !== existingClip.url) {
+        nextExportProject = updateMessage(nextExportProject, message.id, { audioUrl: existingClip.url, durationMs: existingClip.durationMs });
+        nextProject = updateMessage(nextProject, message.id, { audioUrl: existingClip.url, durationMs: existingClip.durationMs });
+        projectChanged = true;
       }
-      replaceClips(nextClips);
-      setProject(nextProject);
-      setStatus("done");
-      setStatusText("配音已生成，可导出视频");
-    } catch (error) {
-      handleError("Edge TTS", error);
+      onProgress?.(index + 1, voiceMessages.length);
     }
+
+    if (clipsChanged) replaceClips(nextClips);
+    if (projectChanged) {
+      projectRef.current = nextProject;
+      setProject(nextProject);
+    }
+
+    return { project: nextExportProject, clips: nextClips };
   }
 
   async function exportVideo() {
+    void unlockFishAudioPlayback();
     if (!activeChatProject.messages.length) {
       setStatus("error");
       setStatusText("先生成对话，再导出视频");
       return;
     }
     setStatus("loading");
-    setStatusText("正在浏览器内录制 16:9 视频...");
+    setVideoResult(null);
+    setVideoExportProgress({ label: "获取语音", progress: 0 });
+    setStatusText("正在获取 Fish Audio 语音 0%");
+    cancelFishAutoReadReveal();
     try {
+      const voiceProgressCap = 0.45;
+      const exportVoice = await prepareFishVoiceClipsForVideo(activeChatProject, (current, total) => {
+        const progress = total ? Math.min(voiceProgressCap, (current / total) * voiceProgressCap) : voiceProgressCap;
+        const percent = Math.round(progress * 100);
+        setVideoExportProgress({ label: "获取语音", progress });
+        setStatusText(`正在获取 Fish Audio 语音 ${percent}%`);
+      });
+      setVideoExportProgress({ label: "渲染视频", progress: voiceProgressCap });
+      setStatusText("正在渲染视频 45%");
       const { exportBrowserVideo } = await import("./shared/browserVideo");
-      const result = await exportBrowserVideo(activeChatProject, clips, (progress) => {
-        setVideoProgress(progress.progress);
-        setStatusText(progress.phase === "preparing" ? "正在准备音频轨..." : `正在录制视频 ${Math.round(progress.progress * 100)}%`);
+      const result = await exportBrowserVideo(exportVoice.project, exportVoice.clips, (progress) => {
+        const label = progress.phase === "preparing" ? "准备音轨" : progress.phase === "recording" ? "渲染视频" : "完成视频";
+        const stagedProgress = progress.phase === "done"
+          ? 1
+          : voiceProgressCap + progress.progress * (1 - voiceProgressCap);
+        const clampedProgress = Math.min(1, Math.max(voiceProgressCap, stagedProgress));
+        const percent = Math.round(clampedProgress * 100);
+        setVideoExportProgress({ label, progress: clampedProgress });
+        setStatusText(`${label} ${percent}%`);
       });
       setVideoResult(result);
       setStatus("done");
+      setVideoExportProgress({ label: "完成视频", progress: 1 });
       setStatusText(`视频已生成：${result.extension.toUpperCase()}`);
     } catch (error) {
+      setVideoExportProgress(null);
       handleError("视频导出", error);
     }
   }
@@ -2484,16 +3184,26 @@ export default function App({ storyPackage }: AppProps) {
     return (
       <div className="video-action-strip">
         <div className="action-grid">
-          <ActionButton variant="secondary" onClick={generateVoice} disabled={status === "loading" || !activeChatProject.messages.length}>
-            <FileAudio size={17} />
-            生成语音（开发中）
-          </ActionButton>
           <ActionButton variant="primary" onClick={exportVideo} disabled={status === "loading" || !activeChatProject.messages.length}>
             <Film size={17} />
             导出视频
           </ActionButton>
         </div>
-        {status === "loading" && videoProgress > 0 ? <progress className="video-progress" max={1} value={videoProgress} /> : null}
+        {status === "loading" && videoExportProgress ? (
+          <div
+            className={`video-export-progress video-export-progress-${videoProgressTheme}`}
+            style={{ "--video-export-progress": `${videoExportPercent}%` } as CSSProperties}
+            aria-label={`${videoExportProgress.label} ${videoExportPercent}%`}
+          >
+            <span className="video-export-progress-meta">
+              <span>{videoExportProgress.label}</span>
+              <RollingPercent value={videoExportPercent} className="prompt-card-progress-number video-export-progress-number" />
+            </span>
+            <span className="video-export-progress-track" aria-hidden="true">
+              <span className="video-export-progress-bar" />
+            </span>
+          </div>
+        ) : null}
         {videoResult ? (
           <a className="download-link" href={videoResult.url} download={videoFilename(videoResult.extension)}>
             <Download size={16} />
@@ -2520,6 +3230,8 @@ export default function App({ storyPackage }: AppProps) {
           showPeerName={promptCards.length > 0}
           onReplay={replayConversationForPreview}
           showReplay={project.messages.length > 0 && visibleMessageCount >= project.messages.length}
+          pendingSpeechMessage={pendingSpeechMessage}
+          language={language}
         />
       );
     }
@@ -2529,7 +3241,7 @@ export default function App({ storyPackage }: AppProps) {
           <div className="player-frame video-empty-frame" style={{ width: "100%", aspectRatio: `${activeChatProject.canvas.width} / ${activeChatProject.canvas.height}` }}>
             <div className="empty-state large-empty video-empty-state">
               <Play size={28} />
-              等待第一段剧情
+              {copy.waitForStory}
             </div>
           </div>
         </div>
@@ -2549,11 +3261,12 @@ export default function App({ storyPackage }: AppProps) {
     );
   }
 
-  const switchLink = packageSwitchLink(storyPackage);
+  const switchLink = packageSwitchLink(storyPackage, copy);
   const githubRepositoryUrl = import.meta.env.VITE_GITHUB_REPO_URL || defaultGithubRepositoryUrl;
   const feedbackWechatId = import.meta.env.VITE_FEEDBACK_WECHAT_ID?.trim() || feedbackWechatPlaceholder;
   const hasFeedbackWechatId = feedbackWechatId !== feedbackWechatPlaceholder;
-  const alipayQrCodeUrl = resolvePublicAssetPath(import.meta.env.VITE_ALIPAY_QR_CODE_URL?.trim());
+  const wechatQrCodeUrl = resolvePublicAssetPath("/donate/wechat-qr.webp");
+  const alipayQrCodeUrl = resolvePublicAssetPath("/donate/alipay-qr.webp");
   const jojoRoleChoices = jojoRoleOptions
     .flatMap((roleId): Array<{ roleId: JojoPresetRole; label: string; avatarInitial: string; avatarUrl?: string }> => {
       const character = project.characters.find((character) => character.id === roleId);
@@ -2568,9 +3281,10 @@ export default function App({ storyPackage }: AppProps) {
   const viralRoleChoices = useMemo(
     () => viralRoleOptions.map((option) => ({
       ...option,
+      label: viralRoleLabel(option.id, language),
       symbol: option.id === "any" ? "＊" : option.id === "male" ? "♂" : "♀"
     })),
-    []
+    [language]
   );
   const storyCardCount = promptCards.length + pendingPromptCards.length;
   const canSubmitStory = Boolean(draftPrompt.trim());
@@ -2740,11 +3454,14 @@ export default function App({ storyPackage }: AppProps) {
       if (event.isComposing) return;
       const key = event.key;
       const primaryShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
-      if (aboutDialogOpen) return;
+      if (aboutDialogOpen || siteAboutDialogOpen || labDialogOpen) return;
       if (primaryShortcut && key.toLowerCase() === "k") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (!event.repeat) toggleSettingsMenu();
+        if (!event.repeat) {
+          if (appMenuEnabled) window.dispatchEvent(new Event(betaModelMenuOpenEvent));
+          else toggleSettingsMenu();
+        }
         return;
       }
       if (primaryShortcut && key.toLowerCase() === "s") {
@@ -2837,7 +3554,7 @@ export default function App({ storyPackage }: AppProps) {
 
     window.addEventListener("keydown", handlePageShortcut, true);
     return () => window.removeEventListener("keydown", handlePageShortcut, true);
-  }, [aboutDialogOpen, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, settingsMenuClosing, settingsMenuOpen, status, suggestionDialogOpen]);
+  }, [aboutDialogOpen, siteAboutDialogOpen, draftPrompt, editingPendingPromptCardId, focusedPendingPromptCardId, focusedPromptCardId, labDialogOpen, openPromptCardMenuId, pendingPromptCards, previewMode, promptCards, promptSuggestionActive, settingsMenuClosing, settingsMenuOpen, status, suggestionDialogOpen]);
 
   return (
     <div
@@ -2848,74 +3565,173 @@ export default function App({ storyPackage }: AppProps) {
       data-ambient-skin={visibleAmbientSkin}
     >
       <AmbientLayer feedback={ambientFeedback} transition={ambientTransition} />
-      <header className="topbar motion-in">
-        <div className="brand-block">
-          <h1>{packageTitle(storyPackage)}</h1>
-        </div>
-        <div className="settings-trigger-group">
-          <kbd className="settings-trigger-shortcut">⌘K</kbd>
-          <button
-            ref={settingsButtonRef}
-            className={settingsMenuOpen ? "title-menu-button title-menu-button-open" : "title-menu-button"}
-            type="button"
-            aria-haspopup="dialog"
-            aria-controls="settings-dialog"
-            aria-expanded={settingsMenuOpen}
-            aria-label="打开设置"
-            title="设置 (⌘K)"
-            onClick={toggleSettingsMenu}
-          >
-            <Settings size={18} />
-          </button>
-        </div>
-        <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
-      </header>
-      <StatusAnnouncer ref={statusAnnouncerRef} initialText="正在检查 DeepSeek 配置..." />
+      {appMenuEnabled ? (
+        <BetaMenuBar
+          brandIconSrc={brandIconSrc}
+          copy={copy}
+          language={language}
+          languagePreference={languagePreference}
+          storyPackage={storyPackage}
+          activePresetRole={activePresetRole}
+          jojoRoleChoices={jojoRoleChoices}
+          viralRoleChoices={viralRoleChoices}
+          previewMode={previewMode}
+          ambientSkins={ambientSkins}
+          ambientSkin={ambientSkin}
+          aiProviderId={aiProviderId}
+          showCustomModelControl={betaHackathonBuild}
+          customModelPanelOpen={customModelPanelOpen}
+          customModelSettings={customModelSettings}
+          customModelTestState={customModelTestState}
+          customModelTestMessage={customModelTestMessage}
+          allowMultiSession={storyPackage === "viral" && allowMultiSession}
+          multiSessionToggleDisabled={status === "loading"}
+          fishAutoReadEnabled={fishAutoReadEnabled}
+          fishApiKey={fishApiKey}
+          fishApiTestState={fishApiTestState}
+          fishApiTestMessage={fishApiTestMessage}
+          showUiSoundControl={betaHackathonBuild}
+          uiSoundEnabled={uiSoundEnabled}
+          switchLink={switchLink}
+          onChoosePreviewMode={choosePreviewMode}
+          onSelectAmbientSkin={selectAmbientSkin}
+          onSwitchPresetRole={switchPresetRole}
+          onChangeLanguage={changeLanguagePreference}
+          onSelectAiModel={selectAiModel}
+          onSelectCustomModelProvider={selectCustomModelProvider}
+          onChangeCustomModelSettings={setCustomModel}
+          onTestCustomModel={() => void testCustomModel()}
+          onToggleMultiSession={toggleMultiSessionMode}
+          onToggleFishAutoRead={toggleFishAutoRead}
+          onChangeFishApiKey={changeFishApiKey}
+          onTestFishApiKey={() => void testFishApiKey()}
+          onToggleUiSound={toggleBetaUiSound}
+          onCycleBrandIcon={cycleBrandIcon}
+          onOpenAbout={openAboutDialog}
+          onOpenSiteAbout={openSiteAboutDialog}
+          onExportArchive={() => void exportArchive()}
+          onImportArchive={() => importInputRef.current?.click()}
+        />
+      ) : (
+        <header className="topbar motion-in">
+          <div className="brand-block">
+            <img className="brand-logo" src={brandIconSrc} alt="" aria-hidden="true" />
+            <h1>{copy.brandName}</h1>
+          </div>
+          <div className="settings-trigger-group">
+            <kbd className="settings-trigger-shortcut">⌘K</kbd>
+            <button
+              ref={settingsButtonRef}
+              className={settingsMenuOpen ? "title-menu-button title-menu-button-open" : "title-menu-button"}
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="settings-dialog"
+              aria-expanded={settingsMenuOpen}
+              aria-label={copy.openSettings}
+              title={`${copy.settings} (⌘K)`}
+              onClick={toggleSettingsMenu}
+            >
+              <Settings size={18} />
+            </button>
+          </div>
+        </header>
+      )}
+      <input ref={importInputRef} hidden type="file" accept="image/png,.png,application/json,.json" onChange={(event) => importArchive(event.currentTarget.files?.[0])} />
+      <StatusAnnouncer ref={statusAnnouncerRef} initialText={copy.initialStatus} />
       {toastMessage ? (
         <div className="app-toast" role="status" aria-live="polite">
           {toastMessage}
         </div>
       ) : null}
-      <SettingsDialog
-        open={settingsMenuOpen}
-        closing={settingsMenuClosing}
-        suspended={aboutDialogOpen}
-        dialogRef={settingsDialogRef}
-        previewMode={previewMode}
-        storyPackage={storyPackage}
-        activePresetRole={activePresetRole}
-        jojoRoleChoices={jojoRoleChoices}
-        viralRoleChoices={viralRoleChoices}
-        ambientSkins={ambientSkins}
-        ambientSkin={ambientSkin}
-        allowMultiSession={storyPackage === "viral" && allowMultiSession}
-        multiSessionToggleDisabled={status === "loading"}
-        switchLink={switchLink}
-        onClose={closeSettingsMenu}
-        onKeyDown={handleSettingsDialogKeyDown}
-        onChoosePreviewMode={choosePreviewMode}
-        onSwitchPresetRole={switchPresetRole}
-        onSelectAmbientSkin={selectAmbientSkin}
-        onToggleMultiSession={toggleMultiSessionMode}
-        onOpenAbout={openAboutDialog}
-        onExportArchive={() => {
-          closeSettingsMenu();
-          void exportArchive();
-        }}
-        onImportArchive={() => {
-          closeSettingsMenu();
-          importInputRef.current?.click();
-        }}
-      />
+      {!appMenuEnabled ? (
+        <SettingsDialog
+          open={settingsMenuOpen}
+          closing={settingsMenuClosing}
+          suspended={aboutDialogOpen || siteAboutDialogOpen || labDialogOpen}
+          dialogRef={settingsDialogRef}
+          storyPackage={storyPackage}
+          activePresetRole={activePresetRole}
+          jojoRoleChoices={jojoRoleChoices}
+          viralRoleChoices={viralRoleChoices}
+          switchLink={switchLink}
+          languagePreference={languagePreference}
+          resolvedLanguage={language}
+          copy={copy}
+          onClose={closeSettingsMenu}
+          onKeyDown={handleSettingsDialogKeyDown}
+          onSwitchPresetRole={switchPresetRole}
+          onOpenLab={openLabDialog}
+          onOpenAbout={openAboutDialog}
+          onOpenSiteAbout={openSiteAboutDialog}
+          onChangeLanguage={changeLanguagePreference}
+          onExportArchive={() => {
+            closeSettingsMenu();
+            void exportArchive();
+          }}
+          onImportArchive={() => {
+            closeSettingsMenu();
+            importInputRef.current?.click();
+          }}
+        />
+      ) : null}
+      {labDialogOpen ? (
+        <LabDialog
+          open
+          closing={labDialogClosing}
+          previewMode={previewMode}
+          storyPackage={storyPackage}
+          ambientSkins={ambientSkins}
+          ambientSkin={ambientSkin}
+          allowMultiSession={storyPackage === "viral" && allowMultiSession}
+          aiProviderId={aiProviderId}
+          customModelPanelOpen={customModelPanelOpen}
+          customModelSettings={customModelSettings}
+          customModelTestState={customModelTestState}
+          customModelTestMessage={customModelTestMessage}
+          fishAutoReadEnabled={fishAutoReadEnabled}
+          fishApiKey={fishApiKey}
+          multiSessionToggleDisabled={status === "loading"}
+          language={language}
+          onClose={closeLabDialog}
+          onChoosePreviewMode={choosePreviewMode}
+          onSelectAmbientSkin={selectAmbientSkin}
+          onToggleMultiSession={toggleMultiSessionMode}
+          onSelectAiModel={selectAiModel}
+          onSelectCustomModelProvider={selectCustomModelProvider}
+          onChangeCustomModelSettings={setCustomModel}
+          onTestCustomModel={testCustomModel}
+          onToggleFishAutoRead={toggleFishAutoRead}
+          onChangeFishApiKey={changeFishApiKey}
+        />
+      ) : null}
       {aboutDialogOpen ? (
         <AboutDialog
           open
+          stacked={siteAboutDialogOpen}
           githubRepositoryUrl={githubRepositoryUrl}
+          wechatQrCodeUrl={wechatQrCodeUrl}
           alipayQrCodeUrl={alipayQrCodeUrl}
           feedbackWechatId={feedbackWechatId}
           hasFeedbackWechatId={hasFeedbackWechatId}
+          language={language}
+          praiseIndex={supportPraiseIndex}
           onClose={closeAboutDialog}
+          onCopyGithubRepositoryUrl={copyGithubRepositoryUrl}
           onCopyFeedbackWechatId={copyFeedbackWechatId}
+        />
+      ) : null}
+      {siteAboutDialogOpen ? (
+        <SiteAboutDialog
+          open
+          copy={copy}
+          language={language}
+          playerGuide={jojoPlayerGuide}
+          showUiSoundControl={betaHackathonBuild}
+          uiSoundEnabled={uiSoundEnabled}
+          onToggleUiSound={toggleBetaUiSound}
+          supportAuthorOpen={aboutDialogOpen}
+          onOpenSupportAuthor={openSupportAuthorFromSiteAboutDialog}
+          onClose={closeSiteAboutDialog}
         />
       ) : null}
 
@@ -2924,7 +3740,7 @@ export default function App({ storyPackage }: AppProps) {
           <button
             className="story-panel-backdrop"
             type="button"
-            aria-label="收起编故事"
+            aria-label={copy.collapseComposer}
             onClick={() => {
               completeMobileStoryCoach();
               setStoryPanelOpenWithContinuity(false);
@@ -2945,18 +3761,18 @@ export default function App({ storyPackage }: AppProps) {
                 setStoryPanelOpenWithContinuity((current) => !current);
               }}
               aria-expanded={storyPanelOpen}
-              aria-label={storyPanelOpen ? "收起编故事" : "展开编故事"}
+              aria-label={storyPanelOpen ? copy.collapseComposer : copy.expandComposer}
             >
               <span className="story-panel-status-icon" aria-hidden="true">
                 {storyPanelOpen ? <ChevronDown size={16} /> : <PenLine size={16} />}
               </span>
-              <small>{storyCardCount ? `${storyCardCount} 张故事卡` : "准备生成"}</small>
+              <small>{storyCardCount ? copy.cardCount(storyCardCount) : copy.readyToGenerate}</small>
             </button>
             <SurfaceCard className="surface-card story-composer-card motion-in" style={jojoMode ? jojoGlassCardStyle : undefined}>
               <SurfaceCardHeader className="card-header">
                 <div className="panel-title">
                   <Sparkles size={18} />
-                  编故事
+                  {copy.composerTitle}
                 </div>
               </SurfaceCardHeader>
               <SurfaceCardContent className="card-content">
@@ -2967,7 +3783,7 @@ export default function App({ storyPackage }: AppProps) {
                     value={draftPrompt}
                     onChange={(event) => handleDraftPromptChange(event.target.value)}
                     onFocus={handlePromptTextareaFocus}
-                    placeholder="输入下一段要推进的剧情。它会结合此前故事卡和现有对话继续往后写。"
+                    placeholder={copy.composerPlaceholder}
                     rows={1}
                   />
                   {promptSuggestionActive ? (
@@ -2992,7 +3808,7 @@ export default function App({ storyPackage }: AppProps) {
                     <button
                       className="prompt-suggestion-trigger"
                       type="button"
-                      aria-label="查看建议提示词"
+                      aria-label={copy.suggestedPrompt}
                       aria-expanded={suggestionDialogOpen}
                       onClick={() => setSuggestionDialogOpen(true)}
                     >
@@ -3000,20 +3816,20 @@ export default function App({ storyPackage }: AppProps) {
                     </button>
                   ) : null}
                   {deferredSuggestionText && suggestionDialogOpen ? (
-                    <div className="prompt-suggestion-popover" role="dialog" aria-label="建议提示词">
+                    <div className="prompt-suggestion-popover" role="dialog" aria-label={copy.suggestedPrompt}>
                       <div className="prompt-suggestion-popover-header">
-                        <strong>建议提示词</strong>
-                        <button type="button" onClick={dismissDeferredSuggestion} aria-label="关闭建议提示词">
+                        <strong>{copy.suggestedPrompt}</strong>
+                        <button type="button" onClick={dismissDeferredSuggestion} aria-label={copy.close}>
                           <X size={14} />
                         </button>
                       </div>
                       <p>{deferredSuggestionText}</p>
                       <div className="prompt-suggestion-popover-actions">
                         <button type="button" className="prompt-suggestion-secondary" onClick={dismissDeferredSuggestion}>
-                          关闭
+                          {copy.close}
                         </button>
                         <button type="button" className="prompt-suggestion-primary" onClick={adoptDeferredSuggestion}>
-                          采用
+                          {copy.adopt}
                         </button>
                       </div>
                     </div>
@@ -3029,17 +3845,17 @@ export default function App({ storyPackage }: AppProps) {
                   disabled={!canSubmitStory}
                 >
                   {status === "loading" ? <MessageSquarePlus size={17} /> : <MessageSquarePlus size={17} />}
-                  {status === "loading" ? "加入队列" : "开始编"}
+                  {status === "loading" ? copy.addToQueue : copy.startWriting}
                 </button>
               </SurfaceCardContent>
             </SurfaceCard>
 
             {storyCardCount ? (
-              <section className="prompt-history-card motion-in" aria-label="故事卡">
+              <section className="prompt-history-card motion-in" aria-label={copy.storyCards}>
                 <div className="card-header prompt-history-header">
                   <div className="panel-title">
                     <Save size={18} />
-                    故事卡
+                    {copy.storyCards}
                   </div>
                 </div>
                 <div className="card-content prompt-card-list">
@@ -3088,7 +3904,7 @@ export default function App({ storyPackage }: AppProps) {
                   })}
                   <ActionButton className="prompt-reset-button prompt-history-reset-button" fullWidth variant="secondary" onClick={clearLine}>
                     <RefreshCcw size={16} />
-                    重新开始
+                    {copy.restart}
                   </ActionButton>
                 </div>
               </section>

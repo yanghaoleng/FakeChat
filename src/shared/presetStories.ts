@@ -30,6 +30,7 @@ export type PresetInitialArchive = {
   preset: PresetStory;
   presetIndex: number;
   roleSelection: PresetRoleSelection;
+  customStartProject: DramaProject;
   project: DramaProject;
   promptCards: PromptCard[];
   nextPrompt: string;
@@ -40,6 +41,17 @@ export type PresetInitialArchive = {
     suggestedPrompt: string;
   };
 };
+
+export function initialProjectForPrompt(
+  archive: PresetInitialArchive,
+  currentProject: DramaProject,
+  currentPromptCards: PromptCard[],
+  prompt: string
+) {
+  if (currentProject.messages.length || currentPromptCards.length) return currentProject;
+  if (prompt.trim() === archive.preset.prompt.trim()) return currentProject;
+  return archive.customStartProject;
+}
 
 const m = (
   roleId: string,
@@ -521,7 +533,6 @@ function cloneBaseProject(project: DramaProject): DramaProject {
 const viralPresetPriority = [
   "viral-journey-secret-cp-group",
   "viral-daughter-kingdom-520",
-  "viral-baigujing-third-account",
   "viral-fengge-female-fan-private-chat",
   "viral-fengge-male-b-friend-advice",
   "viral-gta-release-city-summit"
@@ -630,6 +641,28 @@ function applyPresetCharacters(project: DramaProject, preset: PresetStory) {
         voiceDescription: character.voiceDescription
       };
     }) || project.characters
+  });
+}
+
+function applyPresetPlayer(project: DramaProject, preset: PresetStory) {
+  const playerCharacterId = preset.playerCharacterId;
+  if (!playerCharacterId || !project.characters.some((character) => character.id === playerCharacterId)) {
+    return project;
+  }
+  return parseProject({
+    ...project,
+    selfCharacterId: playerCharacterId,
+    characters: project.characters.map((character) => ({
+      ...character,
+      side: character.id === playerCharacterId ? "right" as const : "left" as const
+    })),
+    messages: project.messages.map((message) => {
+      if (!message.roleId) return message;
+      return {
+        ...message,
+        side: message.roleId === playerCharacterId ? "right" as const : "left" as const
+      };
+    })
   });
 }
 
@@ -776,8 +809,17 @@ export function createPresetInitialArchive(
     ? { ...resolvedRoleSelection, viralRole: effectiveViralRoleForPreset(resolvedRoleSelection, rawPreset) }
     : resolvedRoleSelection;
   const initialBaseProject = baseProjectFor(packageId, layoutRoleSelection);
+  const customStartProject = parseProject({
+    ...initialBaseProject,
+    id: `${packageId}-custom-start`,
+    title: packageId === "jojo" ? initialBaseProject.title : "线性聊天短剧",
+    brief: packageId === "jojo" ? initialBaseProject.brief : "",
+    chatSessions: packageId === "jojo" ? initialBaseProject.chatSessions : [],
+    messages: []
+  });
   const presetCharacterProject = applyPresetCharacters(initialBaseProject, rawPreset);
-  const baseProject = applyPresetCharacterOverrides(presetCharacterProject, rawPreset);
+  const presetPlayerProject = applyPresetPlayer(presetCharacterProject, rawPreset);
+  const baseProject = applyPresetCharacterOverrides(presetPlayerProject, rawPreset);
   const preset = packageId === "jojo"
     ? { ...rawPreset, nextPrompt: normalizeSuggestedPrompt(rawPreset.nextPrompt) }
     : {
@@ -814,6 +856,7 @@ export function createPresetInitialArchive(
     preset,
     presetIndex,
     roleSelection: resolvedRoleSelection,
+    customStartProject,
     project,
     promptCards: [],
     nextPrompt: preset.prompt,

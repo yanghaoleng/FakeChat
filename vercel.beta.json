@@ -1,0 +1,44 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:beta",
+  "outputDirectory": "dist/beta-deploy",
+  "functions": {
+    "api/story/continue.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/story/continue",
+      "destination": "/api/story/continue"
+    },
+    {
+      "source": "/api/settings/deepseek",
+      "destination": "/api/settings/deepseek"
+    },
+    {
+      "source": "/api/settings/deepseek/test",
+      "destination": "/api/settings/deepseek/test"
+    },
+    {
+      "source": "/api/music/preview",
+      "destination": "/api/music/preview"
+    },
+    {
+      "source": "/api/fish-tts",
+      "destination": "/api/fish-tts"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/beta",
+      "destination": "/beta/index.html"
+    },
+    {
+      "source": "/beta/(.*)",
+      "destination": "/beta/index.html"
+    }
+  ]
+}

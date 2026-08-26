@@ -2,7 +2,7 @@ const CACHE_NAME = "chat-static-assets-20260715-v2";
 const CACHE_PREFIX = "chat-static-assets-";
 const CACHE_STATIC_ASSETS = "CACHE_STATIC_ASSETS";
 const MAX_PARALLEL_CACHE_WRITES = 4;
-const LOCAL_VISUAL_ASSET_PATTERN = /\/(?:avatars|memes|viral-assets|jojo-assets|wechat-ui|dingtalk-ui)\//;
+const LOCAL_VISUAL_ASSET_PATTERN = /\/(?:avatars|brand-icons|memes|viral-assets|jojo-assets|wechat-ui|dingtalk-ui)\//;
 const LOCAL_ICON_PATTERN = /\/(?:site-icon|favicon-(?:viral|jojo))\.svg$/;
 
 self.addEventListener("install", () => {

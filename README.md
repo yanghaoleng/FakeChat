@@ -1,6 +1,6 @@
 # 蛐蛐模拟器
 
-一个用 React 构建的聊天记录短剧创作工具：选择预制剧情或输入下一段故事，让 DeepSeek 继续生成私聊、群聊和角色之间的对话，再预览语音、视频并导出可继续编辑的存档。微信版还提供默认关闭的多会话测试功能，可在设置中按需开启。
+一个用 React 构建的聊天记录短剧创作工具：选择预制剧情或输入下一段故事，让 AI 继续生成私聊、群聊和角色之间的对话，再预览语音、视频并导出可继续编辑的存档。微信版还提供默认关闭的多会话测试功能，可在设置中按需开启。
 
 项目包含两套共用数据、生成和渲染能力的界面：
 
@@ -11,8 +11,11 @@
 
 - 微信版：<https://ququ.mikeywa.icu/>
 - 钉钉版：<https://ququ.mikeywa.icu/ding/>
+- 线上 Beta：<https://ququ-fakechat-beta.vercel.app/beta/>
 
 公开仓库：[yanghaoleng/FakeChat](https://github.com/yanghaoleng/FakeChat)
+
+钉钉版黑客松投稿封面位于 `design/hackathon-covers/`：除首轮 3 个 `1536×1024` 方向外，另有基于高冲击蓝黄方案扩展的 `02a–02f` 六张安全职场梗封面；每张同时保留 PNG 原图和压缩 WebP。
 
 ## 微信版截图
 
@@ -22,7 +25,8 @@
 
 ## 主要功能
 
-- 使用预制本快速开场，或输入 Prompt 让 DeepSeek 按现有角色关系继续剧情。
+- 使用预制本快速开场，或输入 Prompt 让所选 AI 模型按现有角色关系继续剧情。
+- 模型设置默认提供豆包 Seed-2.0-mini（速度快）和 DeepSeek V4 Flash，并记住本机选择；旧版智谱选择会迁移到豆包。线上 Beta 额外提供自定义大语言模型入口，可选择国内外 OpenAI 兼容接口模板，修改 Base URL、模型名和 API Key，测试成功后直接用于续写。豆包生成进度的预计时间按 DeepSeek 原基准的 `64%` 计算。
 - 微信版设置菜单提供“多会话（测试版）”开关，默认关闭；开启后，AI 才会按剧情新增角色和会话，让几条故事线并行推进。
 - 多会话开启时，桌面端在微信窗口右侧显示会话头像轨与未读数量；移动端通过返回按钮和消息列表切换会话。
 - 群聊使用组合头像并显示群成员姓名；每条消息通过 `sessionId` 和 `senderId` 归属到真实会话与角色。
@@ -31,6 +35,7 @@
 - 支持 `text`、`image`、`meme`、`music`、`transfer`、`system` 消息。
 - 支持 Edge TTS 语音、Remotion 视频预览和浏览器端视频导出。
 - 存档导出为带封面的 PNG，聊天项目 JSON 内嵌在图片中；也可以读取旧版 PNG 或 JSON 存档继续创作。
+- 微信版固定使用绿色圆底、白色气泡品牌图标；钉钉正式版与 Beta 共用 6 个 JOJO 圆形头像并在每次刷新时随机选择。三版的 favicon 与页面产品名左侧均保持同图，品牌素材统一为压缩 WebP。
 
 ## 快速启动
 
@@ -47,7 +52,7 @@ cp .env.example .env
 STORY_PACKAGE=viral npm run dev
 ```
 
-打开 <http://127.0.0.1:5173/>。预制本的第一段使用本地缓存，不需要模型；继续编写新剧情需要 DeepSeek。
+打开 <http://127.0.0.1:5173/>。预制本的第一段使用本地缓存，不需要模型；继续编写新剧情需要配置至少一个 AI 模型。
 
 同时启动前端与 Fastify API：
 
@@ -91,25 +96,45 @@ npm run preview:viral  # http://127.0.0.1:4174/
 npm run preview:jojo   # http://127.0.0.1:4173/
 ```
 
-## DeepSeek 配置
+## AI 模型配置
 
 推荐把私有密钥放在服务端：
 
 ```dotenv
-DEEPSEEK_API_KEY=
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
+ZHIPU_API_KEY=
+ZHIPU_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+ZHIPU_MODEL=glm-4.7-flash
+
+DOUBAO_API_KEY=
+DOUBAO_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+DOUBAO_MODEL=doubao-seed-2-0-mini-260215
 ```
 
-本地全栈模式通过 `/api/story/continue` 代理请求；Vercel 部署同样从项目 Environment Variables 读取 `DEEPSEEK_API_KEY`。
+豆包使用火山方舟模型 ID `doubao-seed-2-0-mini-260215`。本地全栈模式通过 `/api/story/continue` 代理请求，部署环境同样从服务端环境变量读取密钥；火山方舟还兼容 `ARK_API_KEY` 别名。智谱后端配置仅为旧存档兼容保留，不再出现在模型选择中。
 
-纯静态部署也可以配置 `VITE_DEEPSEEK_API_KEY`、`VITE_DEEPSEEK_BASE_URL` 和 `VITE_DEEPSEEK_MODEL` 让浏览器直连，但所有 `VITE_*` 值都会写进前端 bundle，不应放入需要保密的生产密钥。
+模型失败时会原样提示服务商错误，不会静默切换到另一家模型产生额外费用。
 
-模型不可用时会保留现有项目并显示明确错误，不会用固定套路伪造一次成功续写。Edge TTS 在浏览器端连接微软语音服务，网络策略拦截 WebSocket 时会在界面和控制台中报错。
+纯静态部署也可以配置对应的 `VITE_ZHIPU_*` 或 `VITE_DOUBAO_*` 变量让浏览器直连，但所有 `VITE_*` 值都会写进前端 bundle，只适合明确允许公开的临时凭据；生产密钥必须留在服务端。
+
+旧存档中的自定义 OpenAI 兼容模型配置仍保留兼容读取。正式微信版和正式钉钉版的“模型”菜单只提供豆包、DeepSeek、Fish 朗读和单一 Fish Audio API 输入/测试，不展示也不启用自定义大语言模型。线上 Beta 的“模型”菜单额外提供自定义大语言模型表单，内置 DeepSeek、通义千问、智谱、月之暗面、豆包、硅基流动、OpenAI、Gemini、OpenRouter、Groq 等接口模板，也允许手动修改 Base URL 和模型名；点击“测试并使用”会用当前模型发起最小聊天请求，只有 Key、接口和具体模型同时可用时才保存并启用。DeepSeek V4 Flash 继续读取既有 `DEEPSEEK_*` 环境变量。
+
+Beta 的自定义模型 API Key 只保存在当前浏览器的同站点 Cookie 中，不写入 Git 或前端构建产物；测试和服务端续写时会随请求发送到本站 API，后端不会持久化。若后端不可用，页面会尝试从浏览器直连所填接口，因此只应在可信设备上使用个人 Key。
+
+`npm run build:beta` 生成以 `/beta/` 为基路径的钉钉版产物。独立 Vercel 工程 `ququ-fakechat-beta` 只在服务端保存模型与 Fish Audio 的敏感密钥，不会把密钥写进浏览器产物，也不会覆盖正式站。
+
+钉钉正式版与 Beta 的“帮助 → 关于本站”是面向个人玩家的上手指南：按“输入具体场景、观察角色接戏、续写加料、故事卡回退、理解重玩乐趣、保留导演权”的顺序，只以标题和正文两级连续排版，不嵌入宣传配图。首屏角色图标与左上角“图标 + 产品名”品牌区均使用 10 层完整副本切片撕裂；默认待机完全静止，只有鼠标移入或点击时单次播放约 `340ms`，点击同时轮换角色头像，顶栏切换时 favicon 同步更新，减少动态效果时直接切换且不播放。只有 Beta 按需加载 `uisfx` 的 `cinematic` 音色，并可通过“显示 → 界面音效”或关于页右上角关闭；正式微信继续显示通用关于页和固定绿色气泡，正式钉钉不启用全局音效。
+
+Beta、正式微信和正式钉钉统一使用贴合页面的 macOS 风格顶部菜单栏，横栏本身不使用独立描边、底色、圆角、模糊或投影：文件、显示、角色、模型和帮助中的常用选项可直接展开选择，当前项显示勾选；语言选择并入“显示”，“模型”内直接选择豆包或 DeepSeek，并提供 Fish 朗读和单一“自定义 Fish Audio API”输入/测试，不再打开实验室弹窗。只有 Beta 会在同一菜单内继续展开自定义大语言模型配置和测试。`760px` 及以下保留左侧品牌 Icon 和网站标题，五组菜单折叠到右上角菜单按钮，点开后纵向排列并允许长菜单独立滚动。所有版本均不在右上角重复显示当前模型文字。生成与导出的百分比使用 Calligraph 逐位上下滚动。
+
+“帮助 → 支持作者”保留永久免费与需求邀请说明，中间从 12 条夸赞、感谢和轻松祝福中随机展示一句，连续打开不重复；简中、繁中、英文和日文使用同一序号池。随机句使用 Calligraph 弹性词组入场，中文标点和 Emoji 跟随前词，减少动态效果时直接静态显示；标题、说明、支付方式和联系信息字号整体上调，窄屏仍可在窗口内部完整滚动。微信与支付宝二维码均为压缩 WebP，分别约 `15KB`、`24KB`，并在 HTML 解析阶段提前预载，打开窗口或切换支付方式时不再临时等待网络请求。
+
+模型不可用时会保留现有项目并显示明确错误，不会用固定套路伪造一次成功续写。模型返回轻微损坏或截断的 JSON 时会先修复再归一化；Beta 错误 Toast 在用户没有操作时持续显示，鼠标移动或点击停止两秒后消失。Edge TTS 在浏览器端连接微软语音服务，网络策略拦截 WebSocket 时会在界面和控制台中报错。
+
+为控制豆包成本和 Vercel 函数时延，JOJO Beta 首段限制为 24-36 条消息、最多 5,200 输出 token；后续段为 20-32 条、最多 4,800 输出 token。网红正式版的首段节奏不随 Beta 调整。
 
 ## 多会话与数据格式
 
-多会话目前是微信版的测试功能，默认关闭。需要使用时，打开右上角设置，启用“多会话（测试版）”；之后提交的新 Prompt 才会允许 DeepSeek 新建其他私聊或群聊。关闭开关只隐藏多会话入口并阻止后续新增会话，不会删除存档中已有的角色、消息和会话数据；再次开启即可继续切换。
+多会话目前是微信版的测试功能，默认关闭。需要使用时，打开顶部“显示”菜单，启用“多会话（测试版）”；之后提交的新 Prompt 才会允许 AI 新建其他私聊或群聊。关闭开关只隐藏多会话入口并阻止后续新增会话，不会删除存档中已有的角色、消息和会话数据；再次开启即可继续切换。
 
 项目在读取边界统一迁移为 Schema v2：
 
@@ -124,7 +149,7 @@ DEEPSEEK_MODEL=deepseek-chat
 
 ## AI 续写机制
 
-DeepSeek 只返回本轮 `GeneratedStoryDelta`，包含新增消息、必要的角色/会话拓扑变化和新增素材，不再重复传回完整项目。
+所选 AI 模型只返回本轮 `GeneratedStoryDelta`，包含新增消息、必要的角色/会话拓扑变化和新增素材，不再重复传回完整项目。
 
 发送给模型的历史也有明确上限：
 
@@ -162,13 +187,15 @@ src/
   shared/messagePresentation.ts        界面、Canvas、Remotion 共用消息呈现
   shared/schema.ts                     Schema v2 与旧数据迁移
   shared/storySegments.ts              故事卡拓扑快照与回滚
-  shared/storyGeneration/              DeepSeek 契约、Prompt、上下文与响应归一化
+  shared/aiProviders.ts                智谱/豆包元数据、默认值与本地选择
+  shared/storyGeneration/              AI 契约、Prompt、上下文与响应归一化
 server/                                 Fastify 本地全栈 API
+  aiProviders.ts                       服务端模型环境变量与路由配置
 api/                                    Vercel Functions
 e2e/                                    Playwright 关键流程
 ```
 
-前端基于 Vite、React 19、Tailwind CSS、`@heroui/styles` 和自定义 UI primitives；视频使用 Remotion。视频预览、浏览器导出和 DeepSeek 客户端均按需加载，避免进入聊天页时下载整套媒体工具链。
+前端基于 Vite、React 19、Tailwind CSS、`@heroui/styles` 和自定义 UI primitives；视频使用 Remotion。视频预览、浏览器导出和 AI 客户端均按需加载，避免进入聊天页时下载整套媒体工具链。
 
 ## API
 
@@ -176,7 +203,7 @@ e2e/                                    Playwright 关键流程
 
 - `GET /api/health`：健康检查。
 - `GET/POST /api/settings/deepseek`：读取或更新本地 DeepSeek 配置；读取接口不返回明文密钥。
-- `POST /api/story/continue`：生成下一段增量剧情。
+- `POST /api/story/continue`：按请求中的 `modelProviderId`（`zhipu`、`doubao` 或 `v4flash`，默认 `doubao`）生成下一段增量剧情。
 - `GET /api/project/sample`：示例项目。
 - `POST /api/script/generate`：从 Brief 生成剧情项目。
 - `GET /api/memes/search`：搜索表情素材。

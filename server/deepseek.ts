@@ -14,8 +14,9 @@ import {
   type ScriptGenerateRequest
 } from "../src/shared/schema.js";
 import { generateDeepSeekStorySegmentWithConfig } from "../src/shared/storyGeneration/deepseekCore.js";
-import type { DeepSeekSegmentResult } from "../src/shared/storyGeneration/contract.js";
-import { getDeepSeekConfig } from "./settings.js";
+import type { DeepSeekCompletionConfig, DeepSeekSegmentResult } from "../src/shared/storyGeneration/contract.js";
+import { aiProviderIds, defaultAiProviderId } from "../src/shared/aiProviders.js";
+import { getManagedAiConfig } from "./aiProviders.js";
 
 const storyBeats = [
   "陪聊下单",
@@ -36,6 +37,13 @@ const promptCardSchema = z.object({
   summary: z.string()
 });
 
+const customModelConfigSchema = z.object({
+  apiKey: z.string().trim().min(1),
+  baseUrl: z.string().trim().url(),
+  model: z.string().trim().min(1),
+  label: z.string().trim().optional()
+});
+
 const storyContinueRequestSchema = z.object({
   project: projectSchema.extend({
     messages: z.array(chatMessageSchema).default([])
@@ -43,8 +51,21 @@ const storyContinueRequestSchema = z.object({
   prompt: z.string().min(1),
   promptCards: z.array(promptCardSchema).default([]),
   allowMultiSession: z.boolean().default(false),
-  activeSessionId: z.string().min(1).optional()
+  activeSessionId: z.string().min(1).optional(),
+  language: z.enum(["zh-CN", "zh-TW", "en", "ja"]).default("zh-CN"),
+  modelProviderId: z.enum(aiProviderIds).default(defaultAiProviderId),
+  customModel: customModelConfigSchema.optional()
 });
+
+function resolveCustomModelConfig(value: z.infer<typeof customModelConfigSchema>): DeepSeekCompletionConfig {
+  return {
+    apiKey: value.apiKey,
+    baseUrl: value.baseUrl.replace(/\/+$/, ""),
+    model: value.model,
+    source: "custom",
+    label: value.label || "自定义模型"
+  };
+}
 
 function customizeFallback(request: ScriptGenerateRequest): DramaProject {
   return {
@@ -278,13 +299,13 @@ function systemPrompt() {
 
 export async function generateScript(body: unknown): Promise<{ project: DramaProject; usedFallback: boolean; warning?: string }> {
   const request = scriptGenerateRequestSchema.parse(body);
-  const { apiKey, baseUrl, model } = await getDeepSeekConfig();
+  const { apiKey, baseUrl, model } = getManagedAiConfig();
 
   if (!apiKey) {
     return {
       project: customizeFallback(request),
       usedFallback: true,
-      warning: "DEEPSEEK_API_KEY is not set; returned editable fallback script."
+      warning: "ZHIPU_API_KEY is not set; returned editable fallback script."
     };
   }
 
@@ -331,16 +352,20 @@ export async function generateScript(body: unknown): Promise<{ project: DramaPro
 
 export async function continueStoryWithDeepSeek(body: unknown): Promise<DeepSeekSegmentResult> {
   const request = storyContinueRequestSchema.parse(body);
-  const { apiKey, baseUrl, model } = await getDeepSeekConfig();
-  if (!apiKey) throw new Error("后端 DeepSeek API key 未配置");
+  const managedConfig = request.customModel ? undefined : getManagedAiConfig(request.modelProviderId);
+  const config = request.customModel
+    ? resolveCustomModelConfig(request.customModel)
+    : managedConfig!;
+  if (!config.apiKey) throw new Error(`${config.label || "AI 模型"} API key 未配置`);
 
   return generateDeepSeekStorySegmentWithConfig({
     project: parseProject(request.project),
     prompt: request.prompt,
     promptCards: request.promptCards,
-    config: { apiKey, baseUrl, model },
+    config,
     allowMultiSession: request.allowMultiSession,
     activeSessionId: request.activeSessionId,
-    logLabel: "deepseek-server"
+    language: request.language,
+    logLabel: request.customModel ? "ai-custom-server" : `ai-${request.modelProviderId}-server`
   });
 }

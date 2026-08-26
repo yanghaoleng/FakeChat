@@ -1,58 +1,158 @@
-import { ArrowLeft, ArrowUpRight, ChevronDown, Copy, GitBranch, Heart, MessageCircle, QrCode } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Calligraph } from "calligraph";
+import { ArrowLeft, Copy, MessageCircle, QrCode, WalletCards } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import type { AppLanguage } from "../../shared/i18n";
+import { segmentSupportPraise, supportAuthorCopy } from "./supportAuthorCopy";
 
-type AboutDialogView = "main" | "support" | "feedback";
+type PaymentMethod = "wechat" | "alipay";
+const supportPraiseStaggerMs = 42;
+
+type AnimatedSupportPraiseProps = {
+  language: AppLanguage;
+  praise: string;
+  praiseIndex: number;
+  reduceMotion: boolean;
+};
+
+function AnimatedSupportPraise({ language, praise, praiseIndex, reduceMotion }: AnimatedSupportPraiseProps) {
+  const segments = segmentSupportPraise(praise, language);
+  const animatedSegmentCount = segments.filter((segment) => !/^\s+$/u.test(segment)).length;
+  const [visibleSegmentCount, setVisibleSegmentCount] = useState(reduceMotion ? animatedSegmentCount : 0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setVisibleSegmentCount(animatedSegmentCount);
+      return undefined;
+    }
+
+    setVisibleSegmentCount(0);
+    const timers = Array.from({ length: animatedSegmentCount }, (_, index) => window.setTimeout(
+      () => setVisibleSegmentCount(index + 1),
+      index * supportPraiseStaggerMs
+    ));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [animatedSegmentCount, language, praise, reduceMotion]);
+
+  if (reduceMotion) return <span className="support-author-praise" aria-label={praise}>{praise}</span>;
+
+  let animatedSegmentIndex = -1;
+  return (
+    <span className="support-author-praise" aria-label={praise}>
+      {segments.map((segment, index) => {
+        if (/^\s+$/u.test(segment)) {
+          return <span className="support-author-praise-space" aria-hidden="true" key={`${index}-space`}>{segment}</span>;
+        }
+        animatedSegmentIndex += 1;
+        return (
+          <span className="support-author-praise-token" aria-hidden="true" key={`${index}-${segment}`}>
+            <span className="support-author-praise-placeholder">{segment}</span>
+            {animatedSegmentIndex < visibleSegmentCount ? (
+              <Calligraph
+                key={`${language}-${praiseIndex}-${index}-${segment}`}
+                className="support-author-praise-motion"
+                variant="text"
+                animation="bouncy"
+                drift={{ x: 10, y: 6 }}
+                trend={1}
+                initial
+                autoSize={false}
+                aria-hidden="true"
+                style={{ display: "inline-flex", position: "absolute", inset: "0 auto auto 0", whiteSpace: "nowrap" }}
+              >
+                {segment}
+              </Calligraph>
+            ) : null}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 type AboutDialogProps = {
   open: boolean;
+  stacked?: boolean;
   githubRepositoryUrl: string;
+  wechatQrCodeUrl?: string;
   alipayQrCodeUrl?: string;
   feedbackWechatId: string;
   hasFeedbackWechatId: boolean;
+  language: AppLanguage;
+  praiseIndex: number;
   onClose: () => void;
+  onCopyGithubRepositoryUrl: () => void;
   onCopyFeedbackWechatId: () => void;
 };
 
 export function AboutDialog({
   open,
+  stacked = false,
   githubRepositoryUrl,
+  wechatQrCodeUrl,
   alipayQrCodeUrl,
   feedbackWechatId,
   hasFeedbackWechatId,
+  language,
+  praiseIndex,
   onClose,
+  onCopyGithubRepositoryUrl,
   onCopyFeedbackWechatId
 }: AboutDialogProps) {
-  const [view, setView] = useState<AboutDialogView>("main");
-  const mainDialogRef = useRef<HTMLElement>(null);
-  const childDialogRef = useRef<HTMLElement>(null);
-  const childTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
+  const [reduceMotion, setReduceMotion] = useState(() => (
+    typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ));
+  const text = supportAuthorCopy[language];
+  const normalizedPraiseIndex = ((praiseIndex % text.praises.length) + text.praises.length) % text.praises.length;
+  const praise = text.praises[normalizedPraiseIndex];
 
-  useLayoutEffect(() => {
-    if (open && view === "main") childTriggerRef.current?.focus({ preventScroll: true });
-  }, [open, view]);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotionPreference = () => setReduceMotion(mediaQuery.matches);
+    syncMotionPreference();
+    mediaQuery.addEventListener("change", syncMotionPreference);
+    return () => mediaQuery.removeEventListener("change", syncMotionPreference);
+  }, []);
 
   if (!open) return null;
 
-  function openChildView(nextView: Exclude<AboutDialogView, "main">, trigger: HTMLButtonElement) {
-    childTriggerRef.current = trigger;
-    setView(nextView);
+  const paymentMethodLabel = paymentMethod === "wechat" ? text.wechat : text.alipay;
+  const paymentQrCodeUrl = paymentMethod === "wechat" ? wechatQrCodeUrl : alipayQrCodeUrl;
+
+  function focusPaymentMethod(method: PaymentMethod) {
+    setPaymentMethod(method);
+    dialogRef.current?.querySelector<HTMLButtonElement>(`[data-payment-method="${method}"]`)?.focus();
   }
 
-  function returnToMainView() {
-    setView("main");
+  function handlePaymentMethodKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusPaymentMethod("alipay");
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      focusPaymentMethod("wechat");
+      return;
+    }
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    focusPaymentMethod(paymentMethod === "wechat" ? "alipay" : "wechat");
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>, currentView: AboutDialogView) {
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      if (currentView === "main") onClose();
-      else returnToMainView();
+      onClose();
       return;
     }
     if (event.key !== "Tab") return;
-    const activeDialog = currentView === "main" ? mainDialogRef.current : childDialogRef.current;
-    const controls = Array.from(activeDialog?.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]") ?? []);
+    const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]), a[href]') ?? []);
     if (!controls.length) return;
     const currentIndex = controls.indexOf(document.activeElement as HTMLElement);
     const nextIndex = event.shiftKey
@@ -63,99 +163,137 @@ export function AboutDialog({
   }
 
   return (
-    <div className={view === "main" ? "about-dialog-layer" : "about-dialog-layer about-dialog-layer-has-child"}>
-      <div className="about-dialog-backdrop" aria-hidden="true" onClick={onClose} />
+    <div className={stacked ? "about-dialog-layer about-dialog-support-layer" : "about-dialog-layer"}>
+      <div className={stacked ? "about-dialog-backdrop about-dialog-subview-backdrop" : "about-dialog-backdrop"} aria-hidden="true" onClick={onClose} />
       <section
-        ref={mainDialogRef}
-        className="about-dialog"
+        ref={dialogRef}
+        className="about-dialog about-dialog-support"
         role="dialog"
-        aria-modal={view === "main" ? true : undefined}
-        aria-hidden={view !== "main" || undefined}
-        inert={view !== "main"}
+        aria-modal="true"
         aria-labelledby="about-dialog-title"
-        onKeyDown={(event) => handleKeyDown(event, "main")}
+        onKeyDown={handleKeyDown}
       >
         <header className="about-dialog-header">
-          <button className="about-dialog-icon-button" type="button" aria-label="返回设置" autoFocus onClick={onClose}>
+          <button className="about-dialog-icon-button" type="button" aria-label={text.back} autoFocus onClick={onClose}>
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h2 id="about-dialog-title">关于</h2>
-            <p>蛐蛐模拟器</p>
+            <h2 id="about-dialog-title">{text.title}</h2>
+            <p>{text.subtitle}</p>
           </div>
         </header>
 
-        <div className="about-dialog-list">
-          <a className="about-dialog-item" href={githubRepositoryUrl} target="_blank" rel="noreferrer">
-            <span className="about-dialog-item-icon"><GitBranch size={19} /></span>
-            <span><strong>GitHub</strong><small>查看源码和项目更新</small></span>
-            <ArrowUpRight size={17} />
-          </a>
-          <button className="about-dialog-item" type="button" onClick={(event) => openChildView("support", event.currentTarget)}>
-            <span className="about-dialog-item-icon"><Heart size={19} /></span>
-            <span><strong>支持鼓励</strong><small>请我喝杯奶茶</small></span>
-            <ChevronDown className="about-dialog-item-chevron" size={17} />
-          </button>
-          <button className="about-dialog-item" type="button" onClick={(event) => openChildView("feedback", event.currentTarget)}>
-            <span className="about-dialog-item-icon"><MessageCircle size={19} /></span>
-            <span><strong>意见反馈</strong><small>通过微信联系我</small></span>
-            <ChevronDown className="about-dialog-item-chevron" size={17} />
-          </button>
-        </div>
-      </section>
+        <div className="support-author-panel">
+          <p className="support-author-message">
+            <span>{text.intro}</span>
+            <AnimatedSupportPraise
+              language={language}
+              praise={praise}
+              praiseIndex={normalizedPraiseIndex}
+              reduceMotion={reduceMotion}
+            />
+            <span>{text.request}</span>
+          </p>
 
-      {view !== "main" ? (
-        <div className="about-dialog-layer about-dialog-subview-layer">
-          <div className="about-dialog-backdrop about-dialog-subview-backdrop" aria-hidden="true" onClick={returnToMainView} />
-          <section
-            ref={childDialogRef}
-            className="about-dialog about-dialog-subview"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="about-dialog-subview-title"
-            onKeyDown={(event) => handleKeyDown(event, view)}
-          >
-            <header className="about-dialog-header">
-              <button className="about-dialog-icon-button" type="button" aria-label="返回关于" autoFocus onClick={returnToMainView}>
-                <ArrowLeft size={18} />
+          <div className="support-author-payment">
+            <div className="support-author-payment-tabs" role="tablist" aria-label={text.choosePayment}>
+              <button
+                id="support-author-alipay-tab"
+                className="support-author-payment-tab"
+                type="button"
+                role="tab"
+                aria-controls="support-author-payment-panel"
+                aria-selected={paymentMethod === "alipay"}
+                tabIndex={paymentMethod === "alipay" ? 0 : -1}
+                data-payment-method="alipay"
+                onClick={() => setPaymentMethod("alipay")}
+                onKeyDown={handlePaymentMethodKeyDown}
+              >
+                <WalletCards size={18} />
+                <span>{text.alipay}</span>
               </button>
-              <div>
-                <h2 id="about-dialog-subview-title">{view === "support" ? "支持鼓励" : "意见反馈"}</h2>
-                <p>{view === "support" ? "谢谢你让这个小工具继续长大" : "欢迎告诉我你的想法"}</p>
-              </div>
-            </header>
+              <button
+                id="support-author-wechat-tab"
+                className="support-author-payment-tab"
+                type="button"
+                role="tab"
+                aria-controls="support-author-payment-panel"
+                aria-selected={paymentMethod === "wechat"}
+                tabIndex={paymentMethod === "wechat" ? 0 : -1}
+                data-payment-method="wechat"
+                onClick={() => setPaymentMethod("wechat")}
+                onKeyDown={handlePaymentMethodKeyDown}
+              >
+                <MessageCircle size={18} />
+                <span>{text.wechat}</span>
+              </button>
+            </div>
 
-            {view === "support" ? (
-              <div className="about-dialog-content about-support-content">
-                {alipayQrCodeUrl ? (
-                  <div className="about-support-qr">
-                    <img src={alipayQrCodeUrl} alt="支付宝收款码" />
-                  </div>
-                ) : (
-                  <div className="about-support-placeholder">
-                    <QrCode size={44} />
-                    <strong>收款码准备中</strong>
-                    <small>之后会在这里补充支付宝收款码</small>
-                  </div>
-                )}
-                <p>你的支持会用于继续完善蛐蛐模拟器。</p>
+            {paymentQrCodeUrl ? (
+              <div
+                id="support-author-payment-panel"
+                className="about-support-qr"
+                role="tabpanel"
+                aria-labelledby={`support-author-${paymentMethod}-tab`}
+              >
+                <img
+                  src={paymentQrCodeUrl}
+                  alt={language.startsWith("zh") ? `${paymentMethodLabel}${text.qr}` : `${paymentMethodLabel} ${text.qr}`}
+                  width={paymentMethod === "wechat" ? 420 : 500}
+                  height={paymentMethod === "wechat" ? 420 : 500}
+                  decoding="async"
+                  loading="eager"
+                  fetchPriority="high"
+                />
               </div>
             ) : (
-              <div className="about-dialog-content about-feedback-content">
-                <div className="about-feedback-wechat">
-                  <span>微信号</span>
-                  <strong>{feedbackWechatId}</strong>
-                </div>
-                <button className="about-feedback-copy" type="button" disabled={!hasFeedbackWechatId} onClick={onCopyFeedbackWechatId}>
-                  <Copy size={17} />
-                  <span>{hasFeedbackWechatId ? "复制微信号" : "微信号待补充"}</span>
-                </button>
-                <p>反馈问题时，如果能附上截图和操作步骤，会更容易定位。</p>
+              <div
+                id="support-author-payment-panel"
+                className="about-support-placeholder"
+                role="tabpanel"
+                aria-labelledby={`support-author-${paymentMethod}-tab`}
+              >
+                <QrCode size={40} />
+                <strong>{paymentMethodLabel} {text.preparing}</strong>
               </div>
             )}
-          </section>
+          </div>
+
+          <div className="support-author-links">
+            <div className="support-author-row">
+              <span className="support-author-copy">
+                <span>GitHub</span>
+                <a href={githubRepositoryUrl} target="_blank" rel="noreferrer">{text.openSource}</a>
+              </span>
+              <button className="support-author-copy-button" type="button" aria-label={text.copyOpenSource} title={text.copyOpenSource} onClick={onCopyGithubRepositoryUrl}>
+                <Copy size={15} />
+              </button>
+            </div>
+            <div className="support-author-row">
+              <span className="support-author-copy">
+                <span>{text.wechatId}</span>
+                <strong>{feedbackWechatId}</strong>
+              </span>
+              <button
+                className="support-author-copy-button"
+                type="button"
+                aria-label={hasFeedbackWechatId ? text.copyWechat : text.pendingWechat}
+                title={hasFeedbackWechatId ? text.copyWechat : undefined}
+                disabled={!hasFeedbackWechatId}
+                onClick={onCopyFeedbackWechatId}
+              >
+                <Copy size={15} />
+              </button>
+            </div>
+            <div className="support-author-row support-author-row-link">
+              <span className="support-author-copy">
+                <span>{text.homepage}</span>
+                <a href="https://mikeywa.icu" target="_blank" rel="noreferrer">mikeywa.icu</a>
+              </span>
+            </div>
+          </div>
         </div>
-      ) : null}
+      </section>
     </div>
   );
 }

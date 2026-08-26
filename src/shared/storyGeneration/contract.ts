@@ -1,4 +1,5 @@
 import type { PromptCard } from "../linearStory.js";
+import type { AppLanguage } from "../i18n.js";
 import type { Character, ChatMessage, ChatSession, DramaProject, MemeAsset } from "../schema.js";
 
 /**
@@ -9,7 +10,7 @@ export type DeepSeekCompletionConfig = {
   apiKey: string;
   baseUrl: string;
   model: string;
-  source?: "default" | "server";
+  source?: "default" | "server" | "custom";
   label?: string;
 };
 
@@ -73,6 +74,8 @@ export type DeepSeekPromptMessage = {
 export type DeepSeekRequestBody = {
   model: string;
   temperature: number;
+  max_tokens: number;
+  thinking: { type: "disabled" };
   response_format: { type: "json_object" };
   messages: DeepSeekPromptMessage[];
 };
@@ -84,6 +87,7 @@ export type DeepSeekRequestInput = {
   model: string;
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  language?: AppLanguage;
   repairAttempt?: number;
 };
 
@@ -94,6 +98,7 @@ export type GenerateDeepSeekSegmentInput = {
   config: DeepSeekCompletionConfig;
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  language?: AppLanguage;
   logLabel?: string;
   signal?: AbortSignal;
 };

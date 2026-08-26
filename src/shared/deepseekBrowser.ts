@@ -1,5 +1,11 @@
 import type { PromptCard } from "./linearStory.js";
 import type { DramaProject } from "./schema.js";
+import type { AppLanguage } from "./i18n.js";
+import {
+  aiProviderForId,
+  defaultAiProviderId,
+  type AiProviderId
+} from "./aiProviders.js";
 import {
   DEFAULT_DEEPSEEK_MODEL,
   generateDeepSeekStorySegmentWithConfig
@@ -15,6 +21,8 @@ declare const __DEEPSEEK_BROWSER_CONFIG__: {
   model?: string;
   defaultProvider?: BrowserDeepSeekProviderConfig;
 };
+
+declare const __AI_BROWSER_CONFIG__: Partial<Record<AiProviderId, BrowserDeepSeekProviderConfig>>;
 
 type BrowserDeepSeekProviderConfig = {
   apiKey?: string;
@@ -62,6 +70,20 @@ export function hasBrowserDeepSeekKey() {
   return Boolean(getDefaultBrowserDeepSeekConfig().apiKey);
 }
 
+export function getBrowserAiProviderConfig(providerId: AiProviderId = defaultAiProviderId) {
+  const provider = aiProviderForId(providerId);
+  return cleanProviderConfig(
+    __AI_BROWSER_CONFIG__[provider.id],
+    { baseUrl: provider.baseUrl, model: provider.model },
+    "default",
+    provider.shortLabel
+  );
+}
+
+export function hasBrowserAiProviderKey(providerId: AiProviderId = defaultAiProviderId) {
+  return Boolean(getBrowserAiProviderConfig(providerId).apiKey);
+}
+
 export async function resolveBrowserDeepSeekConfig(project?: DramaProject) {
   void project;
   return getDefaultBrowserDeepSeekConfig();
@@ -79,6 +101,9 @@ export async function generateDeepSeekStorySegment({
   promptCards,
   allowMultiSession = false,
   activeSessionId,
+  language = "zh-CN",
+  modelProviderId = defaultAiProviderId,
+  customModel,
   signal
 }: {
   project: DramaProject;
@@ -86,9 +111,12 @@ export async function generateDeepSeekStorySegment({
   promptCards: PromptCard[];
   allowMultiSession?: boolean;
   activeSessionId?: string;
+  language?: AppLanguage;
+  modelProviderId?: AiProviderId;
+  customModel?: DeepSeekCompletionConfig;
   signal?: AbortSignal;
 }): Promise<DeepSeekSegmentResult> {
-  const config = await resolveBrowserDeepSeekConfig(project);
+  const config = customModel || getBrowserAiProviderConfig(modelProviderId);
   return generateDeepSeekStorySegmentWithConfig({
     project,
     prompt,
@@ -96,7 +124,8 @@ export async function generateDeepSeekStorySegment({
     config,
     allowMultiSession,
     activeSessionId,
-    logLabel: "deepseek-browser-default",
+    language,
+    logLabel: customModel ? "ai-browser-custom" : `ai-browser-${modelProviderId}`,
     signal
   });
 }
