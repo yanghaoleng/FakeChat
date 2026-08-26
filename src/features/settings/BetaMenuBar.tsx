@@ -1,6 +1,7 @@
 import { Check, LoaderCircle, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { selectableAiProviders, type AiModelChoiceId, type AiProviderId } from "../../shared/aiProviders";
+import { customModelProviders, type CustomModelSettings, type CustomModelTestState } from "../../shared/customModel";
 import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type LanguagePreference } from "../../shared/i18n";
 import type { StoryPackage } from "../../shared/linearStory";
 import type { JojoPresetRole, PresetRoleSelection, ViralPresetRole } from "../../shared/presetStories";
@@ -31,6 +32,11 @@ type BetaMenuBarProps = {
   ambientSkins: Array<{ id: SettingsAmbientSkinId; label: string }>;
   ambientSkin: SettingsAmbientSkinId;
   aiProviderId: AiProviderId;
+  showCustomModelControl: boolean;
+  customModelPanelOpen: boolean;
+  customModelSettings: CustomModelSettings;
+  customModelTestState: CustomModelTestState;
+  customModelTestMessage: string;
   allowMultiSession: boolean;
   multiSessionToggleDisabled: boolean;
   fishAutoReadEnabled: boolean;
@@ -45,6 +51,9 @@ type BetaMenuBarProps = {
   onSwitchPresetRole: (selection: Partial<PresetRoleSelection>) => void;
   onChangeLanguage: (preference: LanguagePreference) => void;
   onSelectAiModel: (model: AiModelChoiceId) => void;
+  onSelectCustomModelProvider: (providerId: string) => void;
+  onChangeCustomModelSettings: (settings: Partial<CustomModelSettings>) => void;
+  onTestCustomModel: () => void;
   onToggleMultiSession: () => void;
   onToggleFishAutoRead: () => void;
   onChangeFishApiKey: (apiKey: string) => void;
@@ -97,6 +106,11 @@ export function BetaMenuBar({
   ambientSkins,
   ambientSkin,
   aiProviderId,
+  showCustomModelControl,
+  customModelPanelOpen,
+  customModelSettings,
+  customModelTestState,
+  customModelTestMessage,
   allowMultiSession,
   multiSessionToggleDisabled,
   fishAutoReadEnabled,
@@ -111,6 +125,9 @@ export function BetaMenuBar({
   onSwitchPresetRole,
   onChangeLanguage,
   onSelectAiModel,
+  onSelectCustomModelProvider,
+  onChangeCustomModelSettings,
+  onTestCustomModel,
   onToggleMultiSession,
   onToggleFishAutoRead,
   onChangeFishApiKey,
@@ -130,16 +147,22 @@ export function BetaMenuBar({
   const [closingMenu, setClosingMenu] = useState<MenuId | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const text = {
-    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", uiSound: "界面音效", background: "背景", aiModel: "AI 模型", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
-    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", uiSound: "介面音效", background: "背景", aiModel: "AI 模型", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
-    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", uiSound: "Interface sound", background: "Background", aiModel: "AI model", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
-    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", uiSound: "操作音", background: "背景", aiModel: "AIモデル", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
+    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", uiSound: "界面音效", background: "背景", aiModel: "AI 模型", customModel: "自定义大语言模型", customModelApi: "自定义大语言模型 API", providerTemplate: "接口模板", domestic: "国内主流", global: "国外主流", baseUrl: "Base URL", modelName: "模型名", apiKey: "API Key", apiKeyPlaceholder: "粘贴 API Key", testUse: "测试并使用", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
+    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", uiSound: "介面音效", background: "背景", aiModel: "AI 模型", customModel: "自訂大型語言模型", customModelApi: "自訂大型語言模型 API", providerTemplate: "介面範本", domestic: "中國服務", global: "全球服務", baseUrl: "Base URL", modelName: "模型名稱", apiKey: "API Key", apiKeyPlaceholder: "貼上 API Key", testUse: "測試並使用", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
+    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", uiSound: "Interface sound", background: "Background", aiModel: "AI model", customModel: "Custom language model", customModelApi: "Custom language model API", providerTemplate: "API template", domestic: "China providers", global: "Global providers", baseUrl: "Base URL", modelName: "Model name", apiKey: "API Key", apiKeyPlaceholder: "Paste API Key", testUse: "Test & use", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
+    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", uiSound: "操作音", background: "背景", aiModel: "AIモデル", customModel: "カスタム言語モデル", customModelApi: "カスタム言語モデル API", providerTemplate: "APIテンプレート", domestic: "中国向け", global: "グローバル", baseUrl: "Base URL", modelName: "モデル名", apiKey: "API Key", apiKeyPlaceholder: "API Keyを貼り付け", testUse: "テストして使用", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
   }[language];
 
   const roleChoices: RoleChoice[] = storyPackage === "jojo"
     ? jojoRoleChoices.map((choice) => ({ id: choice.roleId, label: choice.label }))
     : viralRoleChoices.map((choice) => ({ id: choice.id, label: choice.label }));
   const activeRoleId = storyPackage === "jojo" ? activePresetRole.jojoRole : activePresetRole.viralRole;
+  const customModelSelected = showCustomModelControl && customModelPanelOpen;
+  const canTestCustomModel = Boolean(
+    customModelSettings.apiKey.trim()
+    && customModelSettings.baseUrl.trim()
+    && customModelSettings.model.trim()
+  );
 
   function clearCloseTimer() {
     if (closeTimerRef.current === null) return;
@@ -294,8 +317,88 @@ export function BetaMenuBar({
         <>
           <div className="beta-menu-section-label">{text.aiModel}</div>
           {selectableAiProviders.map((provider) => (
-            <MenuItem key={provider.id} checked={aiProviderId === provider.id} label={provider.label} onClick={() => choose(() => onSelectAiModel(provider.id))} />
+            <MenuItem key={provider.id} checked={!customModelSelected && aiProviderId === provider.id} label={provider.label} onClick={() => choose(() => onSelectAiModel(provider.id))} />
           ))}
+          {showCustomModelControl ? (
+            <MenuItem checked={customModelSelected} label={text.customModel} onClick={() => onSelectAiModel("custom")} />
+          ) : null}
+          {customModelSelected ? (
+            <form
+              className="beta-menu-inline-form beta-menu-custom-model-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (customModelTestState !== "testing" && canTestCustomModel) onTestCustomModel();
+              }}
+            >
+              <div className="beta-menu-inline-label">{text.customModelApi}</div>
+              <div className="beta-menu-custom-model-fields">
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-provider">
+                  <span>{text.providerTemplate}</span>
+                  <select
+                    id="beta-custom-model-provider"
+                    value={customModelSettings.providerId}
+                    onChange={(event) => onSelectCustomModelProvider(event.currentTarget.value)}
+                  >
+                    <optgroup label={text.domestic}>
+                      {customModelProviders.filter((provider) => provider.region === "domestic").map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={text.global}>
+                      {customModelProviders.filter((provider) => provider.region === "global").map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.label}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </label>
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-base-url">
+                  <span>{text.baseUrl}</span>
+                  <input
+                    id="beta-custom-model-base-url"
+                    type="url"
+                    autoComplete="url"
+                    spellCheck={false}
+                    value={customModelSettings.baseUrl}
+                    placeholder="https://api.example.com/v1"
+                    onChange={(event) => onChangeCustomModelSettings({ baseUrl: event.currentTarget.value })}
+                  />
+                </label>
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-name">
+                  <span>{text.modelName}</span>
+                  <input
+                    id="beta-custom-model-name"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={customModelSettings.model}
+                    placeholder="model-name"
+                    onChange={(event) => onChangeCustomModelSettings({ model: event.currentTarget.value })}
+                  />
+                </label>
+                <label className="beta-menu-custom-model-field" htmlFor="beta-custom-model-api-key">
+                  <span>{text.apiKey}</span>
+                  <span className="beta-menu-inline-control">
+                    <input
+                      id="beta-custom-model-api-key"
+                      type="password"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={customModelSettings.apiKey}
+                      placeholder={text.apiKeyPlaceholder}
+                      onChange={(event) => onChangeCustomModelSettings({ apiKey: event.currentTarget.value })}
+                    />
+                    <button type="submit" disabled={customModelTestState === "testing" || !canTestCustomModel}>
+                      {customModelTestState === "testing" ? <LoaderCircle className="beta-menu-test-spinner" size={13} /> : null}
+                      {customModelTestState === "testing" ? text.testing : text.testUse}
+                    </button>
+                  </span>
+                </label>
+              </div>
+              {customModelTestMessage ? (
+                <span className="beta-menu-test-message" data-state={customModelTestState} role="status">{customModelTestMessage}</span>
+              ) : null}
+            </form>
+          ) : null}
           <div className="beta-menu-separator" role="separator" />
           <MenuItem checked={fishAutoReadEnabled} label={text.fish} onClick={() => choose(onToggleFishAutoRead)} />
           <form

@@ -107,3 +107,7 @@ export function customModelToCompletionConfig(settings: CustomModelSettings): De
     label: providerForId(normalized.providerId).label
   };
 }
+
+export function customModelConfigForSurface(settings: CustomModelSettings, allowCustomModel: boolean) {
+  return allowCustomModel ? customModelToCompletionConfig(settings) : undefined;
+}

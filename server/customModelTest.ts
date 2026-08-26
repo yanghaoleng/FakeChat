@@ -24,16 +24,6 @@ export async function testCustomModelConnection(body: unknown) {
     "Content-Type": "application/json"
   };
 
-  const modelsResponse = await fetch(`${baseUrl}/models`, {
-    method: "GET",
-    headers,
-    signal: AbortSignal.timeout(12000)
-  }).catch((error: unknown) => error);
-
-  if (modelsResponse instanceof Response && modelsResponse.ok) {
-    return { ok: true, method: "models", message: "模型服务已连通" };
-  }
-
   const chatResponse = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers,
@@ -47,11 +37,20 @@ export async function testCustomModelConnection(body: unknown) {
   }).catch((error: unknown) => error);
 
   if (chatResponse instanceof Response && chatResponse.ok) {
-    return { ok: true, method: "chat", message: "模型服务已连通" };
+    return { ok: true, method: "chat", message: "模型已测试连通" };
   }
+
+  const modelsResponse = await fetch(`${baseUrl}/models`, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(12000)
+  }).catch((error: unknown) => error);
 
   if (chatResponse instanceof Response) {
     const snippet = await readErrorSnippet(chatResponse);
+    if (modelsResponse instanceof Response && modelsResponse.ok) {
+      throw new Error(`接口可访问，但当前模型测试失败：${chatResponse.status}${snippet ? ` ${snippet}` : ""}`);
+    }
     throw new Error(`连通检测失败：${chatResponse.status}${snippet ? ` ${snippet}` : ""}`);
   }
 

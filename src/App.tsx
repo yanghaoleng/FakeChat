@@ -68,6 +68,7 @@ import {
   unreadCountForChatSession
 } from "./shared/chatSessions";
 import {
+  customModelConfigForSurface,
   customModelToCompletionConfig,
   normalizeCustomModelSettings,
   providerForId,
@@ -2442,7 +2443,7 @@ export default function App({ storyPackage }: AppProps) {
     signal: AbortSignal;
   }) {
     let backendError: unknown;
-    const customModel = appMenuEnabled ? undefined : customModelToCompletionConfig(activeCustomModelSettings);
+    const customModel = customModelConfigForSurface(activeCustomModelSettings, betaHackathonBuild);
     const managedProvider = aiProviderForId(aiProviderId);
     setStatusText(customModel ? `正在请求 ${customModel.label || "自定义模型"} 续写...` : `正在请求 ${managedProvider.shortLabel} 续写...`);
     try {
@@ -3578,6 +3579,11 @@ export default function App({ storyPackage }: AppProps) {
           ambientSkins={ambientSkins}
           ambientSkin={ambientSkin}
           aiProviderId={aiProviderId}
+          showCustomModelControl={betaHackathonBuild}
+          customModelPanelOpen={customModelPanelOpen}
+          customModelSettings={customModelSettings}
+          customModelTestState={customModelTestState}
+          customModelTestMessage={customModelTestMessage}
           allowMultiSession={storyPackage === "viral" && allowMultiSession}
           multiSessionToggleDisabled={status === "loading"}
           fishAutoReadEnabled={fishAutoReadEnabled}
@@ -3592,6 +3598,9 @@ export default function App({ storyPackage }: AppProps) {
           onSwitchPresetRole={switchPresetRole}
           onChangeLanguage={changeLanguagePreference}
           onSelectAiModel={selectAiModel}
+          onSelectCustomModelProvider={selectCustomModelProvider}
+          onChangeCustomModelSettings={setCustomModel}
+          onTestCustomModel={() => void testCustomModel()}
           onToggleMultiSession={toggleMultiSessionMode}
           onToggleFishAutoRead={toggleFishAutoRead}
           onChangeFishApiKey={changeFishApiKey}

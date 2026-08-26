@@ -20,6 +20,7 @@
 | 手机右上角菜单 / 汉堡菜单 | `760px` 及以下顶栏 | `mobileMenuOpen`、`openMenu`、`closingMenu` | `.beta-menu-mobile-toggle`、`.beta-menu-nav[data-mobile-open="true"]`；一级菜单纵向排列，子菜单原位展开，面板可内部滚动 |
 | 当前模型标签 | 全版本顶栏右侧 | 已移除；模型选中态仅保留在“模型”菜单内 | 不再渲染 `.beta-menu-current-model` |
 | 多会话开关 | 正式微信版顶部“显示”菜单 | `allowMultiSession`、`toggleMultiSessionMode` | `.beta-menu-item`；选中显示勾，生成中禁用 |
+| 自定义大语言模型 API / 自定义 LLM | 仅 Beta 顶部“模型”菜单 | `betaHackathonBuild`、`customModelPanelOpen`、`CustomModelSettings`、`customModelConfigForSurface`、`testCustomModel` | `.beta-menu-custom-model-form`、`.beta-menu-custom-model-fields`；接口模板、Base URL、模型名、API Key 和“测试并使用”，正式两版不显示且不启用 |
 | 自定义 Fish Audio API | Beta 模型菜单 | `fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；仅一个密钥输入框和测试按钮 |
 | 百分比滚动数字 / 加载数字 / 预计时间 | 生成进度、导出进度 | `RollingPercent`、`estimatedGenerationMs`、`doubaoGenerationEstimateScale = 0.64`、Calligraph `variant="number"` | `.rolling-percent`、`.rolling-percent-digits`；豆包按 DeepSeek 基准的 `64%` 推进 |
 | JOJO 内网预览 | 部署/预览 | `npm run preview:lan` | `HOST=0.0.0.0 API_PORT=4173 DIST_DIR=dist/jojo` |
@@ -31,7 +32,7 @@
 | 智谱 / 旧兼容模型 | AI 后端 | `modelProviderId: "zhipu"`、`glm-4.7-flash` | `ZHIPU_API_KEY`；仅保留旧请求兼容，不在模型菜单出现 |
 | 豆包 / 默认模型 / Seed mini / 速度快 | AI 模型 | `modelProviderId: "doubao"`、`doubao-seed-2-0-mini-260215` | `DOUBAO_API_KEY` 或 `ARK_API_KEY`；显示“豆包 Seed-2.0-mini（速度快）” |
 | DeepSeek V4 Flash / V4 | AI 模型 | `modelProviderId: "v4flash"`、`deepseek-v4-flash` | `DEEPSEEK_API_KEY`，兼容 `COMPANY_DEEPSEEK_API_KEY` |
-| 自定义模型输入框 | 实验室 AI 模型 | `customModelPanelOpen`、`CustomModelSettings` | 仅当模型选择值为 `custom` 时渲染 `.settings-model-panel` 内输入项 |
+| 旧实验室自定义模型输入框 | 未启用的旧实验室弹窗 | `LabDialog`、`customModelPanelOpen`、`CustomModelSettings` | `.settings-model-panel` 继续保留兼容；当前 Beta 使用顶部模型菜单的新表单 |
 | Toast / AI 连接失败提示 | Beta 状态反馈 | `toastMessage`、`showToast` | `.app-toast`；Beta 静置常驻，鼠标移动或点击后延迟 2 秒消失 |
 | 左侧面板 | 主工作区 | `ScrollShadow` | `.left-panel.panel-scroll` |
 | 桌面编故事垂直位置 | 主工作区 | CSS 变量 | `--desktop-story-panel-top-offset: 190px` |
