@@ -23,6 +23,14 @@ test.describe("Beta 自定义大语言模型", () => {
     await page.getByRole("button", { name: "模型", exact: true }).click();
 
     const modelMenu = page.getByRole("menu", { name: "模型", exact: true });
+    await expect(modelMenu.getByRole("menuitemradio")).toHaveText([
+      "豆包 Seed-2.0-mini（速度快）",
+      "DeepSeek V4 Flash",
+      "自定义大语言模型",
+      "Fish 朗读",
+      "豆包 Seed-TTS 2.0 朗读"
+    ]);
+    await expect(modelMenu.getByText("豆包语音 API（本标签页保存）")).toBeVisible();
     await modelMenu.getByRole("menuitemradio", { name: "自定义大语言模型" }).click();
     await expect(modelMenu.getByText("自定义大语言模型 API", { exact: true })).toBeVisible();
 

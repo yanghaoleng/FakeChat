@@ -5,6 +5,7 @@ import { customModelProviders, type CustomModelSettings, type CustomModelTestSta
 import { appLanguages, languageLabels, type AppCopy, type AppLanguage, type LanguagePreference } from "../../shared/i18n";
 import type { StoryPackage } from "../../shared/linearStory";
 import type { JojoPresetRole, PresetRoleSelection, ViralPresetRole } from "../../shared/presetStories";
+import type { SpeechProviderId } from "../../shared/speechProviders";
 import type { SettingsAmbientSkinId, SettingsPreviewMode } from "./SettingsDialog";
 import { GlitchBrandMark } from "./GlitchBrandMark";
 
@@ -40,9 +41,13 @@ type BetaMenuBarProps = {
   allowMultiSession: boolean;
   multiSessionToggleDisabled: boolean;
   fishAutoReadEnabled: boolean;
+  speechProviderId: SpeechProviderId;
   fishApiKey: string;
   fishApiTestState: FishApiTestState;
   fishApiTestMessage: string;
+  doubaoSpeechApiKey: string;
+  doubaoSpeechApiTestState: FishApiTestState;
+  doubaoSpeechApiTestMessage: string;
   showUiSoundControl: boolean;
   uiSoundEnabled: boolean;
   switchLink: { href: string; label: string };
@@ -55,9 +60,11 @@ type BetaMenuBarProps = {
   onChangeCustomModelSettings: (settings: Partial<CustomModelSettings>) => void;
   onTestCustomModel: () => void;
   onToggleMultiSession: () => void;
-  onToggleFishAutoRead: () => void;
+  onToggleSpeechAutoRead: (providerId: SpeechProviderId) => void;
   onChangeFishApiKey: (apiKey: string) => void;
   onTestFishApiKey: () => void;
+  onChangeDoubaoSpeechApiKey: (apiKey: string) => void;
+  onTestDoubaoSpeechApiKey: () => void;
   onToggleUiSound: () => void;
   onCycleBrandIcon: () => void;
   onOpenAbout: () => void;
@@ -114,9 +121,13 @@ export function BetaMenuBar({
   allowMultiSession,
   multiSessionToggleDisabled,
   fishAutoReadEnabled,
+  speechProviderId,
   fishApiKey,
   fishApiTestState,
   fishApiTestMessage,
+  doubaoSpeechApiKey,
+  doubaoSpeechApiTestState,
+  doubaoSpeechApiTestMessage,
   showUiSoundControl,
   uiSoundEnabled,
   switchLink,
@@ -129,9 +140,11 @@ export function BetaMenuBar({
   onChangeCustomModelSettings,
   onTestCustomModel,
   onToggleMultiSession,
-  onToggleFishAutoRead,
+  onToggleSpeechAutoRead,
   onChangeFishApiKey,
   onTestFishApiKey,
+  onChangeDoubaoSpeechApiKey,
+  onTestDoubaoSpeechApiKey,
   onToggleUiSound,
   onCycleBrandIcon,
   onOpenAbout,
@@ -147,10 +160,10 @@ export function BetaMenuBar({
   const [closingMenu, setClosingMenu] = useState<MenuId | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const text = {
-    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", uiSound: "界面音效", background: "背景", aiModel: "AI 模型", customModel: "自定义大语言模型", customModelApi: "自定义大语言模型 API", providerTemplate: "接口模板", domestic: "国内主流", global: "国外主流", baseUrl: "Base URL", modelName: "模型名", apiKey: "API Key", apiKeyPlaceholder: "粘贴 API Key", testUse: "测试并使用", fish: "Fish 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
-    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", uiSound: "介面音效", background: "背景", aiModel: "AI 模型", customModel: "自訂大型語言模型", customModelApi: "自訂大型語言模型 API", providerTemplate: "介面範本", domestic: "中國服務", global: "全球服務", baseUrl: "Base URL", modelName: "模型名稱", apiKey: "API Key", apiKeyPlaceholder: "貼上 API Key", testUse: "測試並使用", fish: "Fish 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
-    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", uiSound: "Interface sound", background: "Background", aiModel: "AI model", customModel: "Custom language model", customModelApi: "Custom language model API", providerTemplate: "API template", domestic: "China providers", global: "Global providers", baseUrl: "Base URL", modelName: "Model name", apiKey: "API Key", apiKeyPlaceholder: "Paste API Key", testUse: "Test & use", fish: "Fish narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
-    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", uiSound: "操作音", background: "背景", aiModel: "AIモデル", customModel: "カスタム言語モデル", customModelApi: "カスタム言語モデル API", providerTemplate: "APIテンプレート", domestic: "中国向け", global: "グローバル", baseUrl: "Base URL", modelName: "モデル名", apiKey: "API Key", apiKeyPlaceholder: "API Keyを貼り付け", testUse: "テストして使用", fish: "Fish 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
+    "zh-CN": { file: "文件", view: "显示", role: "角色", language: "语言", model: "模型", help: "帮助", openMenu: "打开菜单", closeMenu: "关闭菜单", interface: "界面版", video: "视频版", multiSession: "多会话（测试版）", uiSound: "界面音效", background: "背景", aiModel: "AI 模型", customModel: "自定义大语言模型", customModelApi: "自定义大语言模型 API", providerTemplate: "接口模板", domestic: "国内主流", global: "国外主流", baseUrl: "Base URL", modelName: "模型名", apiKey: "API Key", apiKeyPlaceholder: "粘贴 API Key", testUse: "测试并使用", speech: "语音朗读", fish: "Fish 朗读", doubaoSpeech: "豆包 Seed-TTS 2.0 朗读", customFish: "自定义 Fish Audio API", fishPlaceholder: "粘贴 Fish Audio API Key", doubaoSpeechApi: "豆包语音 API（本标签页保存）", doubaoSpeechPlaceholder: "粘贴豆包语音 API Key", test: "测试", testing: "测试中", save: "保存存档", load: "载入存档", support: "支持作者", about: "关于本站" },
+    "zh-TW": { file: "檔案", view: "顯示", role: "角色", language: "語言", model: "模型", help: "說明", openMenu: "開啟選單", closeMenu: "關閉選單", interface: "介面版", video: "影片版", multiSession: "多會話（測試版）", uiSound: "介面音效", background: "背景", aiModel: "AI 模型", customModel: "自訂大型語言模型", customModelApi: "自訂大型語言模型 API", providerTemplate: "介面範本", domestic: "中國服務", global: "全球服務", baseUrl: "Base URL", modelName: "模型名稱", apiKey: "API Key", apiKeyPlaceholder: "貼上 API Key", testUse: "測試並使用", speech: "語音朗讀", fish: "Fish 朗讀", doubaoSpeech: "豆包 Seed-TTS 2.0 朗讀", customFish: "自訂 Fish Audio API", fishPlaceholder: "貼上 Fish Audio API Key", doubaoSpeechApi: "豆包語音 API（本分頁儲存）", doubaoSpeechPlaceholder: "貼上豆包語音 API Key", test: "測試", testing: "測試中", save: "儲存存檔", load: "載入存檔", support: "支持作者", about: "關於本站" },
+    en: { file: "File", view: "View", role: "Role", language: "Language", model: "Model", help: "Help", openMenu: "Open menu", closeMenu: "Close menu", interface: "Interface", video: "Video", multiSession: "Multiple chats (Beta)", uiSound: "Interface sound", background: "Background", aiModel: "AI model", customModel: "Custom language model", customModelApi: "Custom language model API", providerTemplate: "API template", domestic: "China providers", global: "Global providers", baseUrl: "Base URL", modelName: "Model name", apiKey: "API Key", apiKeyPlaceholder: "Paste API Key", testUse: "Test & use", speech: "Voice narration", fish: "Fish narration", doubaoSpeech: "Doubao Seed-TTS 2.0 narration", customFish: "Custom Fish Audio API", fishPlaceholder: "Paste Fish Audio API Key", doubaoSpeechApi: "Doubao Speech API (saved in this tab)", doubaoSpeechPlaceholder: "Paste Doubao Speech API Key", test: "Test", testing: "Testing", save: "Save archive", load: "Load archive", support: "Support the creator", about: "About this site" },
+    ja: { file: "ファイル", view: "表示", role: "役割", language: "言語", model: "モデル", help: "ヘルプ", openMenu: "メニューを開く", closeMenu: "メニューを閉じる", interface: "画面版", video: "動画版", multiSession: "複数チャット（テスト版）", uiSound: "操作音", background: "背景", aiModel: "AIモデル", customModel: "カスタム言語モデル", customModelApi: "カスタム言語モデル API", providerTemplate: "APIテンプレート", domestic: "中国向け", global: "グローバル", baseUrl: "Base URL", modelName: "モデル名", apiKey: "API Key", apiKeyPlaceholder: "API Keyを貼り付け", testUse: "テストして使用", speech: "音声読み上げ", fish: "Fish 読み上げ", doubaoSpeech: "Doubao Seed-TTS 2.0 読み上げ", customFish: "カスタム Fish Audio API", fishPlaceholder: "Fish Audio API Key を貼り付け", doubaoSpeechApi: "Doubao Speech API（このタブに保存）", doubaoSpeechPlaceholder: "Doubao Speech API Key を貼り付け", test: "テスト", testing: "テスト中", save: "アーカイブを保存", load: "アーカイブを読込", support: "作者を応援", about: "このサイトについて" }
   }[language];
 
   const roleChoices: RoleChoice[] = storyPackage === "jojo"
@@ -400,7 +413,9 @@ export function BetaMenuBar({
             </form>
           ) : null}
           <div className="beta-menu-separator" role="separator" />
-          <MenuItem checked={fishAutoReadEnabled} label={text.fish} onClick={() => choose(onToggleFishAutoRead)} />
+          <div className="beta-menu-section-label">{text.speech}</div>
+          <MenuItem checked={fishAutoReadEnabled && speechProviderId === "fish"} label={text.fish} onClick={() => choose(() => onToggleSpeechAutoRead("fish"))} />
+          <MenuItem checked={fishAutoReadEnabled && speechProviderId === "doubao"} label={text.doubaoSpeech} onClick={() => choose(() => onToggleSpeechAutoRead("doubao"))} />
           <form
             className="beta-menu-inline-form"
             onSubmit={(event) => {
@@ -428,6 +443,35 @@ export function BetaMenuBar({
             </div>
             {fishApiTestMessage ? (
               <span className="beta-menu-test-message" data-state={fishApiTestState} role="status">{fishApiTestMessage}</span>
+            ) : null}
+          </form>
+          <form
+            className="beta-menu-inline-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (doubaoSpeechApiTestState !== "testing" && doubaoSpeechApiKey.trim()) onTestDoubaoSpeechApiKey();
+            }}
+          >
+            <label className="beta-menu-inline-label" htmlFor="beta-doubao-speech-api-key">
+              {text.doubaoSpeechApi}
+            </label>
+            <div className="beta-menu-inline-control">
+              <input
+                id="beta-doubao-speech-api-key"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={doubaoSpeechApiKey}
+                placeholder={text.doubaoSpeechPlaceholder}
+                onChange={(event) => onChangeDoubaoSpeechApiKey(event.currentTarget.value)}
+              />
+              <button type="submit" disabled={doubaoSpeechApiTestState === "testing" || !doubaoSpeechApiKey.trim()}>
+                {doubaoSpeechApiTestState === "testing" ? <LoaderCircle className="beta-menu-test-spinner" size={13} /> : null}
+                {doubaoSpeechApiTestState === "testing" ? text.testing : text.test}
+              </button>
+            </div>
+            {doubaoSpeechApiTestMessage ? (
+              <span className="beta-menu-test-message" data-state={doubaoSpeechApiTestState} role="status">{doubaoSpeechApiTestMessage}</span>
             ) : null}
           </form>
         </>

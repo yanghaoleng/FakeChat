@@ -32,7 +32,7 @@ export type TtsClip = {
   blob: Blob;
   url: string;
   durationMs: number;
-  source?: "edge" | "fish";
+  source?: "edge" | "fish" | "doubao";
 };
 
 export type TtsClipMap = Record<string, TtsClip>;

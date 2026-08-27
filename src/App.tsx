@@ -39,6 +39,7 @@ import {
 } from "./shared/aiProviders";
 import type { VideoExportResult } from "./shared/browserVideo";
 import type { TtsClipMap } from "./shared/edgeTts";
+import { synthesizeDoubaoAudio, synthesizeDoubaoMessageClip } from "./shared/doubaoSpeechTts";
 import { fishReadableText, fishVoiceHintFor, synthesizeFishAudio, synthesizeFishMessageClip } from "./shared/fishAudioTts";
 import { estimatedGenerationMs } from "./shared/generationEstimate";
 import {
@@ -89,6 +90,12 @@ import {
 import { resolvePublicAssetPath } from "./shared/publicPath";
 import { applyBrandFavicon, brandIconUrlForStoryPackage, nextBrandIconUrl } from "./shared/randomBrandIcon";
 import { getCharacter, type ChatMessage, type DramaProject } from "./shared/schema";
+import {
+  readSpeechProviderId,
+  speechProviderLabel,
+  writeSpeechProviderId,
+  type SpeechProviderId
+} from "./shared/speechProviders";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
 import { attachStorySegment, restoreStoryBeforeCard, restoreStoryThroughCard } from "./shared/storySegments";
@@ -148,6 +155,7 @@ const generationProgressLoadingCap = 96;
 const ambientThemeFadeMs = 1180;
 const ambientThemeApplyDelayMs = 520;
 const fishAutoReadStorageKey = "ququ-fish-auto-read-enabled-v1";
+const doubaoSpeechApiKeyStorageKey = "ququ-doubao-speech-api-key-v1";
 
 const ambientSkins: Array<{ id: AmbientSkinId; label: string; hint: string }> = [
   { id: "brown", label: "棕砂", hint: "扫光" },
@@ -250,6 +258,11 @@ function readInitialFishAutoReadEnabled() {
 
 function readInitialFishApiKey() {
   return "";
+}
+
+function readInitialDoubaoSpeechApiKey() {
+  if (typeof window === "undefined") return "";
+  return window.sessionStorage.getItem(doubaoSpeechApiKeyStorageKey) || "";
 }
 
 function customModelDraftFromSaved(settings: CustomModelSettings): CustomModelSettings {
@@ -800,11 +813,17 @@ export default function App({ storyPackage }: AppProps) {
   const [customModelTestState, setCustomModelTestState] = useState<CustomModelTestState>("idle");
   const [customModelTestMessage, setCustomModelTestMessage] = useState("");
   const [fishAutoReadEnabled, setFishAutoReadEnabled] = useState(readInitialFishAutoReadEnabled);
+  const [speechProviderId, setSpeechProviderId] = useState<SpeechProviderId>(readSpeechProviderId);
   const [fishApiKey, setFishApiKey] = useState(readInitialFishApiKey);
   const [fishApiTestState, setFishApiTestState] = useState<FishApiTestState>("idle");
   const [fishApiTestMessage, setFishApiTestMessage] = useState("");
+  const [doubaoSpeechApiKey, setDoubaoSpeechApiKey] = useState(readInitialDoubaoSpeechApiKey);
+  const [doubaoSpeechApiTestState, setDoubaoSpeechApiTestState] = useState<FishApiTestState>("idle");
+  const [doubaoSpeechApiTestMessage, setDoubaoSpeechApiTestMessage] = useState("");
   const fishAutoReadEnabledRef = useRef(fishAutoReadEnabled);
+  const speechProviderIdRef = useRef(speechProviderId);
   const fishApiKeyRef = useRef(fishApiKey);
+  const doubaoSpeechApiKeyRef = useRef(doubaoSpeechApiKey);
   const [pendingSpeechMessageId, setPendingSpeechMessageId] = useState<string | null>(null);
   const [activeChatSessionId, setActiveChatSessionId] = useState(() => getChatSessions(initialPresetArchiveRef.current!.project)[0].id);
   const activeChatSessionIdRef = useRef(activeChatSessionId);
@@ -1092,9 +1111,21 @@ export default function App({ storyPackage }: AppProps) {
     setStatusText(nextValue ? "多会话已开启" : "多会话已关闭");
   }
 
-  function toggleFishAutoRead() {
+  function toggleSpeechAutoRead(providerId: SpeechProviderId) {
     void unlockFishAudioPlayback();
-    const nextValue = !fishAutoReadEnabledRef.current;
+    const nextValue = speechProviderIdRef.current !== providerId || !fishAutoReadEnabledRef.current;
+    if (nextValue && providerId === "doubao" && !doubaoSpeechApiKeyRef.current.trim()) {
+      speechProviderIdRef.current = providerId;
+      setSpeechProviderId(providerId);
+      writeSpeechProviderId(providerId);
+      setStatus("error");
+      setStatusText("请先填写并测试豆包语音 API Key");
+      showToast("请先填写豆包语音 API Key");
+      return;
+    }
+    speechProviderIdRef.current = providerId;
+    setSpeechProviderId(providerId);
+    writeSpeechProviderId(providerId);
     fishAutoReadEnabledRef.current = nextValue;
     setFishAutoReadEnabled(nextValue);
     if (nextValue) {
@@ -1102,13 +1133,17 @@ export default function App({ storyPackage }: AppProps) {
       changePreviewMode("wechat");
       startMessageReveal(0, projectRef.current.messages.length, true);
       setStatus("done");
-      setStatusText("Fish 朗读已开启");
+      setStatusText(`${speechProviderLabel(providerId)} 朗读已开启`);
       return;
     }
     cancelFishAutoReadReveal();
     startMessageReveal(visibleMessageCount, projectRef.current.messages.length, false);
     setStatus("done");
-    setStatusText("Fish 朗读已关闭");
+    setStatusText(`${speechProviderLabel(providerId)} 朗读已关闭`);
+  }
+
+  function toggleFishAutoRead() {
+    toggleSpeechAutoRead("fish");
   }
 
   function setCustomModel(nextSettings: Partial<CustomModelSettings>) {
@@ -1235,6 +1270,44 @@ export default function App({ storyPackage }: AppProps) {
       const message = error instanceof Error ? error.message : "Fish Audio 连接失败";
       setFishApiTestState("error");
       setFishApiTestMessage(message);
+      setStatus("error");
+      setStatusText(message);
+    }
+  }
+
+  function changeDoubaoSpeechApiKey(nextApiKey: string) {
+    setDoubaoSpeechApiKey(nextApiKey);
+    doubaoSpeechApiKeyRef.current = nextApiKey;
+    setDoubaoSpeechApiTestState("idle");
+    setDoubaoSpeechApiTestMessage("");
+  }
+
+  async function testDoubaoSpeechApiKey() {
+    const apiKey = doubaoSpeechApiKeyRef.current.trim();
+    if (!apiKey) {
+      setDoubaoSpeechApiTestState("error");
+      setDoubaoSpeechApiTestMessage("请先粘贴 API Key");
+      return;
+    }
+    const character = projectRef.current.characters.find((item) => item.id !== "xitong") ?? projectRef.current.characters[0];
+    setDoubaoSpeechApiTestState("testing");
+    setDoubaoSpeechApiTestMessage("正在连接豆包 Seed-TTS 2.0...");
+    try {
+      const audio = await synthesizeDoubaoAudio(
+        "蛐蛐模拟器语音测试",
+        apiKey,
+        fishVoiceHintFor(character),
+        AbortSignal.timeout(65000)
+      );
+      if (!audio.size) throw new Error("豆包语音没有返回音频");
+      setDoubaoSpeechApiTestState("success");
+      setDoubaoSpeechApiTestMessage("连接成功，已在本标签页保存");
+      setStatus("done");
+      setStatusText("豆包 Seed-TTS 2.0 API 测试成功");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "豆包语音连接失败";
+      setDoubaoSpeechApiTestState("error");
+      setDoubaoSpeechApiTestMessage(message);
       setStatus("error");
       setStatusText(message);
     }
@@ -1422,8 +1495,19 @@ export default function App({ storyPackage }: AppProps) {
   }, [fishAutoReadEnabled]);
 
   useEffect(() => {
+    speechProviderIdRef.current = speechProviderId;
+    writeSpeechProviderId(speechProviderId);
+  }, [speechProviderId]);
+
+  useEffect(() => {
     fishApiKeyRef.current = fishApiKey;
   }, [fishApiKey]);
+
+  useEffect(() => {
+    doubaoSpeechApiKeyRef.current = doubaoSpeechApiKey;
+    if (doubaoSpeechApiKey) window.sessionStorage.setItem(doubaoSpeechApiKeyStorageKey, doubaoSpeechApiKey);
+    else window.sessionStorage.removeItem(doubaoSpeechApiKeyStorageKey);
+  }, [doubaoSpeechApiKey]);
 
   useEffect(() => {
     if (!appMenuEnabled || !toastMessage) return;
@@ -1961,6 +2045,8 @@ export default function App({ storyPackage }: AppProps) {
     if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     cancelFishAutoReadReveal();
     const runId = fishRevealRunRef.current;
+    const providerId = speechProviderIdRef.current;
+    let successfulSpeechRequests = 0;
     setVisibleMessageCount(fromCount);
     updateScrollTargetMessageId(null);
 
@@ -1982,8 +2068,12 @@ export default function App({ storyPackage }: AppProps) {
       try {
         const controller = new AbortController();
         fishRevealAbortRef.current = controller;
-        const blob = await synthesizeFishAudio(text, fishApiKeyRef.current, fishVoiceHintFor(getCharacter(projectRef.current, message)), controller.signal);
+        const voice = fishVoiceHintFor(getCharacter(projectRef.current, message));
+        const blob = providerId === "doubao"
+          ? await synthesizeDoubaoAudio(text, doubaoSpeechApiKeyRef.current, voice, controller.signal)
+          : await synthesizeFishAudio(text, fishApiKeyRef.current, voice, controller.signal);
         if (fishRevealRunRef.current !== runId) return;
+        successfulSpeechRequests += 1;
         fishRevealAbortRef.current = null;
         setPendingSpeechMessageId(null);
         setVisibleMessageCount(Math.min(nextCount + 1, toCount));
@@ -1993,9 +2083,19 @@ export default function App({ storyPackage }: AppProps) {
         if (fishRevealRunRef.current !== runId) return;
         fishRevealAbortRef.current = null;
         setPendingSpeechMessageId(null);
-        console.warn("[fish-audio]", error);
-        showToast("Fish 朗读暂时失败，已继续显示文字");
+        console.warn(`[${providerId}-speech]`, error);
         setVisibleMessageCount(Math.min(nextCount + 1, toCount));
+        if (successfulSpeechRequests === 0) {
+          fishAutoReadEnabledRef.current = false;
+          setFishAutoReadEnabled(false);
+          const providerLabel = speechProviderLabel(providerId);
+          showToast(`${providerLabel} 首次请求失败，已自动关闭朗读`);
+          setStatus("done");
+          setStatusText(`${providerLabel} 已自动关闭，后续直接显示文字`);
+          startTimedMessageReveal(nextCount + 1, toCount);
+          return;
+        }
+        showToast(`${speechProviderLabel(providerId)} 朗读暂时失败，已继续显示文字`);
         await waitForRevealDelay(Math.min(1200, messageRevealDelayMs(message)));
       }
     }
@@ -3097,9 +3197,13 @@ export default function App({ storyPackage }: AppProps) {
     }
   }
 
-  async function prepareFishVoiceClipsForVideo(exportProject: DramaProject, onProgress?: (current: number, total: number) => void) {
+  async function prepareVoiceClipsForVideo(exportProject: DramaProject, onProgress?: (current: number, total: number) => void) {
     const voiceMessages = exportProject.messages.filter((message) => fishReadableText(message).trim());
     if (!voiceMessages.length) return { project: exportProject, clips: clipsRef.current };
+    const providerId = speechProviderIdRef.current;
+    if (providerId === "doubao" && !doubaoSpeechApiKeyRef.current.trim()) {
+      throw new Error("请先填写并测试豆包语音 API Key");
+    }
 
     const nextClips: TtsClipMap = { ...clipsRef.current };
     let nextExportProject = exportProject;
@@ -3110,9 +3214,11 @@ export default function App({ storyPackage }: AppProps) {
     for (let index = 0; index < voiceMessages.length; index += 1) {
       const message = voiceMessages[index];
       const existingClip = nextClips[message.id];
-      if (existingClip?.source !== "fish") {
+      if (existingClip?.source !== providerId) {
         onProgress?.(index, voiceMessages.length);
-        const clip = await synthesizeFishMessageClip(nextExportProject, message, fishApiKeyRef.current);
+        const clip = providerId === "doubao"
+          ? await synthesizeDoubaoMessageClip(nextExportProject, message, doubaoSpeechApiKeyRef.current)
+          : await synthesizeFishMessageClip(nextExportProject, message, fishApiKeyRef.current);
         if (clip) {
           nextClips[message.id] = clip;
           nextExportProject = updateMessage(nextExportProject, message.id, { audioUrl: clip.url, durationMs: clip.durationMs });
@@ -3147,15 +3253,16 @@ export default function App({ storyPackage }: AppProps) {
     setStatus("loading");
     setVideoResult(null);
     setVideoExportProgress({ label: "获取语音", progress: 0 });
-    setStatusText("正在获取 Fish Audio 语音 0%");
+    const speechLabel = speechProviderLabel(speechProviderIdRef.current);
+    setStatusText(`正在获取 ${speechLabel} 语音 0%`);
     cancelFishAutoReadReveal();
     try {
       const voiceProgressCap = 0.45;
-      const exportVoice = await prepareFishVoiceClipsForVideo(activeChatProject, (current, total) => {
+      const exportVoice = await prepareVoiceClipsForVideo(activeChatProject, (current, total) => {
         const progress = total ? Math.min(voiceProgressCap, (current / total) * voiceProgressCap) : voiceProgressCap;
         const percent = Math.round(progress * 100);
         setVideoExportProgress({ label: "获取语音", progress });
-        setStatusText(`正在获取 Fish Audio 语音 ${percent}%`);
+        setStatusText(`正在获取 ${speechLabel} 语音 ${percent}%`);
       });
       setVideoExportProgress({ label: "渲染视频", progress: voiceProgressCap });
       setStatusText("正在渲染视频 45%");
@@ -3587,9 +3694,13 @@ export default function App({ storyPackage }: AppProps) {
           allowMultiSession={storyPackage === "viral" && allowMultiSession}
           multiSessionToggleDisabled={status === "loading"}
           fishAutoReadEnabled={fishAutoReadEnabled}
+          speechProviderId={speechProviderId}
           fishApiKey={fishApiKey}
           fishApiTestState={fishApiTestState}
           fishApiTestMessage={fishApiTestMessage}
+          doubaoSpeechApiKey={doubaoSpeechApiKey}
+          doubaoSpeechApiTestState={doubaoSpeechApiTestState}
+          doubaoSpeechApiTestMessage={doubaoSpeechApiTestMessage}
           showUiSoundControl={betaHackathonBuild}
           uiSoundEnabled={uiSoundEnabled}
           switchLink={switchLink}
@@ -3602,9 +3713,11 @@ export default function App({ storyPackage }: AppProps) {
           onChangeCustomModelSettings={setCustomModel}
           onTestCustomModel={() => void testCustomModel()}
           onToggleMultiSession={toggleMultiSessionMode}
-          onToggleFishAutoRead={toggleFishAutoRead}
+          onToggleSpeechAutoRead={toggleSpeechAutoRead}
           onChangeFishApiKey={changeFishApiKey}
           onTestFishApiKey={() => void testFishApiKey()}
+          onChangeDoubaoSpeechApiKey={changeDoubaoSpeechApiKey}
+          onTestDoubaoSpeechApiKey={() => void testDoubaoSpeechApiKey()}
           onToggleUiSound={toggleBetaUiSound}
           onCycleBrandIcon={cycleBrandIcon}
           onOpenAbout={openAboutDialog}

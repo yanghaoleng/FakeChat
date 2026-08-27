@@ -84,7 +84,7 @@ test.describe("关键用户流程", () => {
     await expect(aboutSiteDialog).toContainText("Simulated chat creation");
   });
 
-  test("模型菜单默认豆包并保留 DeepSeek V4 Flash", async ({ page }) => {
+  test("正式模型菜单支持豆包、DeepSeek 和两种朗读", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     const modelMenu = await openAppMenu(page, "模型");
@@ -92,11 +92,13 @@ test.describe("关键用户流程", () => {
     await expect(modelChoices).toHaveText([
       "豆包 Seed-2.0-mini（速度快）",
       "DeepSeek V4 Flash",
-      "Fish 朗读"
+      "Fish 朗读",
+      "豆包 Seed-TTS 2.0 朗读"
     ]);
     await expect(modelMenu.getByRole("menuitemradio", { name: "豆包 Seed-2.0-mini（速度快）" })).toHaveAttribute("aria-checked", "true");
     await expect(modelMenu).not.toContainText("智谱");
-    await expect(modelMenu).not.toContainText("自定义模型");
+    await expect(modelMenu).not.toContainText("自定义大语言模型");
+    await expect(modelMenu.getByText("豆包语音 API（本标签页保存）")).toBeVisible();
 
     await modelMenu.getByRole("menuitemradio", { name: "DeepSeek V4 Flash" }).click();
     const reopenedModelMenu = await openAppMenu(page, "模型");
@@ -104,6 +106,32 @@ test.describe("关键用户流程", () => {
     await page.reload();
     const persistedModelMenu = await openAppMenu(page, "模型");
     await expect(persistedModelMenu.getByRole("menuitemradio", { name: "DeepSeek V4 Flash" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("Fish 首次请求失败后自动关闭朗读并停止后续请求", async ({ page }) => {
+    let fishRequestCount = 0;
+    await page.route("**/api/fish-tts", async (route) => {
+      fishRequestCount += 1;
+      await route.fulfill({
+        status: 502,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "upstream timeout" })
+      });
+    });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "开始编", exact: true }).click();
+    const modelMenu = await openAppMenu(page, "模型");
+    await modelMenu.getByRole("menuitemradio", { name: "Fish 朗读" }).click();
+    await expect.poll(() => fishRequestCount).toBe(1);
+    await expect(page.locator(".app-toast")).toContainText("已自动关闭朗读");
+
+    const reopenedModelMenu = await openAppMenu(page, "模型");
+    await expect(reopenedModelMenu.getByRole("menuitemradio", { name: "Fish 朗读" })).toHaveAttribute("aria-checked", "false");
+    await page.waitForTimeout(1000);
+    expect(fishRequestCount).toBe(1);
+    browserErrors = browserErrors.filter((message) => !message.includes("502 (Bad Gateway)"));
   });
 
   test("支持作者页面可从帮助菜单打开并按 Escape 关闭", async ({ page }) => {

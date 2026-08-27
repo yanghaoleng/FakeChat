@@ -21,7 +21,8 @@
 | 当前模型标签 | 全版本顶栏右侧 | 已移除；模型选中态仅保留在“模型”菜单内 | 不再渲染 `.beta-menu-current-model` |
 | 多会话开关 | 正式微信版顶部“显示”菜单 | `allowMultiSession`、`toggleMultiSessionMode` | `.beta-menu-item`；选中显示勾，生成中禁用 |
 | 自定义大语言模型 API / 自定义 LLM | 仅 Beta 顶部“模型”菜单 | `betaHackathonBuild`、`customModelPanelOpen`、`CustomModelSettings`、`customModelConfigForSurface`、`testCustomModel` | `.beta-menu-custom-model-form`、`.beta-menu-custom-model-fields`；接口模板、Base URL、模型名、API Key 和“测试并使用”，正式两版不显示且不启用 |
-| 自定义 Fish Audio API | Beta 模型菜单 | `fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；仅一个密钥输入框和测试按钮 |
+| Fish Audio / Fish 朗读 | 顶部“模型”菜单 | `speechProviderId: "fish"`、`fishApiKey`、`testFishApiKey` | `.beta-menu-inline-form`；首次请求失败自动关闭朗读并继续文字 |
+| 豆包语音 / Seed-TTS 2.0 | 顶部“模型”菜单、Vercel API | `speechProviderId: "doubao"`、`doubaoSpeechApiKey`、`/api/doubao-tts`、`seed-tts-2.0` | 用户 Key 仅保存在当前标签页；服务端转发官方单向 SSE，返回 MP3；首次失败自动关闭朗读 |
 | 百分比滚动数字 / 加载数字 / 预计时间 | 生成进度、导出进度 | `RollingPercent`、`estimatedGenerationMs`、`doubaoGenerationEstimateScale = 0.64`、Calligraph `variant="number"` | `.rolling-percent`、`.rolling-percent-digits`；豆包按 DeepSeek 基准的 `64%` 推进 |
 | JOJO 内网预览 | 部署/预览 | `npm run preview:lan` | `HOST=0.0.0.0 API_PORT=4173 DIST_DIR=dist/jojo` |
 | 存档按钮 | 顶栏 | `exportJson` | `.ghost-top-actions` |

@@ -4,6 +4,9 @@
   "functions": {
     "api/story/continue.ts": {
       "maxDuration": 60
+    },
+    "api/doubao-tts.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -26,6 +29,10 @@
     {
       "source": "/api/fish-tts",
       "destination": "/api/fish-tts"
+    },
+    {
+      "source": "/api/doubao-tts",
+      "destination": "/api/doubao-tts"
     },
     {
       "source": "/api/(.*)",

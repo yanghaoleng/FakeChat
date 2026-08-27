@@ -1,5 +1,14 @@
 # 交接记录
 
+## 2026-08-27 Beta 朗读降级、豆包语音与自定义 API
+
+- [x] Fish Audio 每轮朗读的首次真实请求失败时自动关闭朗读，只发起这一次失败请求，随后按正常节奏继续显示文字；同一降级规则也覆盖豆包语音。
+- [x] 增加用户自填豆包语音 API Key，按官方单向 SSE 接口调用 `seed-tts-2.0`，返回 MP3；Key 仅保存在当前浏览器标签页，不写入 Git、构建产物或服务端持久存储。
+- [x] 保留并合入既有 Beta 自定义大语言模型能力：接口模板、Base URL、模型名、API Key、真实模型测试与保存均可用；正式微信和正式钉钉继续不显示该入口。
+- [x] 本地通过 TypeScript、32 个测试文件共 188 项、Beta 构建、正式 Playwright 12 项与 Beta 专用 Playwright 1 项；覆盖 Fish 首错只请求一次、两种朗读入口、自定义模型保存和手机端无横向溢出。
+- [x] 独立 Beta 部署 `dpl_BTqHob4EwJi7Fi1kn9BiCrCaHKgr` 状态 Ready，已绑定 `https://ququ-fakechat-beta.vercel.app/beta/`；构建清单确认 `api/doubao-tts`、`api/fish-tts`、`api/health` 等函数生效，正式项目未部署。
+- [x] 当前大陆网络直连 `vercel.app` 公网域名超时，因此公网 HTTP 与浏览器验收未伪称成功；发布结论以 Vercel Ready 状态、生产别名、函数构建清单和本地完整回归为依据。
+
 ## 2026-08-26 Beta 测试分支
 
 - [x] 从已验收的 `b008682` 创建 `codex/beta`，并推送到 `origin/codex/beta`、设置上游跟踪；正式分支内容未改动。

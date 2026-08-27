@@ -363,9 +363,13 @@ button[disabled],
   width: max-content;
   min-width: 236px;
   max-width: min(330px, calc(100vw - 24px));
+  max-height: calc(100vh - 58px);
+  max-height: calc(100svh - 58px);
   gap: 2px;
   padding: 6px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 11px;
   background: rgba(17, 28, 44, 0.92);
@@ -792,6 +796,7 @@ button[disabled],
     width: 100%;
     min-width: 0;
     max-width: none;
+    max-height: none;
     margin: 2px 0 6px;
     border-color: rgba(255, 255, 255, 0.085);
     border-radius: 9px;
