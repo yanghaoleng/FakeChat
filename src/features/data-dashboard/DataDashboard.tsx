@@ -3,6 +3,12 @@ import { analyticsOrigin } from "../../shared/productAnalytics";
 import "./data-dashboard.css";
 
 type Day = { date: string; visitors: number; sessions: number; events: number; successes: number; failures: number };
+type ChannelSummary = {
+  totals: Record<string, number>;
+  rates: { generationSuccess: number | null; visitorToCreation: number | null; creatorToExport: number | null };
+  daily: Day[];
+  funnel: Array<{ key: string; label: string; value: number }>;
+};
 type Summary = {
   period: { days: number; channel: string; timezone: string; from: string; to: string };
   freshness: string | null;
@@ -10,6 +16,7 @@ type Summary = {
   rates: { generationSuccess: number | null; visitorToCreation: number | null; creatorToExport: number | null };
   daily: Day[];
   funnel: Array<{ key: string; label: string; value: number }>;
+  breakdown: Record<"viral" | "jojo", ChannelSummary>;
   channels: Array<{ name: string; visitors: number; events: number }>;
   contract: { source: string; identity: string; exclusions: string[]; knownLimits: string[] };
 };
@@ -92,15 +99,17 @@ function AccessGate({ onUnlock }: { onUnlock: (token: string) => void }) {
   </main>;
 }
 
-function TrendChart({ days, metric }: { days: Day[]; metric: "visitors" | "successes" }) {
-  const max = Math.max(1, ...days.map((day) => day[metric]));
-  const points = days.map((day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${92 - (day[metric] / max) * 78}`).join(" ");
+type TrendSeries = { channel: "viral" | "jojo"; label: string; days: Day[] };
+
+function TrendChart({ series, metric }: { series: TrendSeries[]; metric: "visitors" | "successes" }) {
+  const max = Math.max(1, ...series.flatMap(({ days }) => days.map((day) => day[metric])));
+  const pointPosition = (value: number) => `${(value / max) * 78 + 8}%`;
   return <div className="trend-chart" role="img" aria-label={`${metric === "visitors" ? "访客" : "创作成功"}趋势`}>
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={points} /></svg>
-    <div className="trend-points">
-      {days.map((day, index) => <button key={day.date} style={{ left: `${(index / Math.max(1, days.length - 1)) * 100}%`, bottom: `${(day[metric] / max) * 78 + 8}%` }} aria-label={`${day.date}，${day[metric]}`} data-value={day[metric]} />)}
-    </div>
-    <div className="chart-axis"><span>{days[0]?.date.slice(5)}</span><span>{days.at(-1)?.date.slice(5)}</span></div>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      {series.map(({ channel, days }) => <polyline key={channel} className={`trend-line-${channel}`} points={days.map((day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${92 - (day[metric] / max) * 78}`).join(" ")} />)}
+    </svg>
+    <div className="trend-points">{series.map(({ channel, days }) => days.map((day, index) => <button key={`${channel}-${day.date}`} className={`trend-point-${channel}`} style={{ left: `${(index / Math.max(1, days.length - 1)) * 100}%`, bottom: pointPosition(day[metric]) }} aria-label={`${channel === "viral" ? "微信版" : "钉钉版"} ${day.date}，${day[metric]}`} data-value={day[metric]} />))}</div>
+    <div className="chart-axis"><span>{series[0]?.days[0]?.date.slice(5)}</span><span>{series[0]?.days.at(-1)?.date.slice(5)}</span></div>
   </div>;
 }
 
@@ -151,6 +160,16 @@ export default function DataDashboard() {
     ];
   }, [summary, days]);
 
+  const trendSeries = useMemo<TrendSeries[]>(() => {
+    const channels: Array<"viral" | "jojo"> = channel === "all" ? ["viral", "jojo"] : [channel as "viral" | "jojo"];
+    return channels.map((name) => ({ channel: name, label: name === "viral" ? "微信版" : "钉钉版", days: summary!.breakdown[name].daily }));
+  }, [summary, channel]);
+
+  const metricSets = useMemo(() => {
+    const channels: Array<"viral" | "jojo"> = channel === "all" ? ["viral", "jojo"] : [channel as "viral" | "jojo"];
+    return channels.map((name) => ({ name, label: name === "viral" ? "微信版" : "钉钉版", summary: summary!.breakdown[name] }));
+  }, [summary, channel]);
+
   if (!token) return <AccessGate onUnlock={setToken} />;
   if (!summary) return <main className="data-loading"><p>{error || "正在读取腾讯云数据…"}</p></main>;
 
@@ -167,17 +186,19 @@ export default function DataDashboard() {
     <main>
       <section id="overview" ref={(node) => { sectionsRef.current.overview = node; }} className="data-section data-intro">
         <div className="conclusions">{conclusions.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
-        <dl className="metric-strip">
-          <div><dt>匿名访客</dt><dd>{summary.totals.visitors}</dd><small>去重浏览器标识</small></div>
-          <div><dt>会话</dt><dd>{summary.totals.sessions}</dd><small>关闭页面后重新计算</small></div>
-          <div><dt>生成成功率</dt><dd>{percent(summary.rates.generationSuccess)}</dd><small>成功 ÷ 发起</small></div>
-          <div><dt>创作后导出</dt><dd>{percent(summary.rates.creatorToExport)}</dd><small>导出访客 ÷ 创作访客</small></div>
-        </dl>
+        <div className="metric-strip">{metricSets.map(({ name, label, summary: channelSummary }) => <section className={`metric-set metric-set-${name}`} key={name} aria-label={`${label}指标`}>
+          <h3>{label}</h3><dl className="metric-set-grid">
+            <div><dt>匿名访客</dt><dd>{channelSummary.totals.visitors}</dd><small>去重浏览器标识</small></div>
+            <div><dt>会话</dt><dd>{channelSummary.totals.sessions}</dd><small>会话标识</small></div>
+            <div><dt>生成成功率</dt><dd>{percent(channelSummary.rates.generationSuccess)}</dd><small>成功 ÷ 发起</small></div>
+            <div><dt>创作后导出</dt><dd>{percent(channelSummary.rates.creatorToExport)}</dd><small>导出访客 ÷ 创作访客</small></div>
+          </dl>
+        </section>)}</div>
       </section>
       <section id="trend" ref={(node) => { sectionsRef.current.trend = node; }} className="data-section">
         <div className="section-heading"><div><p className="data-eyebrow">趋势</p><h2>{metric === "visitors" ? "访问有没有持续发生" : "每天完成了多少次创作"}</h2><p>{metric === "visitors" ? "按北京时间统计每日匿名访客。" : "每次模型成功返回一段故事计为一次。"}</p></div>
-          <div className="data-tabs" role="tablist"><button role="tab" aria-selected={metric === "visitors"} onClick={() => setMetric("visitors")}>访客</button><button role="tab" aria-selected={metric === "successes"} onClick={() => setMetric("successes")}>创作成功</button></div></div>
-        <TrendChart days={summary.daily} metric={metric} />
+          <div><div className="trend-legend"><span className="legend-viral">微信版</span><span className="legend-jojo">钉钉版</span></div><div className="data-tabs" role="tablist"><button role="tab" aria-selected={metric === "visitors"} onClick={() => setMetric("visitors")}>访客</button><button role="tab" aria-selected={metric === "successes"} onClick={() => setMetric("successes")}>创作成功</button></div></div></div>
+        <TrendChart series={trendSeries} metric={metric} />
       </section>
       <section id="funnel" ref={(node) => { sectionsRef.current.funnel = node; }} className="data-section">
         <div className="section-heading"><div><p className="data-eyebrow">转化</p><h2>从访问到带走作品</h2><p>同一匿名访客在所选周期内完成过一次即计入下一步。</p></div></div>

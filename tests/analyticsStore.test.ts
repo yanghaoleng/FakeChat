@@ -34,6 +34,8 @@ describe("analytics store", () => {
     expect(summary.rates.generationSuccess).toBe(1);
     expect(summary.rates.creatorToExport).toBe(1);
     expect(summary.funnel.map((step: { value: number }) => step.value)).toEqual([1, 1, 1]);
+    expect(summary.breakdown.viral.totals.visitors).toBe(1);
+    expect(summary.breakdown.jojo.totals.visitors).toBe(0);
   });
 
   it("requires the numeric access code and verifies signed sessions", async () => {

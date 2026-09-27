@@ -107,10 +107,7 @@ export function createAnalyticsStore({ dataDir, accessCode, sessionSecret }) {
     return { ok: true, ...issueToken() };
   }
 
-  async function summary({ days = 30, channel = "all" } = {}) {
-    const safeDays = [7, 30, 90].includes(Number(days)) ? Number(days) : 30;
-    const cutoff = Date.now() - safeDays * 86400000;
-    const allRows = (await rows()).filter((row) => Date.parse(row.at) >= cutoff && (channel === "all" || row.channel === channel));
+  function aggregateRows(sourceRows, safeDays) {
     const dailyMap = new Map();
     const totals = Object.fromEntries([...EVENT_NAMES].map((name) => [name, 0]));
     const visitors = new Set();
@@ -119,7 +116,7 @@ export function createAnalyticsStore({ dataDir, accessCode, sessionSecret }) {
       const date = new Date(Date.now() - offset * 86400000);
       dailyMap.set(dayKey(date), { date: dayKey(date), visitors: new Set(), sessions: new Set(), events: 0, successes: 0, failures: 0 });
     }
-    for (const row of allRows) {
+    for (const row of sourceRows) {
       totals[row.event] += 1;
       visitors.add(row.visitorId);
       sessions.add(row.sessionId);
@@ -131,14 +128,11 @@ export function createAnalyticsStore({ dataDir, accessCode, sessionSecret }) {
       if (row.event === "story_generation_succeeded") daily.successes += 1;
       if (row.event === "story_generation_failed") daily.failures += 1;
     }
+    const successfulVisitors = new Set(sourceRows.filter((row) => row.event === "story_generation_succeeded").map((row) => row.visitorId));
+    const exportVisitors = new Set(sourceRows.filter((row) => row.event === "archive_exported" || row.event === "video_exported").map((row) => row.visitorId));
     const starts = totals.story_generation_started;
-    const successfulVisitors = new Set(allRows.filter((row) => row.event === "story_generation_succeeded").map((row) => row.visitorId));
-    const exportVisitors = new Set(allRows.filter((row) => row.event === "archive_exported" || row.event === "video_exported").map((row) => row.visitorId));
-    const lastEvent = allRows.at(-1)?.at || null;
     return {
-      period: { days: safeDays, channel, timezone: "Asia/Shanghai", from: new Date(cutoff).toISOString(), to: new Date().toISOString() },
-      freshness: lastEvent,
-      totals: { visitors: visitors.size, sessions: sessions.size, events: allRows.length, ...totals },
+      totals: { visitors: visitors.size, sessions: sessions.size, events: sourceRows.length, ...totals },
       rates: {
         generationSuccess: starts ? totals.story_generation_succeeded / starts : null,
         visitorToCreation: visitors.size ? successfulVisitors.size / visitors.size : null,
@@ -149,9 +143,25 @@ export function createAnalyticsStore({ dataDir, accessCode, sessionSecret }) {
         { key: "visit", label: "访问", value: visitors.size },
         { key: "create", label: "完成一次创作", value: successfulVisitors.size },
         { key: "export", label: "完成导出", value: exportVisitors.size }
-      ],
+      ]
+    };
+  }
+
+  async function summary({ days = 30, channel = "all" } = {}) {
+    const safeDays = [7, 30, 90].includes(Number(days)) ? Number(days) : 30;
+    const cutoff = Date.now() - safeDays * 86400000;
+    const periodRows = (await rows()).filter((row) => Date.parse(row.at) >= cutoff);
+    const allRows = periodRows.filter((row) => channel === "all" || row.channel === channel);
+    const aggregate = aggregateRows(allRows, safeDays);
+    const breakdown = Object.fromEntries(["viral", "jojo"].map((name) => [name, aggregateRows(periodRows.filter((row) => row.channel === name), safeDays)]));
+    const lastEvent = allRows.at(-1)?.at || null;
+    return {
+      period: { days: safeDays, channel, timezone: "Asia/Shanghai", from: new Date(cutoff).toISOString(), to: new Date().toISOString() },
+      freshness: lastEvent,
+      ...aggregate,
+      breakdown,
       channels: ["viral", "jojo"].map((name) => {
-        const subset = allRows.filter((row) => row.channel === name);
+        const subset = periodRows.filter((row) => row.channel === name);
         return { name, visitors: new Set(subset.map((row) => row.visitorId)).size, events: subset.length };
       }),
       contract: {

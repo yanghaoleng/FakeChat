@@ -20,9 +20,16 @@ button, select { font: inherit; }
 .data-intro { padding-top: 48px; }
 .conclusions { max-width: 860px; }
 .conclusions p { margin: 0 0 13px; font-size: clamp(19px, 2.4vw, 30px); line-height: 1.32; letter-spacing: -.02em; }
-.metric-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 45px 0 0; border-block: 1px solid #d9d1c7; }
-.metric-strip div { padding: 20px 24px 20px 0; }
-.metric-strip div + div { border-left: 1px solid #d9d1c7; padding-left: 24px; }
+.metric-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; margin: 45px 0 0; border-block: 1px solid #d9d1c7; }
+.metric-set { padding: 20px 24px 20px 0; }
+.metric-set + .metric-set { border-left: 1px solid #d9d1c7; padding-left: 24px; }
+.metric-set h3 { margin: 0 0 16px; font-size: 14px; font-weight: 700; }
+.metric-set-viral h3, .legend-viral { color: #8b4d2f; }
+.metric-set-jojo h3, .legend-jojo { color: #356b75; }
+.metric-set-grid { display: grid; grid-template-columns: repeat(2, 1fr); margin: 0; }
+.metric-set-grid > div { min-width: 0; padding: 10px 0; }
+.metric-set-grid > div:nth-child(even) { border-left: 1px solid #d9d1c7; padding-left: 18px; }
+.metric-set-grid > div:nth-child(n+3) { border-top: 1px solid #d9d1c7; }
 .metric-strip dt, .metric-strip small { color: #756c61; font-size: 12px; }
 .metric-strip dd { margin: 4px 0 2px; font-size: 36px; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 30px; }
@@ -33,11 +40,15 @@ button, select { font: inherit; }
 .trend-chart { position: relative; height: 280px; border-block: 1px solid #d9d1c7; background: repeating-linear-gradient(to bottom, transparent 0, transparent 69px, #d9d1c777 70px); }
 .trend-chart svg { width: 100%; height: 100%; overflow: visible; }
 .trend-chart polyline { fill: none; stroke: #8b4d2f; stroke-width: 1.3; vector-effect: non-scaling-stroke; }
+.trend-chart .trend-line-jojo { stroke: #356b75; }
 .trend-points { position: absolute; inset: 0; }
 .trend-points button { position: absolute; width: 12px; height: 12px; transform: translate(-50%, 50%); border: 3px solid #f4f0e9; border-radius: 50%; background: #8b4d2f; cursor: pointer; }
+.trend-points .trend-point-jojo { background: #356b75; }
 .trend-points button::after { content: attr(data-value); position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); opacity: 0; padding: 4px 7px; border-radius: 5px; background: #27231f; color: white; pointer-events: none; }
 .trend-points button:hover::after, .trend-points button:focus-visible::after { opacity: 1; }
 .chart-axis { position: absolute; inset: auto 0 7px; display: flex; justify-content: space-between; color: #8b8278; font-size: 11px; }
+.trend-legend { display: flex; justify-content: end; gap: 14px; margin-bottom: 8px; font-size: 12px; }
+.legend-viral::before, .legend-jojo::before { content: ""; display: inline-block; width: 16px; height: 2px; margin: 0 5px 3px 0; background: currentColor; }
 .funnel-list { max-width: 850px; }
 .funnel-list > div { display: grid; grid-template-columns: 26px 180px 1fr 50px; align-items: center; gap: 14px; min-height: 58px; border-top: 1px solid #d9d1c7; }
 .funnel-list span { color: #8b8278; font-variant-numeric: tabular-nums; }
@@ -68,10 +79,8 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
   .data-filters label { flex: 1; }
   .data-filters select { width: 100%; }
   .data-nav { overflow-x: auto; }
-  .metric-strip { grid-template-columns: 1fr 1fr; }
-  .metric-strip div + div { border-left: 0; padding-left: 0; }
-  .metric-strip div:nth-child(even) { border-left: 1px solid #d9d1c7; padding-left: 18px; }
-  .metric-strip div:nth-child(n+3) { border-top: 1px solid #d9d1c7; }
+  .metric-strip { grid-template-columns: 1fr; }
+  .metric-set + .metric-set { border-top: 1px solid #d9d1c7; border-left: 0; padding-left: 0; }
   .section-heading { align-items: start; flex-direction: column; }
   .funnel-list > div { grid-template-columns: 22px 120px 1fr 34px; gap: 8px; }
   .quality-columns { grid-template-columns: 1fr; gap: 28px; }
