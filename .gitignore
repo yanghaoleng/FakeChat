@@ -19,6 +19,7 @@ tmp/
 data/audio/*
 data/sfx/*
 data/assets/uploads/*
+data/analytics/*
 data/settings.json
 renders/*
 *.log

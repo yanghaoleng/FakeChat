@@ -19,5 +19,6 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "server", "api", "tests", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "server", "api", "tests", "vite.config.ts", "vitest.config.ts"],
+  "exclude": ["**/*.sync-conflict-*", "**/.sync-conflict-*"]
 }

@@ -54,6 +54,7 @@ import {
 } from "./shared/chatSessions";
 import { isJojoProject } from "./shared/jojoProject";
 import { resolvePublicAssetPath } from "./shared/publicPath";
+import { trackProductEvent } from "./shared/productAnalytics";
 import { isVoiceMessage, type ChatMessage, type DramaProject } from "./shared/schema";
 import { createStoryArchivePng, readArchiveFile } from "./shared/storyArchivePng";
 import { attachStorySegment, restoreStoryBeforeCard, restoreStoryThroughCard } from "./shared/storySegments";
@@ -1014,6 +1015,10 @@ export default function App({ storyPackage }: AppProps) {
   }
 
   useEffect(() => {
+    trackProductEvent("app_opened", storyPackage);
+  }, [storyPackage]);
+
+  useEffect(() => {
     projectRef.current = project;
   }, [project]);
 
@@ -1876,6 +1881,7 @@ export default function App({ storyPackage }: AppProps) {
         const signal = controller.signal;
 
         setStatus("loading");
+        trackProductEvent("story_generation_started", storyPackage);
         setVideoProgress(0);
         startGenerationProgress(estimatedGenerationMs(projectSnapshot, storyPackage));
         triggerAmbientFeedback("generating");
@@ -1914,10 +1920,12 @@ export default function App({ storyPackage }: AppProps) {
             basePromptCards: promptCardsSnapshot,
             queueWillContinue
           });
+          trackProductEvent("story_generation_succeeded", storyPackage);
           updatePendingPromptCards((cards) => cards.filter((card) => card.id !== activeCard.id));
         } catch (error) {
           if (!isCurrentGeneration(runId, signal)) continue;
           console.error("[deepseek] queue failed", error);
+          trackProductEvent("story_generation_failed", storyPackage);
           showToast(deepSeekServiceToast);
           const message = error instanceof Error ? error.message : "DeepSeek 续写失败";
           restorePromptForEditing(activeCard.prompt);
@@ -2259,6 +2267,7 @@ export default function App({ storyPackage }: AppProps) {
 
   function choosePreviewMode(nextMode: PreviewMode) {
     changePreviewMode(nextMode);
+    if (nextMode === "video") trackProductEvent("preview_opened", storyPackage);
     if (nextMode === "video" && !activeChatProject.messages.length) {
       setStatus("idle");
       setStatusText("先生成对话，再播放视频版");
@@ -2369,6 +2378,7 @@ export default function App({ storyPackage }: AppProps) {
       setStatus("done");
       setStatusText("PNG 存档已导出，对话数据已写入图片");
       showToast("PNG 存档已保存");
+      trackProductEvent("archive_exported", storyPackage);
     } catch (error) {
       handleError("存档导出", error);
       showToast(error instanceof Error ? error.message : "存档导出失败");
@@ -2453,6 +2463,7 @@ export default function App({ storyPackage }: AppProps) {
       setProject(nextProject);
       setStatus("done");
       setStatusText("配音已生成，可导出视频");
+      trackProductEvent("voice_generation_succeeded", storyPackage);
     } catch (error) {
       handleError("Edge TTS", error);
     }
@@ -2475,6 +2486,7 @@ export default function App({ storyPackage }: AppProps) {
       setVideoResult(result);
       setStatus("done");
       setStatusText(`视频已生成：${result.extension.toUpperCase()}`);
+      trackProductEvent("video_exported", storyPackage);
     } catch (error) {
       handleError("视频导出", error);
     }

@@ -2,17 +2,20 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Analytics } from "@vercel/analytics/react";
 import App from "./App";
+import DataDashboard from "./features/data-dashboard/DataDashboard";
 import type { StoryPackage } from "./shared/linearStory";
 import { warmStaticVisualAssets } from "./shared/staticAssetCache";
 import "./styles/app.css";
 
 declare const __APP_STORY_PACKAGE__: StoryPackage;
 
+const isDataDashboard = window.location.pathname === "/data" || window.location.pathname === "/data/";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App storyPackage={__APP_STORY_PACKAGE__} />
-    <Analytics />
+    {isDataDashboard ? <DataDashboard /> : <App storyPackage={__APP_STORY_PACKAGE__} />}
+    {!isDataDashboard && <Analytics />}
   </React.StrictMode>
 );
 
-warmStaticVisualAssets({ storyPackage: __APP_STORY_PACKAGE__ });
+if (!isDataDashboard) warmStaticVisualAssets({ storyPackage: __APP_STORY_PACKAGE__ });

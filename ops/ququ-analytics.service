@@ -1,0 +1,22 @@
+[Unit]
+Description=QUQU anonymous product analytics
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ququ-analytics/current
+EnvironmentFile=/etc/ququ-analytics.env
+ExecStart=/usr/bin/node /opt/ququ-analytics/current/analytics-service.mjs
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ququ-analytics
+
+[Install]
+WantedBy=multi-user.target
