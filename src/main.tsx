@@ -10,6 +10,7 @@ import "./styles/app.css";
 declare const __APP_STORY_PACKAGE__: StoryPackage;
 
 const isDataDashboard = window.location.pathname === "/data" || window.location.pathname === "/data/";
+if (isDataDashboard) document.documentElement.classList.add("data-route");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
