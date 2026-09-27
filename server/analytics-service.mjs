@@ -30,7 +30,7 @@ createServer(async (request, response) => {
   const origin = request.headers.origin || "";
   const cors = allowedOrigins.has(origin) ? { "access-control-allow-origin": origin, vary: "Origin", "access-control-allow-credentials": "true" } : {};
   if (request.method === "OPTIONS") {
-    response.writeHead(204, { ...cors, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
+    response.writeHead(204, { ...cors, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "authorization, content-type" });
     return response.end();
   }
   if (origin && !allowedOrigins.has(origin)) return json(response, 403, { error: "Origin not allowed" });
