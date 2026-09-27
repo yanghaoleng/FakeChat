@@ -161,11 +161,13 @@ export default function DataDashboard() {
   }, [summary, days]);
 
   const trendSeries = useMemo<TrendSeries[]>(() => {
+    if (!summary) return [];
     const channels: Array<"viral" | "jojo"> = channel === "all" ? ["viral", "jojo"] : [channel as "viral" | "jojo"];
     return channels.map((name) => ({ channel: name, label: name === "viral" ? "微信版" : "钉钉版", days: summary!.breakdown[name].daily }));
   }, [summary, channel]);
 
   const metricSets = useMemo(() => {
+    if (!summary) return [];
     const channels: Array<"viral" | "jojo"> = channel === "all" ? ["viral", "jojo"] : [channel as "viral" | "jojo"];
     return channels.map((name) => ({ name, label: name === "viral" ? "微信版" : "钉钉版", summary: summary!.breakdown[name] }));
   }, [summary, channel]);
